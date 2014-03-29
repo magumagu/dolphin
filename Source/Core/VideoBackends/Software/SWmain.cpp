@@ -36,6 +36,8 @@
 #include "VideoCommon/BPStructs.h"
 #include "VideoCommon/OnScreenDisplay.h"
 #include "VideoCommon/PixelEngine.h"
+#include "VideoCommon/RenderBase.h"
+#include "VideoCommon/VertexManagerBase.h"
 #include "VideoCommon/XFMemory.h"
 
 #define VSYNC_ENABLED 0
@@ -74,6 +76,46 @@ void VideoSoftware::ShowConfig(void *_hParent)
 #endif
 }
 
+class Renderer : public ::Renderer {
+	virtual void SetColorMask()  {}
+	virtual void SetBlendMode(bool forceUpdate)  {}
+	virtual void SetScissorRect(const EFBRectangle& rc)  { Rasterizer::SetScissor(); }
+	virtual void SetGenerationMode() {}
+	virtual void SetDepthMode()  {}
+	virtual void SetLogicOpMode()  {}
+	virtual void SetDitherMode()  {}
+	virtual void SetLineWidth()  {}
+	virtual void SetSamplerState(int stage, int texindex) {}
+	virtual void SetInterlacingMode() {}
+	virtual void SetViewport() {}
+
+	virtual void ApplyState(bool bUseDstAlpha) {}
+	virtual void RestoreState() {}
+
+	virtual void RenderText(const std::string& text, int left, int top, u32 color) {}
+
+	virtual void ClearScreen(const EFBRectangle& rc, bool colorEnable, bool alphaEnable, bool zEnable, u32 color, u32 z) {}
+	virtual void ReinterpretPixelData(unsigned int convtype) {}
+
+	virtual u32 AccessEFB(EFBAccessType type, u32 x, u32 y, u32 poke_data) { return 0; }
+
+	// What's the real difference between these? Too similar names.
+	virtual void ResetAPIState() {}
+	virtual void RestoreAPIState() {}
+
+	// Finish up the current frame, print some stats
+	virtual void SwapImpl(u32 xfbAddr, u32 fbWidth, u32 fbHeight, const EFBRectangle& rc, float Gamma = 1.0f) {}
+
+	virtual bool SaveScreenshot(const std::string &filename, const TargetRectangle &rc) { return false; }
+	virtual TargetRectangle ConvertEFBRectangle(const EFBRectangle& rc) { return TargetRectangle(); }
+};
+
+class VertexManager : public ::VertexManager {
+	virtual ::NativeVertexFormat* CreateNativeVertexFormat() { return nullptr; }
+	virtual void ResetBuffer(u32 stride) {}
+	virtual void vFlush(bool useDstAlpha) {}
+};
+
 bool VideoSoftware::Initialize(void *&window_handle)
 {
 	g_SWVideoConfig.Load((File::GetUserPath(D_CONFIG_IDX) + "gfx_software.ini").c_str());
@@ -96,6 +138,8 @@ bool VideoSoftware::Initialize(void *&window_handle)
 	HwRasterizer::Init();
 	SWRenderer::Init();
 	DebugUtil::Init();
+	g_renderer = new SW::Renderer;
+	g_vertex_manager = new SW::VertexManager;
 
 	return true;
 }
