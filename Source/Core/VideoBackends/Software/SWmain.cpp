@@ -28,7 +28,6 @@
 #include "VideoBackends/Software/SWVertexLoader.h"
 #include "VideoBackends/Software/SWVideoConfig.h"
 #include "VideoBackends/Software/VideoBackend.h"
-#include "VideoBackends/Software/XFMemLoader.h"
 
 #if defined(HAVE_WX) && HAVE_WX
 #include "VideoBackends/Software/VideoConfigDialog.h"
@@ -88,7 +87,7 @@ bool VideoSoftware::Initialize(void *&window_handle)
 	}
 
 	BPInit();
-	InitXFMemory();
+	// TODO: Equivalent to InitXFMemory();
 	SWCommandProcessor::Init();
 	PixelEngine::Init();
 	OpcodeDecoder::Init();
@@ -115,7 +114,7 @@ void VideoSoftware::DoState(PointerWrap& p)
 	EfbInterface::DoState(p);
 	OpcodeDecoder::DoState(p);
 	Clipper::DoState(p);
-	p.Do(swxfregs);
+	p.Do(xfregs);
 	p.Do(bpmem);
 	p.DoPOD(swstats);
 

@@ -12,7 +12,8 @@
 #include "VideoBackends/Software/SWVideoConfig.h"
 #include "VideoBackends/Software/Tev.h"
 #include "VideoBackends/Software/TextureSampler.h"
-#include "VideoBackends/Software/XFMemLoader.h"
+
+#include "VideoCommon/XFMemory.h"
 
 #ifdef _DEBUG
 #define ALLOW_TEV_DUMPS 1
@@ -688,7 +689,7 @@ void Tev::Draw()
 			// - scaling of the "k" coefficient isn't clear either.
 
 			// First, calculate the offset from the viewport center (normalized to 0..1)
-			float offset = (Position[0] - (bpmem.fogRange.Base.Center - 342)) / (float)swxfregs.viewport.wd;
+			float offset = (Position[0] - (bpmem.fogRange.Base.Center - 342)) / (float)xfregs.viewport.wd;
 
 			// Based on that, choose the index such that points which are far away from the z-axis use the 10th "k" value and such that central points use the first value.
 			float floatindex = 9.f - std::abs(offset) * 9.f;

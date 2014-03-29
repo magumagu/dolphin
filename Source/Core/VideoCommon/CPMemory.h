@@ -211,6 +211,8 @@ union TMatrixIndexA
 		u32 Hex : 30;
 		u32 unused : 2;
 	};
+	TMatrixIndexA() = default;
+	TMatrixIndexA(u32 h) { Hex = h; }
 };
 
 union TMatrixIndexB
@@ -227,6 +229,8 @@ union TMatrixIndexB
 		u32 Hex : 24;
 		u32 unused : 8;
 	};
+	TMatrixIndexB() = default;
+	TMatrixIndexB(u32 h) { Hex = h; }
 };
 
 #pragma pack()

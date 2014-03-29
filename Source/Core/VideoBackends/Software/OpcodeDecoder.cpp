@@ -11,9 +11,9 @@
 #include "VideoBackends/Software/SWStatistics.h"
 #include "VideoBackends/Software/SWVertexLoader.h"
 #include "VideoBackends/Software/SWVideoConfig.h"
-#include "VideoBackends/Software/XFMemLoader.h"
 #include "VideoCommon/BPMemory.h"
 #include "VideoCommon/DataReader.h"
+#include "VideoCommon/XFMemory.h"
 
 typedef void (*DecodingFunction)(u32);
 
@@ -84,7 +84,7 @@ void ReadXFData(u32 iBufferSize)
 	u32 pData[16];
 	for (int i = 0; i < streamSize; i++)
 		pData[i] = DataReadU32();
-	SWLoadXFReg(streamSize, streamAddress, pData);
+	LoadXFReg(streamSize, streamAddress, pData);
 
 	// return to normal command processing
 	ResetDecoding();
@@ -164,16 +164,16 @@ void DecodeStandard(u32 bufferSize)
 		break;
 
 	case GX_LOAD_INDX_A: //used for position matrices
-		SWLoadIndexedXF(DataReadU32(), 0xC);
+		LoadIndexedXF(DataReadU32(), 0xC);
 		break;
 	case GX_LOAD_INDX_B: //used for normal matrices
-		SWLoadIndexedXF(DataReadU32(), 0xD);
+		LoadIndexedXF(DataReadU32(), 0xD);
 		break;
 	case GX_LOAD_INDX_C: //used for postmatrices
-		SWLoadIndexedXF(DataReadU32(), 0xE);
+		LoadIndexedXF(DataReadU32(), 0xE);
 		break;
 	case GX_LOAD_INDX_D: //used for lights
-		SWLoadIndexedXF(DataReadU32(), 0xF);
+		LoadIndexedXF(DataReadU32(), 0xF);
 		break;
 
 	case GX_CMD_CALL_DL:

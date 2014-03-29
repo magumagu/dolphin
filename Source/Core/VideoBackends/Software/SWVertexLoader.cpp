@@ -9,7 +9,6 @@
 #include "VideoBackends/Software/SWStatistics.h"
 #include "VideoBackends/Software/SWVertexLoader.h"
 #include "VideoBackends/Software/TransformUnit.h"
-#include "VideoBackends/Software/XFMemLoader.h"
 
 #include "VideoCommon/DataReader.h"
 #include "VideoCommon/VertexLoader_Color.h"
@@ -17,6 +16,9 @@
 #include "VideoCommon/VertexLoader_Position.h"
 #include "VideoCommon/VertexLoader_TextCoord.h"
 #include "VideoCommon/VertexManagerBase.h"
+#include "VideoCommon/XFMemory.h"
+
+#define swxfregs xfregs
 
 // Vertex loaders read these
 extern int tcIndex;
@@ -95,15 +97,17 @@ void SWVertexLoader::SetFormat(u8 attributeIndex, u8 primitiveType)
 
 	// Reset vertex
 	// matrix index from xf regs or cp memory?
-	if (swxfregs.MatrixIndexA.PosNormalMtxIdx != MatrixIndexA.PosNormalMtxIdx ||
-		swxfregs.MatrixIndexA.Tex0MtxIdx != MatrixIndexA.Tex0MtxIdx ||
-		swxfregs.MatrixIndexA.Tex1MtxIdx != MatrixIndexA.Tex1MtxIdx ||
-		swxfregs.MatrixIndexA.Tex2MtxIdx != MatrixIndexA.Tex2MtxIdx ||
-		swxfregs.MatrixIndexA.Tex3MtxIdx != MatrixIndexA.Tex3MtxIdx ||
-		swxfregs.MatrixIndexB.Tex4MtxIdx != MatrixIndexB.Tex4MtxIdx ||
-		swxfregs.MatrixIndexB.Tex5MtxIdx != MatrixIndexB.Tex5MtxIdx ||
-		swxfregs.MatrixIndexB.Tex6MtxIdx != MatrixIndexB.Tex6MtxIdx ||
-		swxfregs.MatrixIndexB.Tex7MtxIdx != MatrixIndexB.Tex7MtxIdx)
+	TMatrixIndexA MatrixIndexAFromRegs(xfregs.MatrixIndexA);
+	TMatrixIndexB MatrixIndexBFromRegs(xfregs.MatrixIndexB);
+	if (MatrixIndexAFromRegs.PosNormalMtxIdx != MatrixIndexA.PosNormalMtxIdx ||
+		MatrixIndexAFromRegs.Tex0MtxIdx != MatrixIndexA.Tex0MtxIdx ||
+		MatrixIndexAFromRegs.Tex1MtxIdx != MatrixIndexA.Tex1MtxIdx ||
+		MatrixIndexAFromRegs.Tex2MtxIdx != MatrixIndexA.Tex2MtxIdx ||
+		MatrixIndexAFromRegs.Tex3MtxIdx != MatrixIndexA.Tex3MtxIdx ||
+		MatrixIndexBFromRegs.Tex4MtxIdx != MatrixIndexB.Tex4MtxIdx ||
+		MatrixIndexBFromRegs.Tex5MtxIdx != MatrixIndexB.Tex5MtxIdx ||
+		MatrixIndexBFromRegs.Tex6MtxIdx != MatrixIndexB.Tex6MtxIdx ||
+		MatrixIndexBFromRegs.Tex7MtxIdx != MatrixIndexB.Tex7MtxIdx)
 	{
 		WARN_LOG(VIDEO, "Matrix indices don't match");
 
@@ -113,17 +117,6 @@ void SWVertexLoader::SetFormat(u8 attributeIndex, u8 primitiveType)
 		showedAlert = true;
 	}
 
-#if(1)
-	m_Vertex.posMtx = swxfregs.MatrixIndexA.PosNormalMtxIdx;
-	m_Vertex.texMtx[0] = swxfregs.MatrixIndexA.Tex0MtxIdx;
-	m_Vertex.texMtx[1] = swxfregs.MatrixIndexA.Tex1MtxIdx;
-	m_Vertex.texMtx[2] = swxfregs.MatrixIndexA.Tex2MtxIdx;
-	m_Vertex.texMtx[3] = swxfregs.MatrixIndexA.Tex3MtxIdx;
-	m_Vertex.texMtx[4] = swxfregs.MatrixIndexB.Tex4MtxIdx;
-	m_Vertex.texMtx[5] = swxfregs.MatrixIndexB.Tex5MtxIdx;
-	m_Vertex.texMtx[6] = swxfregs.MatrixIndexB.Tex6MtxIdx;
-	m_Vertex.texMtx[7] = swxfregs.MatrixIndexB.Tex7MtxIdx;
-#else
 	m_Vertex.posMtx = MatrixIndexA.PosNormalMtxIdx;
 	m_Vertex.texMtx[0] = MatrixIndexA.Tex0MtxIdx;
 	m_Vertex.texMtx[1] = MatrixIndexA.Tex1MtxIdx;
@@ -133,7 +126,6 @@ void SWVertexLoader::SetFormat(u8 attributeIndex, u8 primitiveType)
 	m_Vertex.texMtx[5] = MatrixIndexB.Tex5MtxIdx;
 	m_Vertex.texMtx[6] = MatrixIndexB.Tex6MtxIdx;
 	m_Vertex.texMtx[7] = MatrixIndexB.Tex7MtxIdx;
-#endif
 
 	if (g_VtxDesc.PosMatIdx != NOT_PRESENT)
 	{

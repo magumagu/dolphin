@@ -39,9 +39,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "VideoBackends/Software/NativeVertexFormat.h"
 #include "VideoBackends/Software/Rasterizer.h"
 #include "VideoBackends/Software/SWStatistics.h"
-#include "VideoBackends/Software/XFMemLoader.h"
 
 #include "VideoCommon/BPMemory.h"
+#include "VideoCommon/XFMemory.h"
+
+#define swxfregs xfregs
 
 namespace Clipper
 {

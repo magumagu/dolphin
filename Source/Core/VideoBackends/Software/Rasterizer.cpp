@@ -10,8 +10,8 @@
 #include "VideoBackends/Software/SWStatistics.h"
 #include "VideoBackends/Software/SWVideoConfig.h"
 #include "VideoBackends/Software/Tev.h"
-#include "VideoBackends/Software/XFMemLoader.h"
 
+#include "VideoCommon/XFMemory.h"
 
 #define BLOCK_SIZE 2
 
@@ -269,7 +269,7 @@ void BuildBlock(s32 blockX, s32 blockY)
 			for (unsigned int i = 0; i < bpmem.genMode.numtexgens; i++)
 			{
 				float projection = invW;
-				if (swxfregs.texMtxInfo[i].projection)
+				if (xfregs.texMtxInfo[i].projection)
 				{
 					float q = TexSlopes[i][2].GetValue(dx, dy) * invW;
 					if (q != 0.0f)
