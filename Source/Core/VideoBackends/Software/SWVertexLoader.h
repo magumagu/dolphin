@@ -7,8 +7,9 @@
 #include "Common/ChunkFile.h"
 #include "Common/Common.h"
 
-#include "VideoBackends/Software/CPMemLoader.h"
 #include "VideoBackends/Software/NativeVertexFormat.h"
+
+#include "VideoCommon/CPMemory.h"
 
 class SetupUnit;
 

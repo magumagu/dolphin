@@ -4,7 +4,6 @@
 
 #include "Common/Common.h"
 #include "Core/HW/Memmap.h"
-#include "VideoBackends/Software/CPMemLoader.h"
 #include "VideoBackends/Software/DebugUtil.h"
 #include "VideoBackends/Software/OpcodeDecoder.h"
 #include "VideoBackends/Software/SWCommandProcessor.h"
@@ -12,6 +11,7 @@
 #include "VideoBackends/Software/SWVertexLoader.h"
 #include "VideoBackends/Software/SWVideoConfig.h"
 #include "VideoCommon/BPMemory.h"
+#include "VideoCommon/CPMemory.h"
 #include "VideoCommon/DataReader.h"
 #include "VideoCommon/XFMemory.h"
 
@@ -148,7 +148,7 @@ void DecodeStandard(u32 bufferSize)
 		{
 			u32 SubCmd = DataReadU8();
 			u32 Value = DataReadU32();
-			SWLoadCPReg(SubCmd, Value);
+			LoadCPReg(SubCmd, Value);
 		}
 		break;
 

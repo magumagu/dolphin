@@ -5,7 +5,6 @@
 #include <cmath>
 
 #include "Common/Common.h"
-#include "VideoBackends/Software/CPMemLoader.h"
 #include "VideoBackends/Software/NativeVertexFormat.h"
 #include "VideoBackends/Software/TransformUnit.h"
 #include "VideoBackends/Software/Vec3.h"

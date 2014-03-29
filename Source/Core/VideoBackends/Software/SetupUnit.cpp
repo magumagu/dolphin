@@ -3,7 +3,6 @@
 // Refer to the license.txt file included.
 
 #include "VideoBackends/Software/Clipper.h"
-#include "VideoBackends/Software/CPMemLoader.h"
 #include "VideoBackends/Software/OpcodeDecoder.h"
 #include "VideoBackends/Software/SetupUnit.h"
 #include "VideoBackends/Software/SWStatistics.h"

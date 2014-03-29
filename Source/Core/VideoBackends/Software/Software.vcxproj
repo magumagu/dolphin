@@ -44,7 +44,6 @@
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
     <ClCompile Include="Clipper.cpp" />
-    <ClCompile Include="CPMemLoader.cpp" />
     <ClCompile Include="DebugUtil.cpp" />
     <ClCompile Include="EfbCopy.cpp" />
     <ClCompile Include="EfbInterface.cpp" />
@@ -70,7 +69,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Clipper.h" />
-    <ClInclude Include="CPMemLoader.h" />
     <ClInclude Include="DebugUtil.h" />
     <ClInclude Include="EfbCopy.h" />
     <ClInclude Include="EfbInterface.h" />
