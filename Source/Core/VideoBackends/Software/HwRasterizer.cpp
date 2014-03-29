@@ -5,7 +5,6 @@
 #include "Common/Common.h"
 #include "Common/MemoryUtil.h"
 
-#include "VideoBackends/Software/BPMemLoader.h"
 #include "VideoBackends/Software/DebugUtil.h"
 #include "VideoBackends/Software/HwRasterizer.h"
 #include "VideoBackends/Software/NativeVertexFormat.h"

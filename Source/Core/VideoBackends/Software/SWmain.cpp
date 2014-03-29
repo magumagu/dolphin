@@ -16,7 +16,6 @@
 #include "Core/HW/VideoInterface.h"
 
 #include "VideoBackends/OGL/GLExtensions/GLExtensions.h"
-#include "VideoBackends/Software/BPMemLoader.h"
 #include "VideoBackends/Software/Clipper.h"
 #include "VideoBackends/Software/DebugUtil.h"
 #include "VideoBackends/Software/EfbInterface.h"
@@ -35,6 +34,7 @@
 #include "VideoBackends/Software/VideoConfigDialog.h"
 #endif // HAVE_WX
 
+#include "VideoCommon/BPStructs.h"
 #include "VideoCommon/OnScreenDisplay.h"
 #include "VideoCommon/PixelEngine.h"
 #include "VideoCommon/XFMemory.h"
@@ -87,7 +87,7 @@ bool VideoSoftware::Initialize(void *&window_handle)
 		return false;
 	}
 
-	InitBPMemory();
+	BPInit();
 	InitXFMemory();
 	SWCommandProcessor::Init();
 	PixelEngine::Init();

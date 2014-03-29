@@ -7,9 +7,9 @@
 #include "Common/Common.h"
 #include "Core/HW/Memmap.h"
 
-#include "VideoBackends/Software/BPMemLoader.h"
 #include "VideoBackends/Software/EfbInterface.h"
 
+#include "VideoCommon/BPMemory.h"
 #include "VideoCommon/LookUpTables.h"
 #include "VideoCommon/PixelEngine.h"
 
