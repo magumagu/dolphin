@@ -45,12 +45,8 @@ namespace OGL
 
 static SHADER s_ColorMatrixProgram;
 static SHADER s_DepthMatrixProgram;
-static GLuint s_ColorMatrixUniform;
-static GLuint s_DepthMatrixUniform;
 static GLuint s_ColorCopyPositionUniform;
 static GLuint s_DepthCopyPositionUniform;
-static u32 s_ColorCbufid;
-static u32 s_DepthCbufid;
 
 static u32 s_Textures[8];
 static u32 s_ActiveTexture;
@@ -259,8 +255,7 @@ TextureCache::TCacheEntryBase* TextureCache::CreateRenderTargetTexture(
 
 void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFormat,
 	PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
-	bool isIntensity, bool scaleByHalf, unsigned int cbufid,
-	const float *colmat)
+	bool isIntensity, bool scaleByHalf)
 {
 	g_renderer->ResetAPIState(); // reset any game specific settings
 
@@ -285,16 +280,10 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 		if (srcFormat == PEControl::Z24)
 		{
 			s_DepthMatrixProgram.Bind();
-			if (s_DepthCbufid != cbufid)
-				glUniform4fv(s_DepthMatrixUniform, 5, colmat);
-			s_DepthCbufid = cbufid;
 		}
 		else
 		{
 			s_ColorMatrixProgram.Bind();
-			if (s_ColorCbufid != cbufid)
-				glUniform4fv(s_ColorMatrixUniform, 7, colmat);
-			s_ColorCbufid = cbufid;
 		}
 
 		TargetRectangle R = g_renderer->ConvertEFBRectangle(srcRect);
@@ -348,27 +337,22 @@ TextureCache::TextureCache()
 {
 	const char *pColorMatrixProg =
 		"uniform sampler2D samp9;\n"
-		"uniform vec4 colmat[7];\n"
 		"in vec2 uv0;\n"
 		"out vec4 ocol0;\n"
 		"\n"
 		"void main(){\n"
 		"	vec4 texcol = texture(samp9, uv0);\n"
-		"	texcol = round(texcol * colmat[5]) * colmat[6];\n"
-		"	ocol0 = texcol * mat4(colmat[0], colmat[1], colmat[2], colmat[3]) + colmat[4];\n"
+		"	ocol0 = texcol;\n"
 		"}\n";
 
 	const char *pDepthMatrixProg =
 		"uniform sampler2D samp9;\n"
-		"uniform vec4 colmat[5];\n"
 		"in vec2 uv0;\n"
 		"out vec4 ocol0;\n"
 		"\n"
 		"void main(){\n"
 		"	vec4 texcol = texture(samp9, uv0);\n"
-		"	vec4 EncodedDepth = fract((texcol.r * (16777215.0/16777216.0)) * vec4(1.0,256.0,256.0*256.0,1.0));\n"
-		"	texcol = round(EncodedDepth * (16777216.0/16777215.0) * vec4(255.0,255.0,255.0,15.0)) / vec4(255.0,255.0,255.0,15.0);\n"
-		"	ocol0 = texcol * mat4(colmat[0], colmat[1], colmat[2], colmat[3]) + colmat[4];"
+		"	ocol0 = texcol;"
 		"}\n";
 
 	const char *VProgram =
@@ -384,11 +368,6 @@ TextureCache::TextureCache()
 
 	ProgramShaderCache::CompileShader(s_ColorMatrixProgram, VProgram, pColorMatrixProg);
 	ProgramShaderCache::CompileShader(s_DepthMatrixProgram, VProgram, pDepthMatrixProg);
-
-	s_ColorMatrixUniform = glGetUniformLocation(s_ColorMatrixProgram.glprogid, "colmat");
-	s_DepthMatrixUniform = glGetUniformLocation(s_DepthMatrixProgram.glprogid, "colmat");
-	s_ColorCbufid = -1;
-	s_DepthCbufid = -1;
 
 	s_ColorCopyPositionUniform = glGetUniformLocation(s_ColorMatrixProgram.glprogid, "copy_position");
 	s_DepthCopyPositionUniform = glGetUniformLocation(s_DepthMatrixProgram.glprogid, "copy_position");

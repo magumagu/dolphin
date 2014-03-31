@@ -122,8 +122,7 @@ TextureCache::TCacheEntryBase* TextureCache::CreateTexture(unsigned int width,
 
 void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFormat,
 	PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
-	bool isIntensity, bool scaleByHalf, unsigned int cbufid,
-	const float *colmat)
+	bool isIntensity, bool scaleByHalf)
 {
 	if (type != TCET_EC_DYNAMIC || g_ActiveConfig.bCopyEFBToTexture)
 	{
@@ -132,18 +131,6 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 		// stretch picture with increased internal resolution
 		const D3D11_VIEWPORT vp = CD3D11_VIEWPORT(0.f, 0.f, (float)virtual_width, (float)virtual_height);
 		D3D::context->RSSetViewports(1, &vp);
-
-		// set transformation
-		if (nullptr == efbcopycbuf[cbufid])
-		{
-			const D3D11_BUFFER_DESC cbdesc = CD3D11_BUFFER_DESC(28 * sizeof(float), D3D11_BIND_CONSTANT_BUFFER, D3D11_USAGE_DEFAULT);
-			D3D11_SUBRESOURCE_DATA data;
-			data.pSysMem = colmat;
-			HRESULT hr = D3D::device->CreateBuffer(&cbdesc, &data, &efbcopycbuf[cbufid]);
-			CHECK(SUCCEEDED(hr), "Create efb copy constant buffer %d", cbufid);
-			D3D::SetDebugObjectName((ID3D11DeviceChild*)efbcopycbuf[cbufid], "a constant buffer used in TextureCache::CopyRenderTargetToTexture");
-		}
-		D3D::context->PSSetConstantBuffers(0, 1, &efbcopycbuf[cbufid]);
 
 		const TargetRectangle targetSource = g_renderer->ConvertEFBRectangle(srcRect);
 		// TODO: try targetSource.asRECT();
