@@ -51,7 +51,7 @@ void DecodePrimitiveStream(u32 iBufferSize)
 		 swstats.thisFrame.numDrawnObjects < g_SWVideoConfig.drawStart ||
 		 swstats.thisFrame.numDrawnObjects >= g_SWVideoConfig.drawEnd;
 
-	if (skipPrimitives)
+	if (g_SWVideoConfig.bDisableDrawing || skipPrimitives)
 	{
 		while (streamSize > 0 && iBufferSize >= vertexSize)
 		{

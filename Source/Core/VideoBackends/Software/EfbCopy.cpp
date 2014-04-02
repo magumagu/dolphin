@@ -29,7 +29,7 @@ namespace EfbCopy
 	{
 		GLInterface->Update(); // update the render window position and the backbuffer size
 
-		if (!g_SWVideoConfig.bHwRasterizer)
+		if (!g_SWVideoConfig.bDisableDrawing && !g_SWVideoConfig.bHwRasterizer)
 		{
 			INFO_LOG(VIDEO, "xfbaddr: %x, fbwidth: %i, fbheight: %i, source: (%i, %i, %i, %i), Gamma %f",
 					 xfbAddr, fbWidth, fbHeight, sourceRc.top, sourceRc.left, sourceRc.bottom, sourceRc.right, Gamma);
@@ -63,7 +63,7 @@ namespace EfbCopy
 
 	void CopyToRam()
 	{
-		if (!g_SWVideoConfig.bHwRasterizer)
+		if (!g_SWVideoConfig.bDisableDrawing && !g_SWVideoConfig.bHwRasterizer)
 		{
 			u8 *dest_ptr = Memory::GetPointer(bpmem.copyTexDest << 5);
 
@@ -133,7 +133,7 @@ namespace EfbCopy
 				CopyToRam(); // FIXME: should use the rectangle we have already created above
 			}
 
-			if (bpmem.triggerEFBCopy.clear)
+			if (!g_SWVideoConfig.bDisableDrawing && bpmem.triggerEFBCopy.clear)
 			{
 				if (g_SWVideoConfig.bHwRasterizer)
 					HwRasterizer::Clear();

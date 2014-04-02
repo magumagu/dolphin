@@ -224,7 +224,7 @@ void VideoSoftware::Video_EndField()
 		Core::Callback_VideoCopiedToXFB(false);
 		return;
 	}
-	if (!g_SWVideoConfig.bHwRasterizer)
+	if (!g_SWVideoConfig.bDisableDrawing && !g_SWVideoConfig.bHwRasterizer)
 	{
 		if (!g_SWVideoConfig.bBypassXFB)
 		{

@@ -14,6 +14,7 @@ SWVideoConfig::SWVideoConfig()
 	bHideCursor = false;
 	renderToMainframe = false;
 
+	bDisableDrawing = false;
 	bHwRasterizer = false;
 	bBypassXFB = false;
 
@@ -45,6 +46,7 @@ void SWVideoConfig::Load(const char* ini_file)
 	iniFile.Get("Rendering", "BypassXFB", &bBypassXFB, false);
 	iniFile.Get("Rendering", "ZComploc", &bZComploc, true);
 	iniFile.Get("Rendering", "ZFreeze", &bZFreeze, true);
+	iniFile.Get("Rendering", "DisableDrawing", &bDisableDrawing, false);
 
 	iniFile.Get("Info", "ShowStats", &bShowStats, false);
 
@@ -70,6 +72,7 @@ void SWVideoConfig::Save(const char* ini_file)
 	iniFile.Set("Rendering", "BypassXFB", bBypassXFB);
 	iniFile.Set("Rendering", "ZComploc", bZComploc);
 	iniFile.Set("Rendering", "ZFreeze", bZFreeze);
+	iniFile.Set("Rendering", "DisableDrawing", bDisableDrawing);
 
 	iniFile.Set("Info", "ShowStats", bShowStats);
 
