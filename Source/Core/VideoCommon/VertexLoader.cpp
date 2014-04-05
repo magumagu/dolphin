@@ -782,6 +782,40 @@ void VertexLoader::CompileVertexTranslator()
 	m_NativeFmt = g_vertex_manager->CreateNativeVertexFormat();
 	m_NativeFmt->m_components = components;
 	m_NativeFmt->Initialize(vtx_decl);
+	RUNTIME_FUNCTION *func = new RUNTIME_FUNCTION;
+	func->BeginAddress = 0;
+	func->EndAddress = GetCodePtr() - m_compiledCode;
+	ReserveCodeSpace(16 - (func->EndAddress & 15));
+	u8 *Unwind = GetWritableCodePtr();
+	ReserveCodeSpace(24);
+	Unwind[0] = 1;
+	Unwind[1] = 16;
+	Unwind[2] = 9; // Number of codes
+	Unwind[3] = 0; // Frame pointer info
+	Unwind[4] = 16;
+	Unwind[5] = (4 << 4) | 2;
+	Unwind[6] = 12;
+	Unwind[7] = (15 << 4);
+	Unwind[8] = 10;
+	Unwind[9] = (14 << 4);
+	Unwind[10] = 8;
+	Unwind[11] = (13 << 4);
+	Unwind[12] = 6;
+	Unwind[13] = (12 << 4);
+	Unwind[14] = 4;
+	Unwind[15] = (7 << 4);
+	Unwind[16] = 3;
+	Unwind[17] = (6 << 4);
+	Unwind[18] = 2;
+	Unwind[19] = (3 << 4);
+	Unwind[20] = 1;
+	Unwind[21] = (5 << 4);
+	Unwind[22] = 0;
+	Unwind[23] = 0;
+
+	func->UnwindInfoAddress = Unwind - m_compiledCode;
+
+	RtlAddFunctionTable(func, 1, (uintptr_t)m_compiledCode);
 }
 
 void VertexLoader::WriteCall(TPipelineFunction func)

@@ -593,7 +593,6 @@ void XEmitter::ABI_CallFunctionA(void *func, const Gen::OpArg &arg1)
 void XEmitter::ABI_PushAllCalleeSavedRegsAndAdjustStack() {
 	//we only want to do this once
 	PUSH(RBP);
-	MOV(64, R(RBP), R(RSP));
 	PUSH(RBX);
 	PUSH(RSI);
 	PUSH(RDI);
