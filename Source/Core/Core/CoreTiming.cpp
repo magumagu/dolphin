@@ -256,7 +256,7 @@ void AddEventToQueue(Event* ne)
 // This must be run ONLY from within the cpu thread
 // cyclesIntoFuture may be VERY inaccurate if called from anything else
 // than Advance
-void ScheduleEvent(int cyclesIntoFuture, int event_type, u64 userdata)
+void ScheduleEvent(unsigned long long cyclesIntoFuture, int event_type, u64 userdata)
 {
 	Event *ne = GetNewEvent();
 	ne->userdata = userdata;

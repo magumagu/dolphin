@@ -23,7 +23,7 @@
 static const u32 DISC_TRANSFER_RATE_GC = 5 * 1024 * 1024;
 
 // Disc access time measured in milliseconds
-static const u32 DISC_ACCESS_TIME_MS = 1;
+static const u64 DISC_ACCESS_TIME_MS = 10;
 
 namespace DVDInterface
 {
@@ -479,7 +479,7 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 					u64 ticksUntilTC = m_DILENGTH.Length *
 						(SystemTimers::GetTicksPerSecond() / (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii ? 1 : DISC_TRANSFER_RATE_GC)) +
 						(SystemTimers::GetTicksPerSecond() * DISC_ACCESS_TIME_MS / 1000);
-					CoreTiming::ScheduleEvent((int)ticksUntilTC, tc);
+					CoreTiming::ScheduleEvent(ticksUntilTC, tc);
 				}
 				else
 				{
