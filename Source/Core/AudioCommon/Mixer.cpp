@@ -56,7 +56,8 @@ unsigned int CMixer::Mix(short* samples, unsigned int numSamples, bool consider_
 	//remember fractional offset
 
 	u32 framelimit = SConfig::GetInstance().m_Framelimit;
-	float aid_sample_rate = AudioInterface::GetAIDSampleRate() + offset;
+	u32 aid_base_rate = Common::AtomicLoad(m_dacSampleRate);
+	float aid_sample_rate = float(aid_base_rate) + offset;
 	if (consider_framelimit && framelimit > 2)
 	{
 		aid_sample_rate = aid_sample_rate * (framelimit - 1) * 5 / VideoInterface::TargetRefreshRate;
@@ -101,15 +102,24 @@ unsigned int CMixer::Mix(short* samples, unsigned int numSamples, bool consider_
 
 	// Add the DTK Music
 	// Re-sampling is done inside
+	// TODO: We should read DTK music on the CPU thread.
 	AudioInterface::Callback_GetStreaming(samples, numSamples, m_sampleRate);
+
+	// TODO: Audio dumping should run on the CPU thread.
 	if (m_logAudio)
 		g_wave_writer.AddStereoSamples(samples, numSamples);
 
 	return numSamples;
 }
 
+unsigned CMixer::GetAvailableSamples() {
+	u32 indexR = Common::AtomicLoad(m_indexR);
+	u32 indexW = Common::AtomicLoad(m_indexW);
+	return ((indexW - indexR) & INDEX_MASK) / 2;
+}
 
-void CMixer::PushSamples(const short *samples, unsigned int num_samples)
+
+void CMixer::PushSamples(const short *samples, unsigned int num_samples, unsigned int sample_rate)
 {
 	// Cache access in non-volatile variable
 	// indexR isn't allowed to cache in the audio throttling loop as it
@@ -151,6 +161,12 @@ void CMixer::PushSamples(const short *samples, unsigned int num_samples)
 	}
 
 	Common::AtomicAdd(m_indexW, num_samples * 2);
+
+	// TODO: This isn't technically accurate: it will temporarily mess up the
+	// audio output if a game changes the output sample rate.  In practice,
+	// it probably doesn't matter much because it would be very strange to
+	// change the sample rate while audio is playing.
+	Common::AtomicStore(m_dacSampleRate, sample_rate);
 
 	return;
 }

@@ -177,14 +177,7 @@ void OpenALStream::SoundLoop()
 
 	while (!threadData)
 	{
-		// num_samples_to_render in this update - depends on SystemTimers::AUDIO_DMA_PERIOD.
-		const u32 stereo_16_bit_size = 4;
-		const u32 dma_length = 32;
-		const u64 ais_samples_per_second = 48000 * stereo_16_bit_size;
-		u64 audio_dma_period = SystemTimers::GetTicksPerSecond() / (AudioInterface::GetAIDSampleRate() * stereo_16_bit_size / dma_length);
-		u64 num_samples_to_render = (audio_dma_period * ais_samples_per_second) / SystemTimers::GetTicksPerSecond();
-
-		unsigned int numSamples = (unsigned int)num_samples_to_render;
+		unsigned int numSamples = m_mixer->GetAvailableSamples();
 		unsigned int minSamples = surround_capable ? 240 : 0; // DPL2 accepts 240 samples minimum (FWRDURATION)
 
 		numSamples = (numSamples > OAL_MAX_SAMPLES) ? OAL_MAX_SAMPLES : numSamples;

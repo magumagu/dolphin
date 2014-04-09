@@ -21,9 +21,8 @@
 class CMixer {
 
 public:
-	CMixer(unsigned int AISampleRate = 48000, unsigned int DACSampleRate = 48000, unsigned int BackendSampleRate = 32000)
-		: m_aiSampleRate(AISampleRate)
-		, m_dacSampleRate(DACSampleRate)
+	CMixer(unsigned int BackendSampleRate)
+		: m_dacSampleRate(0)
 		, m_bits(16)
 		, m_channels(2)
 		, m_logAudio(0)
@@ -37,16 +36,17 @@ public:
 
 		memset(m_buffer, 0, sizeof(m_buffer));
 
-		INFO_LOG(AUDIO_INTERFACE, "Mixer is initialized (AISampleRate:%i, DACSampleRate:%i)", AISampleRate, DACSampleRate);
+		INFO_LOG(AUDIO_INTERFACE, "Mixer is initialized");
 	}
 
 	virtual ~CMixer() {}
 
 	// Called from audio threads
 	virtual unsigned int Mix(short* samples, unsigned int numSamples, bool consider_framelimit = true);
+	virtual unsigned int GetAvailableSamples();
 
 	// Called from main thread
-	virtual void PushSamples(const short* samples, unsigned int num_samples);
+	virtual void PushSamples(const short* samples, unsigned int num_samples, unsigned int sample_rate);
 	unsigned int GetSampleRate() const {return m_sampleRate;}
 
 	void SetThrottle(bool use) { m_throttle = use;}
@@ -88,8 +88,7 @@ public:
 
 protected:
 	unsigned int m_sampleRate;
-	unsigned int m_aiSampleRate;
-	unsigned int m_dacSampleRate;
+	volatile unsigned int m_dacSampleRate;
 	int m_bits;
 	int m_channels;
 
@@ -107,6 +106,4 @@ protected:
 	float m_numLeftI;
 
 	volatile float m_speed; // Current rate of the emulation (1.0 = 100% speed)
-private:
-
 };

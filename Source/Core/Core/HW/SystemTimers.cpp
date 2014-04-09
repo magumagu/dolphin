@@ -113,7 +113,6 @@ int et_Dec;
 int et_VI;
 int et_SI;
 int et_CP;
-int et_AudioDMA;
 int et_DSP;
 int et_IPC_HLE;
 int et_PatchEngine; // PatchEngine updates every 1/60th of a second by default
@@ -122,8 +121,6 @@ int et_Throttle;
 // These are badly educated guesses
 // Feel free to experiment. Set these in Init below.
 int
-	// This is a fixed value, don't change it
-	AUDIO_DMA_PERIOD,
 
 	// Regulates the speed of the Command Processor
 	CP_PERIOD,
@@ -151,14 +148,6 @@ void DSPCallback(u64 userdata, int cyclesLate)
 	//for hle, just gives all of the slice to hle
 	DSP::UpdateDSPSlice(DSP::GetDSPEmulator()->DSP_UpdateRate() - cyclesLate);
 	CoreTiming::ScheduleEvent(DSP::GetDSPEmulator()->DSP_UpdateRate() - cyclesLate, et_DSP);
-}
-
-void AudioDMACallback(u64 userdata, int cyclesLate)
-{
-	int fields = VideoInterface::GetNumFields();
-	int period = CPU_CORE_CLOCK / (AudioInterface::GetAIDSampleRate() * 4 / 32 * fields);
-	DSP::UpdateAudioDMA();  // Push audio to speakers.
-	CoreTiming::ScheduleEvent(period - cyclesLate, et_AudioDMA);
 }
 
 void IPC_HLE_UpdateCallback(u64 userdata, int cyclesLate)
@@ -277,9 +266,6 @@ void Init()
 		IPC_HLE_PERIOD = GetTicksPerSecond() / (freq * VideoInterface::GetNumFields());
 	}
 
-	// System internal sample rate is fixed at 32KHz * 4 (16bit Stereo) / 32 bytes DMA
-	AUDIO_DMA_PERIOD = CPU_CORE_CLOCK / (AudioInterface::GetAIDSampleRate() * 4 / 32);
-
 	// Emulated gekko <-> flipper bus speed ratio (cpu clock / flipper clock)
 	CP_PERIOD = GetTicksPerSecond() / 10000;
 
@@ -297,7 +283,6 @@ void Init()
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bSyncGPU)
 		et_CP = CoreTiming::RegisterEvent("CPCallback", CPCallback);
 	et_DSP = CoreTiming::RegisterEvent("DSPCallback", DSPCallback);
-	et_AudioDMA = CoreTiming::RegisterEvent("AudioDMACallback", AudioDMACallback);
 	et_IPC_HLE = CoreTiming::RegisterEvent("IPC_HLE_UpdateCallback", IPC_HLE_UpdateCallback);
 	et_PatchEngine = CoreTiming::RegisterEvent("PatchEngine", PatchEngineCallback);
 	et_Throttle = CoreTiming::RegisterEvent("Throttle", ThrottleCallback);
@@ -305,7 +290,6 @@ void Init()
 	CoreTiming::ScheduleEvent(VideoInterface::GetTicksPerLine(), et_VI);
 	CoreTiming::ScheduleEvent(0, et_DSP);
 	CoreTiming::ScheduleEvent(VideoInterface::GetTicksPerFrame(), et_SI);
-	CoreTiming::ScheduleEvent(AUDIO_DMA_PERIOD, et_AudioDMA);
 	CoreTiming::ScheduleEvent(0, et_Throttle, Common::Timer::GetTimeMs());
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bSyncGPU)
 		CoreTiming::ScheduleEvent(CP_PERIOD, et_CP);

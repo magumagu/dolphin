@@ -56,11 +56,13 @@ This file mainly deals with the [Drive I/F], however [AIDFR] controls
 #include "Core/CoreTiming.h"
 #include "Core/HW/AudioInterface.h"
 #include "Core/HW/CPU.h"
+#include "Core/HW/DSP.h"
 #include "Core/HW/DVDInterface.h"
 #include "Core/HW/MMIO.h"
 #include "Core/HW/ProcessorInterface.h"
 #include "Core/HW/StreamADPCM.h"
 #include "Core/HW/SystemTimers.h"
+#include "Core/HW/VideoInterface.h"
 #include "Core/PowerPC/PowerPC.h"
 
 namespace AudioInterface
@@ -127,9 +129,6 @@ static u32 m_InterruptTiming = 0;
 static u64 g_LastCPUTime = 0;
 static u64 g_CPUCyclesPerSample = 0xFFFFFFFFFFFULL;
 
-static unsigned int g_AISSampleRate = 48000;
-static unsigned int g_AIDSampleRate = 32000;
-
 void DoState(PointerWrap &p)
 {
 	p.DoPOD(m_Control);
@@ -137,8 +136,6 @@ void DoState(PointerWrap &p)
 	p.Do(m_SampleCounter);
 	p.Do(m_InterruptTiming);
 	p.Do(g_LastCPUTime);
-	p.Do(g_AISSampleRate);
-	p.Do(g_AIDSampleRate);
 	p.Do(g_CPUCyclesPerSample);
 }
 
@@ -147,7 +144,9 @@ static void UpdateInterrupts();
 static void IncreaseSampleCount(const u32 _uAmount);
 void ReadStreamBlock(s16* _pPCM);
 u64 GetAIPeriod();
+void AudioDMACallback(u64 userdata, int cyclesLate);
 int et_AI;
+int et_AudioDMA;
 
 void Init()
 {
@@ -160,10 +159,10 @@ void Init()
 	g_LastCPUTime = 0;
 	g_CPUCyclesPerSample = 0xFFFFFFFFFFFULL;
 
-	g_AISSampleRate = 48000;
-	g_AIDSampleRate = 32000;
-
 	et_AI = CoreTiming::RegisterEvent("AICallback", Update);
+	et_AudioDMA = CoreTiming::RegisterEvent("AudioDMACallback", AudioDMACallback);
+
+	CoreTiming::ScheduleEvent(0, et_AudioDMA);
 }
 
 void Shutdown()
@@ -193,10 +192,9 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 				m_Control.AIDFR = tmpAICtrl.AIDFR;
 			}
 
-			g_AISSampleRate = tmpAICtrl.AISFR ? 48000 : 32000;
-			g_AIDSampleRate = tmpAICtrl.AIDFR ? 32000 : 48000;
+			unsigned ais_sample_rate = tmpAICtrl.AISFR ? 48000 : 32000;
 
-			g_CPUCyclesPerSample = SystemTimers::GetTicksPerSecond() / g_AISSampleRate;
+			g_CPUCyclesPerSample = SystemTimers::GetTicksPerSecond() / ais_sample_rate;
 
 			// Streaming counter
 			if (tmpAICtrl.PSTAT != m_Control.PSTAT)
@@ -255,6 +253,15 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 	);
 }
 
+void AudioDMACallback(u64 userdata, int cyclesLate)
+{
+	int fields = VideoInterface::GetNumFields();
+	int aid_samplerate = m_Control.AIDFR ? 32000 : 48000;
+	int period = SystemTimers::GetTicksPerSecond() / (aid_samplerate * 4 / 32 * fields);
+	DSP::UpdateAudioDMA();  // Push audio to speakers.
+	CoreTiming::ScheduleEvent(period - cyclesLate, et_AudioDMA);
+}
+
 static void UpdateInterrupts()
 {
 	ProcessorInterface::SetInterrupt(
@@ -272,10 +279,10 @@ void GenerateAISInterrupt()
 	GenerateAudioInterrupt();
 }
 
-void Callback_GetSampleRate(unsigned int &_AISampleRate, unsigned int &_DACSampleRate)
-{
-	_AISampleRate = g_AISSampleRate;
-	_DACSampleRate = g_AIDSampleRate;
+// WARNING - called from audio thread
+// TODO: m_Control isn't threadsafe.
+static u32 UnsafeGetAISSampleRate() {
+	return m_Control.AISFR ? 48000 : 32000;
 }
 
 // Callback for the disc streaming
@@ -289,7 +296,7 @@ unsigned int Callback_GetStreaming(short* _pDestBuffer, unsigned int _numSamples
 		const int lvolume = m_Volume.left;
 		const int rvolume = m_Volume.right;
 
-		if (g_AISSampleRate == 48000 && _sampleRate == 32000)
+		if (UnsafeGetAISSampleRate() == 48000 && _sampleRate == 32000)
 		{
 			_dbg_assert_msg_(AUDIO_INTERFACE, !(_numSamples & 1), "Number of Samples: %i must be even!", _numSamples);
 			_numSamples = _numSamples * 3 / 2;
@@ -301,7 +308,7 @@ unsigned int Callback_GetStreaming(short* _pDestBuffer, unsigned int _numSamples
 			if (pos == 0)
 				ReadStreamBlock(pcm);
 
-			if (g_AISSampleRate == 48000 && _sampleRate == 32000) //downsample 48>32
+			if (UnsafeGetAISSampleRate() == 48000 && _sampleRate == 32000) //downsample 48>32
 			{
 				if (i % 3)
 				{
@@ -318,7 +325,7 @@ unsigned int Callback_GetStreaming(short* _pDestBuffer, unsigned int _numSamples
 
 				pos++;
 			}
-			else if (g_AISSampleRate == 32000 && _sampleRate == 48000) //upsample 32>48
+			else if (UnsafeGetAISSampleRate() == 32000 && _sampleRate == 48000) //upsample 32>48
 			{
 				//starts with one sample of 0
 				const u32 ratio = (u32)( 65536.0f * 32000.0f / (float)_sampleRate );
@@ -413,7 +420,7 @@ static void IncreaseSampleCount(const u32 _iAmount)
 
 unsigned int GetAIDSampleRate()
 {
-	return g_AIDSampleRate;
+	return m_Control.AIDFR ? 32000 : 48000;
 }
 
 void Update(u64 userdata, int cyclesLate)

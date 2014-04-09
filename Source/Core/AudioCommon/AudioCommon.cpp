@@ -28,10 +28,7 @@ namespace AudioCommon
 {
 	SoundStream *InitSoundStream(void *hWnd)
 	{
-		unsigned int AISampleRate, DACSampleRate;
-		AudioInterface::Callback_GetSampleRate(AISampleRate, DACSampleRate);
-		delete soundStream;
-		CMixer *mixer = new CMixer(AISampleRate, DACSampleRate, 48000);
+		CMixer *mixer = new CMixer(48000);
 
 		// TODO: possible memleak with mixer
 
@@ -166,18 +163,4 @@ namespace AudioCommon
 			soundStream->Clear(mute);
 	}
 
-	void SendAIBuffer(short *samples, unsigned int num_samples)
-	{
-		if (!soundStream)
-			return;
-
-		CMixer* pMixer = soundStream->GetMixer();
-
-		if (pMixer && samples)
-		{
-			pMixer->PushSamples(samples, num_samples);
-		}
-
-		soundStream->Update();
-	}
 }
