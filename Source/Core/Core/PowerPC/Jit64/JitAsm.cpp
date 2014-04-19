@@ -71,62 +71,10 @@ void Jit64AsmRoutineManager::Generate()
 			MOV(32, R(EAX), M(&PowerPC::ppcState.pc));
 			dispatcherPcInEAX = GetCodePtr();
 
-			u32 mask = 0;
-			FixupBranch no_mem;
-			FixupBranch exit_mem;
-			FixupBranch exit_vmem;
-			if (Core::g_CoreStartupParameter.bWii)
-				mask = JIT_ICACHE_EXRAM_BIT;
-			if (Core::g_CoreStartupParameter.bMMU || Core::g_CoreStartupParameter.bTLBHack)
-				mask |= JIT_ICACHE_VMEM_BIT;
-			if (Core::g_CoreStartupParameter.bWii || Core::g_CoreStartupParameter.bMMU || Core::g_CoreStartupParameter.bTLBHack)
-			{
-				TEST(32, R(EAX), Imm32(mask));
-				no_mem = J_CC(CC_NZ);
-			}
-			AND(32, R(EAX), Imm32(JIT_ICACHE_MASK));
-#if _M_X86_32
-			MOV(32, R(EAX), MDisp(EAX, (u32)jit->GetBlockCache()->iCache));
-#else
-			MOV(64, R(RSI), Imm64((u64)jit->GetBlockCache()->iCache));
-			MOV(32, R(EAX), MComplex(RSI, EAX, SCALE_1, 0));
-#endif
-			if (Core::g_CoreStartupParameter.bWii || Core::g_CoreStartupParameter.bMMU || Core::g_CoreStartupParameter.bTLBHack)
-			{
-				exit_mem = J();
-				SetJumpTarget(no_mem);
-			}
-			if (Core::g_CoreStartupParameter.bMMU || Core::g_CoreStartupParameter.bTLBHack)
-			{
-				TEST(32, R(EAX), Imm32(JIT_ICACHE_VMEM_BIT));
-				FixupBranch no_vmem = J_CC(CC_Z);
-				AND(32, R(EAX), Imm32(JIT_ICACHE_MASK));
-#if _M_X86_32
-				MOV(32, R(EAX), MDisp(EAX, (u32)jit->GetBlockCache()->iCacheVMEM));
-#else
-				MOV(64, R(RSI), Imm64((u64)jit->GetBlockCache()->iCacheVMEM));
-				MOV(32, R(EAX), MComplex(RSI, EAX, SCALE_1, 0));
-#endif
-				if (Core::g_CoreStartupParameter.bWii) exit_vmem = J();
-				SetJumpTarget(no_vmem);
-			}
-			if (Core::g_CoreStartupParameter.bWii)
-			{
-				TEST(32, R(EAX), Imm32(JIT_ICACHE_EXRAM_BIT));
-				FixupBranch no_exram = J_CC(CC_Z);
-				AND(32, R(EAX), Imm32(JIT_ICACHEEX_MASK));
-#if _M_X86_32
-				MOV(32, R(EAX), MDisp(EAX, (u32)jit->GetBlockCache()->iCacheEx));
-#else
-				MOV(64, R(RSI), Imm64((u64)jit->GetBlockCache()->iCacheEx));
-				MOV(32, R(EAX), MComplex(RSI, EAX, SCALE_1, 0));
-#endif
-				SetJumpTarget(no_exram);
-			}
-			if (Core::g_CoreStartupParameter.bWii || Core::g_CoreStartupParameter.bMMU || Core::g_CoreStartupParameter.bTLBHack)
-				SetJumpTarget(exit_mem);
-			if (Core::g_CoreStartupParameter.bWii && (Core::g_CoreStartupParameter.bMMU || Core::g_CoreStartupParameter.bTLBHack))
-				SetJumpTarget(exit_vmem);
+			// Find block number
+			MOV(64, R(ABI_PARAM1), Imm64(u64(jit->GetBlockCache())));
+			MOV(32, R(ABI_PARAM2), R(EAX));
+			CALL((void *)&JitBaseBlockCache::GetBlockNumberFromStartAddress_static);
 
 			TEST(32, R(EAX), R(EAX));
 			FixupBranch notfound = J_CC(CC_L);
