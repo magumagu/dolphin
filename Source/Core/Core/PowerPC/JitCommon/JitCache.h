@@ -17,20 +17,6 @@
 // Add the VTune include/lib directories to the project directories to get this to build.
 // #define USE_VTUNE
 
-// emulate CPU with unlimited instruction cache
-// the only way to invalidate a region is the "icbi" instruction
-#define JIT_UNLIMITED_ICACHE
-
-#define JIT_ICACHE_SIZE 0x2000000
-#define JIT_ICACHE_MASK 0x1ffffff
-#define JIT_ICACHEEX_SIZE 0x4000000
-#define JIT_ICACHEEX_MASK 0x3ffffff
-#define JIT_ICACHE_EXRAM_BIT 0x10000000
-#define JIT_ICACHE_VMEM_BIT 0x20000000
-// this corresponds to opcode 5 which is invalid in PowerPC
-#define JIT_ICACHE_INVALID_BYTE 0x80
-#define JIT_ICACHE_INVALID_WORD 0x80808080
-
 struct JitBlock
 {
 	const u8 *checkedEntry;
@@ -66,7 +52,7 @@ class ValidBlockBitSet final
 {
 	enum
 	{
-		VALID_BLOCK_MASK_SIZE = 0x20000000 / 32,
+		VALID_BLOCK_MASK_SIZE = 0x100000000 / 32,
 		VALID_BLOCK_ALLOC_ELEMENTS = VALID_BLOCK_MASK_SIZE / 32
 	};
 	std::unique_ptr<u32[]> m_valid_block;
@@ -105,6 +91,7 @@ class JitBaseBlockCache
 	{
 		MAX_NUM_BLOCKS = 65536 * 2,
 	};
+	u32** m_phys_addrs;
 
 	std::array<const u8*, MAX_NUM_BLOCKS> blockCodePointers;
 	std::array<JitBlock, MAX_NUM_BLOCKS> blocks;
@@ -146,9 +133,11 @@ public:
 	JitBlock *GetBlock(int block_num);
 	int GetNumBlocks() const;
 	const u8 **GetCodePointers();
-	std::array<u8, JIT_ICACHE_SIZE>   iCache;
-	std::array<u8, JIT_ICACHEEX_SIZE> iCacheEx;
-	std::array<u8, JIT_ICACHE_SIZE>   iCacheVMEM;
+
+	u32 **GetBlockNumberCache()
+	{
+		return m_phys_addrs;
+	}
 
 	// Fast way to get a block. Only works on the first ppc instruction of a block.
 	int GetBlockNumberFromStartAddress(u32 em_address);
