@@ -113,7 +113,11 @@ public:
 	u32* GetICachePtr(u32 addr);
 
 	// Fast way to get a block. Only works on the first ppc instruction of a block.
-	int GetBlockNumberFromStartAddress(u32 em_address);
+	static int GetBlockNumberFromStartAddress_static(JitBaseBlockCache *cache, u32 em_address);
+	int GetBlockNumberFromStartAddress(u32 em_address)
+	{
+		return GetBlockNumberFromStartAddress_static(this, em_address);
+	}
 
 	u32 GetOriginalFirstOp(int block_num);
 	CompiledCode GetCompiledCodeFromBlock(int block_num);

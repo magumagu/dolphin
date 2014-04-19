@@ -229,17 +229,17 @@ using namespace Gen;
 			return (u32*)(jit->GetBlockCache()->iCache + (addr & JIT_ICACHE_MASK));
 	}
 
-	int JitBaseBlockCache::GetBlockNumberFromStartAddress(u32 addr)
+	int JitBaseBlockCache::GetBlockNumberFromStartAddress_static(JitBaseBlockCache *cache, u32 addr)
 	{
-		if (!blocks)
+		if (!cache->blocks)
 			return -1;
 		u32 inst;
-		inst = *GetICachePtr(addr);
+		inst = *cache->GetICachePtr(addr);
 		if (inst & 0xfc000000) // definitely not a JIT block
 			return -1;
-		if ((int)inst >= num_blocks)
+		if ((int)inst >= cache->num_blocks)
 			return -1;
-		if (blocks[inst].originalAddress != addr)
+		if (cache->blocks[inst].originalAddress != addr)
 			return -1;
 		return inst;
 	}
