@@ -179,13 +179,10 @@ using namespace Gen;
 		u32* icp = GetICachePtr(b.originalAddress);
 		*icp = block_num;
 
-		// Convert the logical address to a physical address for the block map
-		u32 pAddr = b.originalAddress & 0x1FFFFFFF;
-
 		for (u32 i = 0; i < (b.originalSize + 7) / 8; ++i)
-			valid_block[pAddr / 32 + i] = true;
+			valid_block[b.originalAddress / 32 + i] = true;
 
-		block_map[std::make_pair(pAddr + 4 * b.originalSize - 1, pAddr)] = block_num;
+		block_map[std::make_pair(b.originalAddress + 4 * b.originalSize - 1, b.originalAddress)] = block_num;
 		if (block_link)
 		{
 			for (const auto& e : b.linkData)
@@ -346,25 +343,22 @@ using namespace Gen;
 
 	void JitBaseBlockCache::InvalidateICache(u32 address, const u32 length)
 	{
-		// Convert the logical address to a physical address for the block map
-		u32 pAddr = address & 0x1FFFFFFF;
-
 		// Optimize the common case of length == 32 which is used by Interpreter::dcb*
 		bool destroy_block = true;
 		if (length == 32)
 		{
-			if (!valid_block[pAddr / 32])
+			if (!valid_block[address / 32])
 				destroy_block = false;
 			else
-				valid_block[pAddr / 32] = false;
+				valid_block[address / 32] = false;
 		}
 
 		// destroy JIT blocks
 		// !! this works correctly under assumption that any two overlapping blocks end at the same address
 		if (destroy_block)
 		{
-			std::map<pair<u32,u32>, u32>::iterator it1 = block_map.lower_bound(std::make_pair(pAddr, 0)), it2 = it1;
-			while (it2 != block_map.end() && it2->first.second < pAddr + length)
+			std::map<pair<u32, u32>, u32>::iterator it1 = block_map.lower_bound(std::make_pair(address, 0)), it2 = it1;
+			while (it2 != block_map.end() && it2->first.second < address + length)
 			{
 				JitBlock &b = blocks[it2->second];
 				*GetICachePtr(b.originalAddress) = JIT_ICACHE_INVALID_WORD;
