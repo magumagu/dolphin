@@ -72,7 +72,7 @@ class JitBaseBlockCache
 	int num_blocks;
 	std::multimap<u32, int> links_to;
 	std::map<std::pair<u32,u32>, u32> block_map; // (end_addr, start_addr) -> number
-	std::bitset<0x20000000 / 32> valid_block;
+	std::bitset<0x100000000 / 32> valid_block;
 	enum
 	{
 		MAX_NUM_BLOCKS = 65536*2
