@@ -46,6 +46,8 @@ using namespace Gen;
 #endif
 		blocks = new JitBlock[MAX_NUM_BLOCKS];
 		blockCodePointers = new const u8*[MAX_NUM_BLOCKS];
+		m_phys_addrs = new u32*[1 << 18];
+		memset(m_phys_addrs, 0, 4 * (1 << 18));
 		Clear();
 	}
 
@@ -56,6 +58,17 @@ using namespace Gen;
 		blocks = nullptr;
 		blockCodePointers = nullptr;
 		num_blocks = 0;
+
+		for (unsigned i = 0; i < (1 << 18); ++i)
+		{
+			if (m_phys_addrs[i])
+			{
+				delete[] m_phys_addrs[i];
+			}
+		}
+		delete[] m_phys_addrs;
+		m_phys_addrs = nullptr;
+
 #if defined USE_OPROFILE && USE_OPROFILE
 		op_close_agent(agent);
 #endif
@@ -87,8 +100,14 @@ using namespace Gen;
 		valid_block.resize(VALID_BLOCK_MASK_SIZE, false);
 
 		num_blocks = 0;
-		if (m_phys_addrs.size()) {
-			PanicAlert("XXX");
+
+		for (unsigned i = 0; i < (1 << 18); ++i)
+		{
+			if (m_phys_addrs[i])
+			{
+				delete[] m_phys_addrs[i];
+				m_phys_addrs[i] = 0;
+			}
 		}
 		memset(blockCodePointers, 0, sizeof(u8*)*MAX_NUM_BLOCKS);
 	}
@@ -140,7 +159,12 @@ using namespace Gen;
 			valid_block[b.originalAddress / 32 + i] = true;
 
 		block_map[std::make_pair(b.originalAddress + 4 * b.originalSize - 1, b.originalAddress)] = block_num;
-		m_phys_addrs[b.originalAddress] = block_num;
+		if (!m_phys_addrs[b.originalAddress >> 14])
+		{
+			m_phys_addrs[b.originalAddress >> 14] = new u32[1 << 12];
+			memset(m_phys_addrs[b.originalAddress >> 14], 255, 4 * (1 << 12));
+		}
+		m_phys_addrs[b.originalAddress >> 14][(b.originalAddress >> 2) & ((1 << 12) - 1)] = block_num;
 
 		if (block_link)
 		{
@@ -183,10 +207,12 @@ using namespace Gen;
 
 	int JitBaseBlockCache::GetBlockNumberFromStartAddress_static(JitBaseBlockCache *cache, u32 addr)
 	{
-		auto entry = cache->m_phys_addrs.find(addr);
-		if (entry == cache->m_phys_addrs.end())
+		u32* page = cache->m_phys_addrs[addr >> (12 + 2)];
+		if (!page)
+		{
 			return -1;
-		return entry->second;
+		}
+		return page[(addr >> 2) & ((1 << 12) - 1)];
 	}
 
 	CompiledCode JitBaseBlockCache::GetCompiledCodeFromBlock(int block_num)
@@ -276,7 +302,7 @@ using namespace Gen;
 
 		UnlinkBlock(block_num);
 
-		m_phys_addrs.erase(b.originalAddress);
+		m_phys_addrs[b.originalAddress >> 14][(b.originalAddress >> 2) & ((1 << 12) - 1)] = block_num;
 
 		// Send anyone who tries to run this block back to the dispatcher.
 		// Not entirely ideal, but .. pretty good.

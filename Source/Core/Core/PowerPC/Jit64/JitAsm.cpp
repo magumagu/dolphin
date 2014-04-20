@@ -72,12 +72,18 @@ void Jit64AsmRoutineManager::Generate()
 			dispatcherPcInEAX = GetCodePtr();
 
 			// Find block number
-			MOV(64, R(ABI_PARAM1), Imm64(u64(jit->GetBlockCache())));
-			MOV(32, R(ABI_PARAM2), R(EAX));
-			CALL((void *)&JitBaseBlockCache::GetBlockNumberFromStartAddress_static);
+			MOV(64, R(RSI), Imm64(u64(jit->GetBlockCache()->GetBlockNumberCache())));
+			MOV(32, R(EDX), R(EAX));
+			SHR(32, R(EDX), Imm8(14));
+			AND(32, R(EAX), Imm32(((1 << 12) - 1) << 2));
+			MOV(64, R(RSI), MComplex(RSI, EDX, 8, 0));
+			TEST(64, R(RSI), R(RSI));
+			FixupBranch notfound = J_CC(CC_Z);
 
+			MOV(32, R(EAX), MComplex(RSI, RAX, 1, 0));
 			TEST(32, R(EAX), R(EAX));
-			FixupBranch notfound = J_CC(CC_L);
+			FixupBranch notfound2 = J_CC(CC_L);
+
 				//IDEA - we have 26 bits, why not just use offsets from base of code?
 				if (enableDebug)
 				{
@@ -91,6 +97,7 @@ void Jit64AsmRoutineManager::Generate()
 				JMPptr(MComplex(R15, RAX, 8, 0));
 #endif
 			SetJumpTarget(notfound);
+			SetJumpTarget(notfound2);
 
 			//Ok, no block, let's jit
 #if _M_X86_32

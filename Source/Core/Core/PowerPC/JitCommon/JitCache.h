@@ -50,12 +50,6 @@ struct JitBlock
 
 typedef void (*CompiledCode)();
 
-struct HashU32Addr
-{
-	size_t operator()(u32 addr) const {
-		return (addr >> 2) * 5;
-	}
-};
 class JitBaseBlockCache
 {
 	const u8 **blockCodePointers;
@@ -64,7 +58,7 @@ class JitBaseBlockCache
 	std::multimap<u32, int> links_to;
 	std::map<std::pair<u32,u32>, u32> block_map; // (end_addr, start_addr) -> number
 	std::vector<bool> valid_block;
-	std::unordered_map<u32, u32, HashU32Addr> m_phys_addrs;
+	u32** m_phys_addrs;
 
 	enum
 	{
@@ -98,6 +92,10 @@ public:
 	JitBlock *GetBlock(int block_num);
 	int GetNumBlocks() const;
 	const u8 **GetCodePointers();
+	u32 **GetBlockNumberCache()
+	{
+		return m_phys_addrs;
+	}
 
 	// Fast way to get a block. Only works on the first ppc instruction of a block.
 	static int GetBlockNumberFromStartAddress_static(JitBaseBlockCache *cache, u32 em_address);
