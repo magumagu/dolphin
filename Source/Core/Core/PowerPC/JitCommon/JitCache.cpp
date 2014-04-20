@@ -46,23 +46,6 @@ using namespace Gen;
 #endif
 		blocks = new JitBlock[MAX_NUM_BLOCKS];
 		blockCodePointers = new const u8*[MAX_NUM_BLOCKS];
-		if (iCache == nullptr && iCacheEx == nullptr && iCacheVMEM == nullptr)
-		{
-			iCache = new u8[JIT_ICACHE_SIZE];
-			iCacheEx = new u8[JIT_ICACHEEX_SIZE];
-			iCacheVMEM = new u8[JIT_ICACHE_SIZE];
-		}
-		else
-		{
-			PanicAlert("JitBaseBlockCache::Init() - iCache is already initialized");
-		}
-		if (iCache == nullptr || iCacheEx == nullptr || iCacheVMEM == nullptr)
-		{
-			PanicAlert("JitBaseBlockCache::Init() - unable to allocate iCache");
-		}
-		memset(iCache, JIT_ICACHE_INVALID_BYTE, JIT_ICACHE_SIZE);
-		memset(iCacheEx, JIT_ICACHE_INVALID_BYTE, JIT_ICACHEEX_SIZE);
-		memset(iCacheVMEM, JIT_ICACHE_INVALID_BYTE, JIT_ICACHE_SIZE);
 		Clear();
 	}
 
@@ -70,15 +53,6 @@ using namespace Gen;
 	{
 		delete[] blocks;
 		delete[] blockCodePointers;
-		if (iCache != nullptr)
-			delete[] iCache;
-		iCache = nullptr;
-		if (iCacheEx != nullptr)
-			delete[] iCacheEx;
-		iCacheEx = nullptr;
-		if (iCacheVMEM != nullptr)
-			delete[] iCacheVMEM;
-		iCacheVMEM = nullptr;
 		blocks = nullptr;
 		blockCodePointers = nullptr;
 		num_blocks = 0;
@@ -113,6 +87,9 @@ using namespace Gen;
 		valid_block.resize(VALID_BLOCK_MASK_SIZE, false);
 
 		num_blocks = 0;
+		if (m_phys_addrs.size()) {
+			PanicAlert("XXX");
+		}
 		memset(blockCodePointers, 0, sizeof(u8*)*MAX_NUM_BLOCKS);
 	}
 
@@ -158,13 +135,13 @@ using namespace Gen;
 	{
 		blockCodePointers[block_num] = code_ptr;
 		JitBlock &b = blocks[block_num];
-		u32* icp = GetICachePtr(b.originalAddress);
-		*icp = block_num;
 
 		for (u32 i = 0; i < (b.originalSize + 7) / 8; ++i)
 			valid_block[b.originalAddress / 32 + i] = true;
 
 		block_map[std::make_pair(b.originalAddress + 4 * b.originalSize - 1, b.originalAddress)] = block_num;
+		m_phys_addrs[b.originalAddress] = block_num;
+
 		if (block_link)
 		{
 			for (const auto& e : b.linkData)
@@ -204,29 +181,12 @@ using namespace Gen;
 		return blockCodePointers;
 	}
 
-	u32* JitBaseBlockCache::GetICachePtr(u32 addr)
-	{
-		if (addr & JIT_ICACHE_VMEM_BIT)
-			return (u32*)(jit->GetBlockCache()->iCacheVMEM + (addr & JIT_ICACHE_MASK));
-		else if (addr & JIT_ICACHE_EXRAM_BIT)
-			return (u32*)(jit->GetBlockCache()->iCacheEx + (addr & JIT_ICACHEEX_MASK));
-		else
-			return (u32*)(jit->GetBlockCache()->iCache + (addr & JIT_ICACHE_MASK));
-	}
-
 	int JitBaseBlockCache::GetBlockNumberFromStartAddress_static(JitBaseBlockCache *cache, u32 addr)
 	{
-		if (!cache->blocks)
+		auto entry = cache->m_phys_addrs.find(addr);
+		if (entry == cache->m_phys_addrs.end())
 			return -1;
-		u32 inst;
-		inst = *cache->GetICachePtr(addr);
-		if (inst & 0xfc000000) // definitely not a JIT block
-			return -1;
-		if ((int)inst >= cache->num_blocks)
-			return -1;
-		if (cache->blocks[inst].originalAddress != addr)
-			return -1;
-		return inst;
+		return entry->second;
 	}
 
 	CompiledCode JitBaseBlockCache::GetCompiledCodeFromBlock(int block_num)
@@ -313,9 +273,10 @@ using namespace Gen;
 			return;
 		}
 		b.invalid = true;
-		*GetICachePtr(b.originalAddress) = JIT_ICACHE_INVALID_WORD;
 
 		UnlinkBlock(block_num);
+
+		m_phys_addrs.erase(b.originalAddress);
 
 		// Send anyone who tries to run this block back to the dispatcher.
 		// Not entirely ideal, but .. pretty good.
@@ -343,7 +304,6 @@ using namespace Gen;
 			while (it2 != block_map.end() && it2->first.second < address + length)
 			{
 				JitBlock &b = blocks[it2->second];
-				*GetICachePtr(b.originalAddress) = JIT_ICACHE_INVALID_WORD;
 				DestroyBlock(it2->second, true);
 				++it2;
 			}

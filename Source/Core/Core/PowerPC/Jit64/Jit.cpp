@@ -665,13 +665,10 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 
 		OR(32, M((void *)&PowerPC::ppcState.Exceptions), Imm32(EXCEPTION_ISI));
 
-		// Remove the invalid instruction from the icache, forcing a recompile
-#if _M_X86_32
-		MOV(32, M(jit->GetBlockCache()->GetICachePtr(js.compilerPC)), Imm32(JIT_ICACHE_INVALID_WORD));
-#else
-		MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICachePtr(js.compilerPC)));
-		MOV(32,MatR(RAX),Imm32(JIT_ICACHE_INVALID_WORD));
-#endif
+		MOV(64, R(ABI_PARAM1), Imm64(u64(jit->GetBlockCache())));
+		MOV(32, R(ABI_PARAM2), Imm32(b->originalAddress));
+		MOV(32, R(ABI_PARAM3), Imm32(32));
+		CALL((void *)&JitBaseBlockCache::InvalidateICache_static);
 
 		WriteExceptionExit();
 	}
