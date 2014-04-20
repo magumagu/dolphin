@@ -520,7 +520,7 @@ const u8* JitIL::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 		memory_exception = true;
 	}
 
-	if (Core::g_CoreStartupParameter.bMMU && (em_address & JIT_ICACHE_VMEM_BIT))
+	if (Core::g_CoreStartupParameter.bMMU)
 	{
 		if (!Memory::TranslateAddress(em_address, Memory::FLAG_OPCODE))
 		{

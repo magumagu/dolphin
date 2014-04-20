@@ -1757,13 +1757,6 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, u32 exitAddress) {
 			Jit->MOV(32, M(&NPC), Imm32(InstLoc));
 			Jit->OR(32, M((void *)&PowerPC::ppcState.Exceptions), Imm32(EXCEPTION_ISI));
 
-			// Remove the invalid instruction from the icache, forcing a recompile
-#if _M_X86_32
-			Jit->MOV(32, M(jit->GetBlockCache()->GetICachePtr(InstLoc)), Imm32(JIT_ICACHE_INVALID_WORD));
-#else
-			Jit->MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICachePtr(InstLoc)));
-			Jit->MOV(32, MatR(RAX), Imm32(JIT_ICACHE_INVALID_WORD));
-#endif
 			Jit->WriteExceptionExit();
 			break;
 		}
