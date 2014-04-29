@@ -630,7 +630,7 @@ void VideoThrottle()
 // depending on the framelimit set
 bool ShouldSkipFrame(int skipped)
 {
-	const u32 TargetFPS = (SConfig::GetInstance().m_Framelimit > 1)
+	const float TargetFPS = (SConfig::GetInstance().m_Framelimit > 1)
 		? SConfig::GetInstance().m_Framelimit * 5
 		: VideoInterface::TargetRefreshRate;
 	const u32 frames = Common::AtomicLoad(DrawnFrame);

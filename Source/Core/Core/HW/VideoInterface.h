@@ -16,8 +16,7 @@ namespace VideoInterface
 // the field rate from 60 FPS when they added color to the standard.
 // This was done to prevent analog interference between the video and
 // audio signals. PAL has no similar reduction; it is exactly 50 FPS.
-//#define NTSC_FIELD_RATE  (60.0f / 1.001f)
-#define NTSC_FIELD_RATE    60
+#define NTSC_FIELD_RATE  (60.0f / 1.001f)
 #define NTSC_LINE_COUNT    525
 // These line numbers indicate the beginning of the "active video" in a frame.
 // An NTSC frame has the lower field first followed by the upper field.
@@ -25,8 +24,7 @@ namespace VideoInterface
 #define NTSC_LOWER_BEGIN    21
 #define NTSC_UPPER_BEGIN    283
 
-//#define PAL_FIELD_RATE      50.0f
-#define PAL_FIELD_RATE      50
+#define PAL_FIELD_RATE      50.0f
 #define PAL_LINE_COUNT      625
 // These line numbers indicate the beginning of the "active video" in a frame.
 // A PAL frame has the upper field first followed by the lower field.
@@ -317,7 +315,7 @@ union UVIDTVStatus
 };
 
 	// urgh, ugly externs.
-	extern u32 TargetRefreshRate;
+	extern float TargetRefreshRate;
 
 	// For BS2 HLE
 	void Preset(bool _bNTSC);
