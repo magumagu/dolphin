@@ -505,8 +505,9 @@ unsigned int GetTicksPerFrame()
 
 static void BeginField(FieldType field)
 {
+	u32 fbStride = m_HorizontalStepping.FbSteps * (field == FIELD_PROGRESSIVE ? 16 : 8);
 	u32 fbWidth = m_HorizontalStepping.FieldSteps * 16;
-	u32 fbHeight = (m_HorizontalStepping.FbSteps / m_HorizontalStepping.FieldSteps) * m_VerticalTimingRegister.ACV;
+	u32 fbHeight = m_VerticalTimingRegister.ACV * (field == FIELD_PROGRESSIVE ? 1 : 2);
 	u32 xfbAddr;
 
 	// NTSC and PAL have opposite field orders.
@@ -540,7 +541,7 @@ static void BeginField(FieldType field)
 			  m_VerticalTimingRegister.ACV, fieldTypeNames[field]);
 
 	if (xfbAddr)
-		g_video_backend->Video_BeginField(xfbAddr, fbWidth, fbHeight);
+		g_video_backend->Video_BeginField(xfbAddr, fbWidth, fbStride, fbHeight);
 }
 
 static void EndField()
