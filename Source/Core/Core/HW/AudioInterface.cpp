@@ -50,14 +50,18 @@ This file mainly deals with the [Drive I/F], however [AIDFR] controls
   TODO maybe the files should be merged?
 */
 
+#include "AudioCommon/AudioCommon.h"
+
 #include "Common/Common.h"
 #include "Common/MathUtil.h"
 
 #include "Core/CoreTiming.h"
 #include "Core/HW/AudioInterface.h"
 #include "Core/HW/CPU.h"
+#include "Core/HW/DVDInterface.h"
 #include "Core/HW/MMIO.h"
 #include "Core/HW/ProcessorInterface.h"
+#include "Core/HW/StreamADPCM.h"
 #include "Core/HW/SystemTimers.h"
 #include "Core/PowerPC/PowerPC.h"
 
@@ -125,6 +129,8 @@ static u32 m_InterruptTiming = 0;
 static u64 g_LastCPUTime = 0;
 static u64 g_CPUCyclesPerSample = 0xFFFFFFFFFFFULL;
 
+static u32 g_samples_to_emit = 0;
+
 static unsigned int g_AISSampleRate = 48000;
 static unsigned int g_AIDSampleRate = 32000;
 
@@ -138,14 +144,14 @@ void DoState(PointerWrap &p)
 	p.Do(g_AISSampleRate);
 	p.Do(g_AIDSampleRate);
 	p.Do(g_CPUCyclesPerSample);
+	p.Do(g_samples_to_emit);
 }
 
-static void GenerateAudioInterrupt();
 static void UpdateInterrupts();
-static void IncreaseSampleCount(const u32 _uAmount);
-void ReadStreamBlock(s16* _pPCM);
-u64 GetAIPeriod();
 int et_AI;
+
+void UpdateCallback(u64 userdata, int cycles_late);
+void UpdateSamples(bool schedule_event, int cycles_late);
 
 void Init()
 {
@@ -158,10 +164,12 @@ void Init()
 	g_LastCPUTime = 0;
 	g_CPUCyclesPerSample = 0xFFFFFFFFFFFULL;
 
+	g_samples_to_emit = 0;
+
 	g_AISSampleRate = 48000;
 	g_AIDSampleRate = 32000;
 
-	et_AI = CoreTiming::RegisterEvent("AICallback", Update);
+	et_AI = CoreTiming::RegisterEvent("AICallback", UpdateCallback);
 }
 
 void Shutdown()
@@ -203,8 +211,16 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 				m_Control.PSTAT = tmpAICtrl.PSTAT;
 				g_LastCPUTime = CoreTiming::GetTicks();
 
-				CoreTiming::RemoveEvent(et_AI);
-				CoreTiming::ScheduleEvent(((int)GetAIPeriod() / 2), et_AI);
+				if (m_Control.PSTAT)
+				{
+					NGCADPCM::InitFilter();
+					UpdateSamples(true, 0);
+				}
+				else
+				{
+					CoreTiming::RemoveEvent(et_AI);
+					g_samples_to_emit = 0;
+				}
 			}
 
 			// AI Interrupt
@@ -234,7 +250,10 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 
 	mmio->Register(base | AI_SAMPLE_COUNTER,
 		MMIO::ComplexRead<u32>([](u32) {
-			Update(0, 0);
+			if (m_Control.PSTAT)
+			{
+				UpdateSamples(false, 0);
+			}
 			return m_SampleCounter;
 		}),
 		MMIO::DirectWrite<u32>(&m_SampleCounter)
@@ -242,11 +261,7 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 
 	mmio->Register(base | AI_INTERRUPT_TIMING,
 		MMIO::DirectRead<u32>(&m_InterruptTiming),
-		MMIO::ComplexWrite<u32>([](u32, u32 val) {
-			m_InterruptTiming = val;
-			CoreTiming::RemoveEvent(et_AI);
-			CoreTiming::ScheduleEvent(((int)GetAIPeriod() / 2), et_AI);
-		})
+		MMIO::DirectWrite<u32>(&m_InterruptTiming)
 	);
 }
 
@@ -262,20 +277,12 @@ static void GenerateAudioInterrupt()
 	UpdateInterrupts();
 }
 
-void GenerateAISInterrupt()
+static void IncreaseSampleCount(const u32 amount)
 {
-	GenerateAudioInterrupt();
-}
-
-static void IncreaseSampleCount(const u32 _iAmount)
-{
-	if (m_Control.PSTAT)
+	m_SampleCounter += amount;
+	if (m_Control.AIINTVLD && (m_SampleCounter >= m_InterruptTiming))
 	{
-		m_SampleCounter += _iAmount;
-		if (m_Control.AIINTVLD && (m_SampleCounter >= m_InterruptTiming))
-		{
-			GenerateAudioInterrupt();
-		}
+		GenerateAudioInterrupt();
 	}
 }
 
@@ -284,27 +291,48 @@ unsigned int GetAIDSampleRate()
 	return g_AIDSampleRate;
 }
 
-void Update(u64 userdata, int cyclesLate)
+void UpdateCallback(u64 userdata, int cyclesLate)
 {
-	if (m_Control.PSTAT)
-	{
-		const u64 Diff = CoreTiming::GetTicks() - g_LastCPUTime;
-		if (Diff > g_CPUCyclesPerSample)
-		{
-			const u32 Samples = static_cast<u32>(Diff / g_CPUCyclesPerSample);
-			g_LastCPUTime += Samples * g_CPUCyclesPerSample;
-			IncreaseSampleCount(Samples);
-		}
-		CoreTiming::ScheduleEvent(((int)GetAIPeriod() / 2) - cyclesLate, et_AI);
-	}
+	UpdateSamples(true, cyclesLate);
 }
 
-u64 GetAIPeriod()
+void UpdateSamples(bool schedule_next_event, int cycles_late)
 {
-	u64 period = g_CPUCyclesPerSample * m_InterruptTiming;
-	if (period == 0)
-		period = 32000 * g_CPUCyclesPerSample;
-	return period;
+	const u64 elapsed_time = CoreTiming::GetTicks() - g_LastCPUTime;
+	const u32 samples_available = static_cast<u32>(elapsed_time / g_CPUCyclesPerSample);
+
+	g_LastCPUTime += samples_available * g_CPUCyclesPerSample;
+	IncreaseSampleCount(samples_available);
+	g_samples_to_emit += samples_available;
+
+	// Read and decode samples
+	static const int MAX_SAMPLES_TO_DECODE = 48000 / 1000 * 5;
+	short tempPCM[MAX_SAMPLES_TO_DECODE * 2];
+	unsigned samples_processed = 0;
+	while (g_samples_to_emit > NGCADPCM::SAMPLES_PER_BLOCK &&
+		samples_processed < MAX_SAMPLES_TO_DECODE - NGCADPCM::SAMPLES_PER_BLOCK)
+	{
+		u8 tempADPCM[NGCADPCM::ONE_BLOCK_SIZE];
+		DVDInterface::DVDReadAudio(tempADPCM, sizeof(tempADPCM));
+		NGCADPCM::DecodeBlock(tempPCM + samples_processed * 2, tempADPCM);
+		samples_processed += NGCADPCM::SAMPLES_PER_BLOCK;
+		g_samples_to_emit -= NGCADPCM::SAMPLES_PER_BLOCK;
+	}
+
+	// Send samples to mixer
+	for (unsigned i = 0; i < samples_processed * 2; ++i)
+	{
+		// TODO: Fix the mixer so it can accept non-byte-swapped samples.
+		tempPCM[i] = Common::swap16(tempPCM[i]);
+	}
+	soundStream->GetMixer()->PushStreamingSamples(tempPCM, samples_processed);
+
+	// Schedule the nect audio event
+	if (schedule_next_event)
+	{
+		int ticks_to_dtk = int(SystemTimers::GetTicksPerSecond() / 2000 * 5);
+		CoreTiming::ScheduleEvent(ticks_to_dtk - cycles_late, et_AI);
+	}
 }
 
 } // end of namespace AudioInterface

@@ -4,8 +4,6 @@
 
 #include <cinttypes>
 
-#include "AudioCommon/AudioCommon.h"
-
 #include "Common/ChunkFile.h"
 #include "Common/Common.h"
 #include "Common/Thread.h"
@@ -19,7 +17,6 @@
 #include "Core/HW/Memmap.h"
 #include "Core/HW/MMIO.h"
 #include "Core/HW/ProcessorInterface.h"
-#include "Core/HW/StreamADPCM.h"
 #include "Core/HW/SystemTimers.h"
 #include "Core/PowerPC/PowerPC.h"
 
@@ -210,7 +207,6 @@ u32  g_ErrorCode = 0;
 bool g_bDiscInside = false;
 bool g_bStream = false;
 int  tc = 0;
-int  dtk = 0;
 
 static u64 g_last_read_offset;
 static u64 g_last_read_time;
@@ -261,63 +257,6 @@ void TransferComplete(u64 userdata, int cyclesLate)
 		FinishExecuteRead();
 }
 
-void ReadDTKSamples(u64 userdata, int cyclesLate)
-{
-	static const int NUM_SAMPLES = 48000 / 1000 * 7;  // 7ms of 48kHz samples
-	short tempPCM[NUM_SAMPLES * 2];
-	unsigned samples_processed = 0;
-	do
-	{
-		if (AudioPos >= CurrentStart + CurrentLength)
-		{
-			AudioPos = LoopStart;
-			CurrentStart = LoopStart;
-			CurrentLength = LoopLength;
-			NGCADPCM::InitFilter();
-			AudioInterface::GenerateAISInterrupt();
-
-			// If there isn't any audio to stream, stop streaming.
-			if (AudioPos >= CurrentStart + CurrentLength)
-			{
-				g_bStream = false;
-				return;
-			}
-
-			break;
-		}
-
-		u8 tempADPCM[NGCADPCM::ONE_BLOCK_SIZE];
-		// TODO: What if we can't read from AudioPos?
-		VolumeHandler::ReadToPtr(tempADPCM, AudioPos, sizeof(tempADPCM));
-		AudioPos += sizeof(tempADPCM);
-		NGCADPCM::DecodeBlock(tempPCM + samples_processed * 2, tempADPCM);
-		samples_processed += NGCADPCM::SAMPLES_PER_BLOCK;
-	} while (samples_processed < NUM_SAMPLES);
-	for (unsigned i = 0; i < samples_processed * 2; ++i)
-	{
-		// TODO: Fix the mixer so it can accept non-byte-swapped samples.
-		tempPCM[i] = Common::swap16(tempPCM[i]);
-	}
-	soundStream->GetMixer()->PushStreamingSamples(tempPCM, samples_processed);
-	int ticks_to_dtk = int(SystemTimers::GetTicksPerSecond() * u64(samples_processed) / 48000);
-	CoreTiming::ScheduleEvent(ticks_to_dtk - cyclesLate, dtk);
-}
-
-void StartDTKStreaming()
-{
-	// We wait 100ms before we actually start streaming to try to simulate
-	// seek time.  Not completely accurate, but better than starting the
-	// stream instantly.
-	g_bStream = true;
-	CoreTiming::ScheduleEvent(SystemTimers::GetTicksPerSecond() / 10, dtk);
-}
-
-void StopDTKStreaming()
-{
-	g_bStream = false;
-	CoreTiming::RemoveAllEvents(dtk);
-}
-
 void Init()
 {
 	m_DISR.Hex        = 0;
@@ -344,7 +283,6 @@ void Init()
 	insertDisc = CoreTiming::RegisterEvent("InsertDisc", InsertDiscCallback);
 
 	tc = CoreTiming::RegisterEvent("TransferComplete", TransferComplete);
-	dtk = CoreTiming::RegisterEvent("StreamingTimer", ReadDTKSamples);
 }
 
 void Shutdown()
@@ -427,6 +365,36 @@ void ClearCoverInterrupt()
 bool DVDRead(u32 _iDVDOffset, u32 _iRamAddress, u32 _iLength)
 {
 	return VolumeHandler::ReadToPtr(Memory::GetPointer(_iRamAddress), _iDVDOffset, _iLength);
+}
+
+void DVDReadAudio(u8* dest_buffer, u32 length)
+{
+	while (length)
+	{
+		if (CurrentLength == 0)
+		{
+			memset(dest_buffer, 0, length);
+			return;
+		}
+
+		if (AudioPos + length <= CurrentStart + CurrentLength)
+		{
+			VolumeHandler::ReadToPtr(dest_buffer, AudioPos, length);
+			AudioPos += length;
+			return;
+		}
+
+		// Read the remaining bytes
+		unsigned remaining_bytes = CurrentStart + CurrentLength - AudioPos;
+		VolumeHandler::ReadToPtr(dest_buffer, AudioPos, remaining_bytes);
+		length -= remaining_bytes;
+		dest_buffer += remaining_bytes;
+
+		// Loop the stream
+		AudioPos = LoopStart;
+		CurrentStart = LoopStart;
+		CurrentLength = LoopLength;
+	}
 }
 
 void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
@@ -935,8 +903,7 @@ void ExecuteCommand()
 				AudioPos = pos;
 				CurrentStart = pos;
 				CurrentLength = length;
-				NGCADPCM::InitFilter();
-				StartDTKStreaming();
+				g_bStream = true;
 			}
 
 			LoopStart = pos;
@@ -950,8 +917,7 @@ void ExecuteCommand()
 				LoopLength = 0;
 				CurrentStart = 0;
 				CurrentLength = 0;
-				if (g_bStream)
-					StopDTKStreaming();
+				g_bStream = false;
 			}
 
 			WARN_LOG(DVDINTERFACE, "(Audio) Stream subcmd = %08x offset = %08x length=%08x",

@@ -32,11 +32,9 @@ bool IsLidOpen();
 void ClearCoverInterrupt();
 
 // DVD Access Functions
-bool DVDRead(u32 _iDVDOffset, u32 _iRamAddress, u32 _iLength);
+bool DVDRead(u32 dvd_offset, u32 ram_address, u32 length);
 // For AudioInterface
-bool DVDReadADPCM(u8* _pDestBuffer, u32 _iNumSamples);
-extern bool g_bStream;
-
+void DVDReadAudio(u8* dest_buffer, u32 length);
 
 // Not sure about endianness here. I'll just name them like this...
 enum DIErrorLow

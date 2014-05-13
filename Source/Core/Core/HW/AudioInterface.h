@@ -20,11 +20,7 @@ void DoState(PointerWrap &p);
 
 void RegisterMMIO(MMIO::Mapping* mmio, u32 base);
 
-void Update(u64 userdata, int cyclesLate);
-
 // Get the audio rates (48000 or 32000 only)
 unsigned int GetAIDSampleRate();
-
-void GenerateAISInterrupt();
 
 }  // namespace
