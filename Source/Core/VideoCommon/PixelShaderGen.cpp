@@ -140,7 +140,7 @@ static const char *tevAOutputTable[]  = { "prev.a", "c0.a", "c1.a", "c2.a" };
 static char text[16384];
 
 template<class T> static inline void WriteStage(T& out, pixel_shader_uid_data& uid_data, int n, API_TYPE ApiType, const char swapModeTable[4][5]);
-template<class T> static inline void WriteTevRegular(T& out, const char* components, int bias, int op, int clamp, int shift);
+template<class T> static inline void WriteTevRegular(T& out, const char* components, int bias, int op, int clamp, int shift, API_TYPE ApiType);
 template<class T> static inline void SampleTexture(T& out, const char *texcoords, const char *texswap, int texmap, API_TYPE ApiType);
 template<class T> static inline void WriteAlphaTest(T& out, pixel_shader_uid_data& uid_data, API_TYPE ApiType,DSTALPHA_MODE dstAlphaMode, bool per_pixel_depth);
 template<class T> static inline void WriteFog(T& out, pixel_shader_uid_data& uid_data);
@@ -763,7 +763,7 @@ static inline void WriteStage(T& out, pixel_shader_uid_data& uid_data, int n, AP
 	out.Write("\t%s = clamp(", tevCOutputTable[cc.dest]);
 	if (cc.bias != TevBias_COMPARE)
 	{
-		WriteTevRegular(out, "rgb", cc.bias, cc.op, cc.clamp, cc.shift);
+		WriteTevRegular(out, "rgb", cc.bias, cc.op, cc.clamp, cc.shift, ApiType);
 	}
 	else
 	{
@@ -793,7 +793,7 @@ static inline void WriteStage(T& out, pixel_shader_uid_data& uid_data, int n, AP
 	out.Write("\t%s = clamp(", tevAOutputTable[ac.dest]);
 	if (ac.bias != TevBias_COMPARE)
 	{
-		WriteTevRegular(out, "a", ac.bias, ac.op, ac.clamp, ac.shift);
+		WriteTevRegular(out, "a", ac.bias, ac.op, ac.clamp, ac.shift, ApiType);
 	}
 	else
 	{
@@ -822,7 +822,7 @@ static inline void WriteStage(T& out, pixel_shader_uid_data& uid_data, int n, AP
 }
 
 template<class T>
-static inline void WriteTevRegular(T& out, const char* components, int bias, int op, int clamp, int shift)
+static inline void WriteTevRegular(T& out, const char* components, int bias, int op, int clamp, int shift, API_TYPE ApiType)
 {
 	const char *tevScaleTableLeft[] =
 	{
@@ -868,9 +868,18 @@ static inline void WriteTevRegular(T& out, const char* components, int bias, int
 	// - a rounding bias is added before dividing by 256
 	out.Write("(((tevin_d.%s%s)%s)", components, tevBiasTable[bias], tevScaleTableLeft[shift]);
 	out.Write(" %s ", tevOpTable[op]);
-	out.Write("((((tevin_a.%s*256 + (tevin_b.%s-tevin_a.%s)*(tevin_c.%s+(tevin_c.%s>>7)))%s)%s)>>8)",
-	          components, components, components, components, components,
-	          tevScaleTableLeft[shift], tevLerpBias[2*op+(shift!=3)]);
+	if (ApiType == API_D3D)
+	{
+		out.Write("((((tevin_a.%s*256 + (tevin_b.%s-tevin_a.%s)*(tevin_c.%s+(tevin_c.%s >= 128 ? 1 : 0)))%s)%s)>>8)",
+			components, components, components, components, components,
+			tevScaleTableLeft[shift], tevLerpBias[2 * op + (shift != 3)]);
+	}
+	else
+	{
+		out.Write("((((tevin_a.%s*256 + (tevin_b.%s-tevin_a.%s)*(tevin_c.%s+(tevin_c.%s>>7)))%s)%s)>>8)",
+			components, components, components, components, components,
+			tevScaleTableLeft[shift], tevLerpBias[2 * op + (shift != 3)]);
+	}
 	out.Write(")%s", tevScaleTableRight[shift]);
 }
 
