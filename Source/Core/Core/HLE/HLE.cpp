@@ -147,7 +147,7 @@ int GetFunctionFlagsByIndex(u32 index)
 
 bool IsEnabled(int flags)
 {
-	if (flags == HLE::HLE_TYPE_MEMORY && Core::g_CoreStartupParameter.bMMU)
+	if (flags == HLE::HLE_TYPE_MEMORY)
 		return false;
 
 	if (flags == HLE::HLE_TYPE_DEBUG && !Core::g_CoreStartupParameter.bEnableDebugging && PowerPC::GetMode() != MODE_INTERPRETER)

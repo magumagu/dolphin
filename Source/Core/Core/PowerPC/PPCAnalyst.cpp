@@ -553,14 +553,11 @@ u32 PPCAnalyzer::Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 
 		return address;
 	}
 
-	if (Core::g_CoreStartupParameter.bMMU)
+	if (!Memory::TranslateAddress(address, Memory::FLAG_OPCODE))
 	{
-		if (!Memory::TranslateAddress(address, Memory::FLAG_OPCODE))
-		{
-			// Memory exception occurred during instruction fetch
-			block->m_memory_exception = true;
-			return address;
-		}
+		// Memory exception occurred during instruction fetch
+		block->m_memory_exception = true;
+		return address;
 	}
 
 	CodeOp *code = buffer->codebuffer;

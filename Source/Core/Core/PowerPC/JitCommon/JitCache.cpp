@@ -97,7 +97,7 @@ using namespace Gen;
 		block_map.clear();
 
 		valid_block.clear();
-		valid_block.resize(VALID_BLOCK_MASK_SIZE, false);
+		//valid_block.resize(VALID_BLOCK_MASK_SIZE, false);
 
 		num_blocks = 0;
 
@@ -155,8 +155,8 @@ using namespace Gen;
 		blockCodePointers[block_num] = code_ptr;
 		JitBlock &b = blocks[block_num];
 
-		for (u32 i = 0; i < (b.originalSize + 7) / 8; ++i)
-			valid_block[b.originalAddress / 32 + i] = true;
+		//for (u32 i = 0; i < (b.originalSize + 7) / 8; ++i)
+		//	valid_block[b.originalAddress / 32 + i] = true;
 
 		block_map[std::make_pair(b.originalAddress + 4 * b.originalSize - 1, b.originalAddress)] = block_num;
 		if (!m_phys_addrs[b.originalAddress >> 14])
@@ -316,10 +316,10 @@ using namespace Gen;
 		bool destroy_block = true;
 		if (length == 32)
 		{
-			if (!valid_block[address / 32])
-				destroy_block = false;
-			else
-				valid_block[address / 32] = false;
+			//if (!valid_block[address / 32])
+			//	destroy_block = false;
+			//else
+			//	valid_block[address / 32] = false;
 		}
 
 		// destroy JIT blocks

@@ -60,7 +60,6 @@ extern u8 *m_pEFB;
 
 // Init
 extern bool m_IsInitialized;
-extern bool bFakeVMEM;
 
 // Overloaded byteswap functions, for use within the templated functions below.
 inline u8 bswap(u8 val)   {return val;}
@@ -116,12 +115,6 @@ inline void ReadFromHardware(T &_var, const u32 em_address, const u32 effective_
 	else if ((em_address >= 0xE0000000) && (em_address < (0xE0000000+L1_CACHE_SIZE)))
 	{
 		_var = bswap((*(const T*)&m_pL1Cache[em_address & L1_CACHE_MASK]));
-	}
-	else if ((bFakeVMEM && ((em_address &0xF0000000) == 0x70000000)) ||
-		(bFakeVMEM && ((em_address &0xF0000000) == 0x40000000)))
-	{
-		// fake VMEM
-		_var = bswap((*(const T*)&m_pFakeVMEM[em_address & FAKEVMEM_MASK]));
 	}
 	else
 	{
@@ -202,12 +195,6 @@ inline void WriteToHardware(u32 em_address, const T data, u32 effective_address,
 		*(T*)&m_pL1Cache[em_address & L1_CACHE_MASK] = bswap(data);
 		return;
 	}
-	else if ((bFakeVMEM && ((em_address &0xF0000000) == 0x70000000)) ||
-		(bFakeVMEM && ((em_address &0xF0000000) == 0x40000000)))
-	{
-		// fake VMEM
-		*(T*)&m_pFakeVMEM[em_address & FAKEVMEM_MASK] = bswap(data);
-	}
 	else
 	{
 		// MMU
@@ -241,24 +228,15 @@ u32 Read_Opcode(u32 _Address)
 		return 0x00000000;
 	}
 
-	if (Core::g_CoreStartupParameter.bMMU &&
-		!Core::g_CoreStartupParameter.bTLBHack &&
-		(_Address & ADDR_MASK_MEM1))
+	// TODO: Check for MSR instruction address translation flag before translating
+	u32 tlb_addr = Memory::TranslateAddress(_Address, FLAG_OPCODE);
+	if (tlb_addr == 0)
 	{
-		// TODO: Check for MSR instruction address translation flag before translating
-		u32 tlb_addr = Memory::TranslateAddress(_Address, FLAG_OPCODE);
-		if (tlb_addr == 0)
-		{
-			GenerateISIException(_Address);
-			return 0;
-		}
-		else
-		{
-			_Address = tlb_addr;
-		}
+		GenerateISIException(_Address);
+		return 0;
 	}
 
-	return PowerPC::ppcState.iCache.ReadInstruction(_Address);
+	return PowerPC::ppcState.iCache.ReadInstruction(tlb_addr);
 }
 
 u8 Read_U8(const u32 _Address)
@@ -907,11 +885,11 @@ u32 TranslateBlockAddress(const u32 addr, const XCheckTLBFlag _Flag)
 // Translate effective address using BAT or PAT.  Returns 0 if the address cannot be translated.
 u32 TranslateAddress(const u32 _Address, const XCheckTLBFlag _Flag)
 {
-	// Check MSR[IR] bit before translating instruction addresses.  Rogue Leader clears IR and DR??
-	//if ((_Flag == FLAG_OPCODE) && !(MSR & (1 << (31 - 26)))) return _Address;
+	// Check MSR[IR] bit before translating instruction addresses.
+	if ((_Flag == FLAG_OPCODE) && !(MSR & (1 << (31 - 26)))) return _Address;
 
-	// Check MSR[DR] bit before translating data addresses
-	//if (((_Flag == FLAG_READ) || (_Flag == FLAG_WRITE)) && !(MSR & (1 << (31 - 27)))) return _Address;
+	// Check MSR[DR] bit before translating data addresses.
+	if (((_Flag == FLAG_READ) || (_Flag == FLAG_WRITE)) && !(MSR & (1 << (31 - 27)))) return _Address;
 
 	u32 tlb_addr = TranslateBlockAddress(_Address, _Flag);
 	if (tlb_addr == 0)

@@ -175,9 +175,7 @@ u8* MemArena::Find4GBBase()
 // yeah, this could also be done in like two bitwise ops...
 #define SKIP(a_flags, b_flags) \
 	if (!(a_flags & MV_WII_ONLY) && (b_flags & MV_WII_ONLY)) \
-		continue; \
-	if (!(a_flags & MV_FAKE_VMEM) && (b_flags & MV_FAKE_VMEM)) \
-		continue; \
+		continue;
 
 
 static bool Memory_TryBase(u8 *base, const MemoryView *views, int num_views, u32 flags, MemArena *arena) {

@@ -43,12 +43,6 @@ namespace Memory
 // LOCAL SETTINGS
 // ----------------
 
-/* Enable the Translation Lookaside Buffer functions. TLBHack = 1 in Dolphin.ini or a
-   <GameID>.ini file will set this to true */
-bool bFakeVMEM = false;
-bool bMMU = false;
-// ==============
-
 
 // =================================
 // Init() declarations
@@ -132,8 +126,6 @@ static const MemoryView views[] =
 #endif
 	{&m_pL1Cache,  &m_pVirtualL1Cache,       0xE0000000, L1_CACHE_SIZE, 0},
 
-	{&m_pFakeVMEM, &m_pVirtualFakeVMEM,      0x7E000000, FAKEVMEM_SIZE, MV_FAKE_VMEM},
-
 	{&m_pEXRAM,    &m_pPhysicalEXRAM,        0x10000000, EXRAM_SIZE, MV_WII_ONLY},
 	{nullptr,         &m_pVirtualCachedEXRAM,   0x90000000, EXRAM_SIZE, MV_WII_ONLY | MV_MIRROR_PREVIOUS},
 	{nullptr,         &m_pVirtualUncachedEXRAM, 0xD0000000, EXRAM_SIZE, MV_WII_ONLY | MV_MIRROR_PREVIOUS},
@@ -143,12 +135,9 @@ static const int num_views = sizeof(views) / sizeof(MemoryView);
 void Init()
 {
 	bool wii = SConfig::GetInstance().m_LocalCoreStartupParameter.bWii;
-	bFakeVMEM = SConfig::GetInstance().m_LocalCoreStartupParameter.bTLBHack == true;
-	bMMU = SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU;
 
 	u32 flags = 0;
 	if (wii) flags |= MV_WII_ONLY;
-	if (bFakeVMEM) flags |= MV_FAKE_VMEM;
 	base = MemoryMap_Setup(views, num_views, flags, &g_arena);
 
 	mmio_mapping = new MMIO::Mapping();
@@ -170,8 +159,6 @@ void DoState(PointerWrap &p)
 	//p.DoArray(m_pVirtualEFB, EFB_SIZE);
 	p.DoArray(m_pVirtualL1Cache, L1_CACHE_SIZE);
 	p.DoMarker("Memory RAM");
-	if (bFakeVMEM)
-		p.DoArray(m_pVirtualFakeVMEM, FAKEVMEM_SIZE);
 	p.DoMarker("Memory FakeVMEM");
 	if (wii)
 		p.DoArray(m_pEXRAM, EXRAM_SIZE);
@@ -183,7 +170,6 @@ void Shutdown()
 	m_IsInitialized = false;
 	u32 flags = 0;
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii) flags |= MV_WII_ONLY;
-	if (bFakeVMEM) flags |= MV_FAKE_VMEM;
 	MemoryMap_Shutdown(views, num_views, flags, &g_arena);
 	g_arena.ReleaseSpace();
 	base = nullptr;
@@ -338,8 +324,7 @@ u8 *GetPointer(const u32 _Address)
 			break;
 
 	default:
-		if (bFakeVMEM)
-			return m_pVirtualFakeVMEM + (_Address & FAKEVMEM_MASK);
+		break;
 	}
 
 	ERROR_LOG(MEMMAP, "Unknown Pointer %#8x PC %#8x LR %#8x", _Address, PC, LR);
@@ -372,10 +357,7 @@ bool IsRAMAddress(const u32 addr, bool allow_locked_cache, bool allow_fake_vmem)
 		else
 			return false;
 	case 0x7C:
-		if (allow_fake_vmem && bFakeVMEM && addr >= 0x7E000000)
-			return true;
-		else
-			return false;
+		return false;
 	default:
 		return false;
 	}

@@ -102,9 +102,6 @@ CMemoryWindow::CMemoryWindow(wxWindow* parent, wxWindowID id,
 	sizerRight->Add(new wxButton(this, IDM_DUMP_MEMORY, _("&Dump MRAM")));
 	sizerRight->Add(new wxButton(this, IDM_DUMP_MEM2, _("&Dump EXRAM")));
 
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bTLBHack == true)
-		sizerRight->Add(new wxButton(this, IDM_DUMP_FAKEVMEM, _("&Dump FakeVMEM")));
-
 	wxStaticBoxSizer* sizerSearchType = new wxStaticBoxSizer(wxVERTICAL, this, _("Search"));
 
 	sizerSearchType->Add(btnSearch = new wxButton(this, IDM_SEARCH, _("Search")));
@@ -268,7 +265,6 @@ void CMemoryWindow::OnDumpMem2( wxCommandEvent& event )
 // Write fake vmem to file
 void CMemoryWindow::OnDumpFakeVMEM( wxCommandEvent& event )
 {
-	DumpArray(File::GetUserPath(F_FAKEVMEMDUMP_IDX), Memory::m_pVirtualFakeVMEM, Memory::FAKEVMEM_SIZE);
 }
 
 void CMemoryWindow::U8(wxCommandEvent& event)
