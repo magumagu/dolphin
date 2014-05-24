@@ -47,7 +47,7 @@ using namespace Gen;
 		blocks = new JitBlock[MAX_NUM_BLOCKS];
 		blockCodePointers = new const u8*[MAX_NUM_BLOCKS];
 		m_phys_addrs = new u32*[1 << 18];
-		memset(m_phys_addrs, 0, 4 * (1 << 18));
+		memset(m_phys_addrs, 0, sizeof(u32*) * (1 << 18));
 		Clear();
 	}
 

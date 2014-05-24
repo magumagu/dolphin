@@ -63,7 +63,7 @@ class JitBaseBlockCache
 	enum
 	{
 		MAX_NUM_BLOCKS = 65536*2,
-		VALID_BLOCK_MASK_SIZE = 0x20000000 / 32,
+		VALID_BLOCK_MASK_SIZE = 0x100000000 / 32,
 	};
 
 	bool RangeIntersect(int s1, int e1, int s2, int e2) const;
