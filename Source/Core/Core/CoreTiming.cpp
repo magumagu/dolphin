@@ -395,6 +395,55 @@ void Advance()
 	globalTimer += cyclesExecuted;
 	PowerPC::ppcState.downcount = slicelength;
 
+	// Handle performance counters
+	if (MMCR0.Hex || MMCR1.Hex)
+	{
+		if (MMCR0.PMC1SELECT)
+		{
+			u32 pmc = PowerPC::ppcState.spr[SPR_PMC1];
+			pmc = std::min(pmc + cyclesExecuted, 0x80000000U);
+			if (pmc == 0x80000000U && MMCR0.ENINT && MMCR0.PMC1INTCONTROL)
+			{
+				PowerPC::ppcState.Exceptions |= EXCEPTION_PERFORMANCE_MONITOR;
+				MMCR0.ENINT = 0;
+			}
+			PowerPC::ppcState.spr[SPR_PMC1] = pmc;
+		}
+		if (MMCR0.PMC2SELECT)
+		{
+			u32 pmc = PowerPC::ppcState.spr[SPR_PMC2];
+			pmc = std::min(pmc + cyclesExecuted, 0x80000000U);
+			if (pmc == 0x80000000U && MMCR0.ENINT && MMCR0.PMCINTCONTROL)
+			{
+				PowerPC::ppcState.Exceptions |= EXCEPTION_PERFORMANCE_MONITOR;
+				MMCR0.ENINT = 0;
+			}
+			PowerPC::ppcState.spr[SPR_PMC2] = pmc;
+		}
+		if (MMCR1.PMC3SELECT)
+		{
+			u32 pmc = PowerPC::ppcState.spr[SPR_PMC3];
+			pmc = std::min(pmc + cyclesExecuted, 0x80000000U);
+			if (pmc == 0x80000000U && MMCR0.ENINT && MMCR0.PMCINTCONTROL)
+			{
+				PowerPC::ppcState.Exceptions |= EXCEPTION_PERFORMANCE_MONITOR;
+				MMCR0.ENINT = 0;
+			}
+			PowerPC::ppcState.spr[SPR_PMC3] = pmc;
+		}
+		if (MMCR1.PMC4SELECT)
+		{
+			u32 pmc = PowerPC::ppcState.spr[SPR_PMC4];
+			pmc = std::min(pmc + cyclesExecuted, 0x80000000U);
+			if (pmc == 0x80000000U && MMCR0.ENINT && MMCR0.PMCINTCONTROL)
+			{
+				PowerPC::ppcState.Exceptions |= EXCEPTION_PERFORMANCE_MONITOR;
+				MMCR0.ENINT = 0;
+			}
+			PowerPC::ppcState.spr[SPR_PMC4] = pmc;
+		}
+	}
+
 	while (first)
 	{
 		if (first->time <= globalTimer)

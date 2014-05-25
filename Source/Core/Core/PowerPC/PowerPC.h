@@ -157,8 +157,6 @@ void ExpandCR(u32 cr);
 void OnIdle(u32 _uThreadAddr);
 void OnIdleIL();
 
-void UpdatePerformanceMonitor(u32 cycles, u32 num_load_stores, u32 num_fp_inst);
-
 // Easy register access macros.
 #define HID0 ((UReg_HID0&)PowerPC::ppcState.spr[SPR_HID0])
 #define HID2 ((UReg_HID2&)PowerPC::ppcState.spr[SPR_HID2])

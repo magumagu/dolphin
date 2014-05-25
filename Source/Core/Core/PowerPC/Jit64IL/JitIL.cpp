@@ -365,10 +365,6 @@ void JitIL::Cleanup()
 	{
 		ABI_CallFunction((void *)&GPFifo::CheckGatherPipe);
 	}
-
-	// SPEED HACK: MMCR0/MMCR1 should be checked at run-time, not at compile time.
-	if (MMCR0.Hex || MMCR1.Hex)
-		ABI_CallFunctionCCC((void *)&PowerPC::UpdatePerformanceMonitor, js.downcountAmount, jit->js.numLoadStoreInst, jit->js.numFloatingPointInst);
 }
 
 void JitIL::WriteExit(u32 destination)
