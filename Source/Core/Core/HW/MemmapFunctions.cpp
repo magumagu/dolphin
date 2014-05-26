@@ -65,6 +65,8 @@ extern bool bFakeVMEM;
 // Overloaded byteswap functions, for use within the templated functions below.
 inline u8 bswap(u8 val)   {return val;}
 inline u16 bswap(u16 val) {return Common::swap16(val);}
+inline s8 bswap(s8 val)   {return val;}
+inline s16 bswap(s16 val) {return Common::swap16(val);}
 inline u32 bswap(u32 val) {return Common::swap32(val);}
 inline u64 bswap(u64 val) {return Common::swap64(val);}
 // =================
@@ -90,8 +92,8 @@ u32 EFB_Read(const u32 addr)
 	return var;
 }
 
-template <typename T>
-inline void ReadFromHardware(T &_var, const u32 em_address, const u32 effective_address, Memory::XCheckTLBFlag flag)
+template <typename T, typename U>
+inline void ReadFromHardware(U &_var, const u32 em_address, const u32 effective_address, Memory::XCheckTLBFlag flag)
 {
 	// TODO: Figure out the fastest order of tests for both read and write (they are probably different).
 	if ((em_address & 0xC8000000) == 0xC8000000)
@@ -99,7 +101,11 @@ inline void ReadFromHardware(T &_var, const u32 em_address, const u32 effective_
 		if (em_address < 0xcc000000)
 			_var = EFB_Read(em_address);
 		else
-			mmio_mapping->Read(em_address, &_var);
+		{
+			typename std::make_unsigned<T>::type temp;
+			mmio_mapping->Read(em_address, &temp);
+			_var = (T)temp;
+		}
 	}
 	else if (((em_address & 0xF0000000) == 0x80000000) ||
 		((em_address & 0xF0000000) == 0xC0000000) ||
@@ -353,6 +359,36 @@ u32 Read_U8_ZX(const u32 _Address)
 u32 Read_U16_ZX(const u32 _Address)
 {
 	return (u32)Read_U16(_Address);
+}
+
+u32 Read_U8_ZX_Val(u32 val, u32 address)
+{
+	ReadFromHardware<u8>(val, address, address, FLAG_READ);
+	return val;
+}
+
+u32 Read_U16_ZX_Val(u32 val, u32 address)
+{
+	ReadFromHardware<u16>(val, address, address, FLAG_READ);
+	return val;
+}
+
+u32 Read_U8_SX_Val(u32 val, u32 address)
+{
+	ReadFromHardware<s8>(val, address, address, FLAG_READ);
+	return val;
+}
+
+u32 Read_U16_SX_Val(u32 val, u32 address)
+{
+	ReadFromHardware<s16>(val, address, address, FLAG_READ);
+	return val;
+}
+
+u32 Read_U32_Val(u32 val, u32 address)
+{
+	ReadFromHardware<u32>(val, address, address, FLAG_READ);
+	return val;
 }
 
 void Write_U8(const u8 _Data, const u32 _Address)

@@ -372,25 +372,28 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 			ABI_PushRegistersAndAdjustStack(registersInUse, false);
 			switch (accessSize)
 			{
-			case 32: ABI_CallFunctionA((void *)&Memory::Read_U32, addr_loc); break;
-			case 16: ABI_CallFunctionA((void *)&Memory::Read_U16_ZX, addr_loc); break;
-			case 8:  ABI_CallFunctionA((void *)&Memory::Read_U8_ZX, addr_loc);  break;
+			case 32:
+				ABI_CallFunctionAA((void *)&Memory::Read_U32_Val, R(reg_value), addr_loc);
+				break;
+			case 16:
+				if (signExtend)
+					ABI_CallFunctionAA((void *)&Memory::Read_U16_SX_Val, R(reg_value), addr_loc);
+				else
+					ABI_CallFunctionAA((void *)&Memory::Read_U16_ZX_Val, R(reg_value), addr_loc);
+				break;
+			case 8:
+				if (signExtend)
+					ABI_CallFunctionAA((void *)&Memory::Read_U8_SX_Val, R(reg_value), addr_loc);
+				else
+					ABI_CallFunctionAA((void *)&Memory::Read_U8_ZX_Val, R(reg_value), addr_loc);
+
 			}
 			ABI_PopRegistersAndAdjustStack(registersInUse, false);
 
-			MEMCHECK_START
-
-			if (signExtend && accessSize < 32)
+			if (reg_value != EAX)
 			{
-				// Need to sign extend values coming from the Read_U* functions.
-				MOVSX(32, accessSize, reg_value, R(EAX));
+				MOV(32, R(reg_value), R(EAX));
 			}
-			else if (reg_value != EAX)
-			{
-				MOVZX(32, accessSize, reg_value, R(EAX));
-			}
-
-			MEMCHECK_END
 
 			FixupBranch exit = J();
 			SetJumpTarget(fast);
