@@ -65,24 +65,48 @@ const u8 *TrampolineCache::GetReadTrampoline(const InstructionInfo &info, u32 re
 	// It ought to be necessary to align the stack here.  Since it seems to not
 	// affect anybody, I'm not going to add it just to be completely safe about
 	// performance.
-
-	if (addrReg != ABI_PARAM1)
-		MOV(32, R(ABI_PARAM1), R((X64Reg)addrReg));
-	if (info.displacement) {
-		ADD(32, R(ABI_PARAM1), Imm32(info.displacement));
-	}
 	ABI_PushRegistersAndAdjustStack(registersInUse, true);
+
+	if (addrReg == ABI_PARAM1)
+	{
+		if (dataReg == ABI_PARAM2)
+		{
+			XCHG(32, R(ABI_PARAM1), R(ABI_PARAM2));
+		}
+		else
+		{
+			MOV(32, R(ABI_PARAM2), R(ABI_PARAM1));
+			MOV(32, R(ABI_PARAM1), R(dataReg));
+		}
+	}
+	else {
+		if (dataReg != ABI_PARAM1)
+			MOV(32, R(ABI_PARAM1), R((X64Reg)dataReg));
+		if (addrReg != ABI_PARAM2)
+			MOV(32, R(ABI_PARAM2), R((X64Reg)addrReg));
+	}
+
+	if (info.displacement)
+	{
+		ADD(32, R(ABI_PARAM2), Imm32(info.displacement));
+	}
+
 	switch (info.operandSize)
 	{
 	case 4:
-		CALL((void *)&Memory::Read_U32);
+		CALL((void *)&Memory::Read_U32_Val);
 		break;
 	case 2:
-		CALL((void *)&Memory::Read_U16);
-		SHL(32, R(EAX), Imm8(16));
+		if (info.signExtend)
+			CALL((void *)&Memory::Read_U16_SX_Val);
+		else
+			CALL((void *)&Memory::Read_U16_ZX_Val);
 		break;
 	case 1:
-		CALL((void *)&Memory::Read_U8);
+		if (info.signExtend)
+			CALL((void *)&Memory::Read_U8_SX_Val);
+		else
+			CALL((void *)&Memory::Read_U8_ZX_Val);
 		break;
 	}
 
@@ -214,9 +238,25 @@ const u8 *Jitx86Base::BackPatch(u8 *codePtr, u32 emAddress, void *ctx_void)
 		else
 			bswapNopCount = 2;
 
+		int totalSize = info.instructionSize + bswapNopCount;
+		if (info.operandSize == 2 && !info.byteSwap)
+		{
+			if ((codePtr[totalSize] & 0xF0) == 0x40)
+			{
+				++totalSize;
+			}
+			if (codePtr[totalSize] != 0xc1 || codePtr[totalSize + 2] != 0x10)
+			{
+				PanicAlert("BackPatch: didn't find expected shift %p", codePtr);
+				return nullptr;
+			}
+			info.signExtend = (codePtr[totalSize + 1] & 0x10) != 0;
+			totalSize += 3;
+		}
+
 		const u8 *trampoline = trampolines.GetReadTrampoline(info, registersInUse);
 		emitter.CALL((void *)trampoline);
-		int padding = info.instructionSize + bswapNopCount - BACKPATCH_SIZE;
+		int padding = totalSize - BACKPATCH_SIZE;
 		if (padding > 0)
 		{
 			emitter.NOP(padding);
