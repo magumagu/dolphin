@@ -314,6 +314,27 @@ void GPRRegCache::StoreFromRegister(int i)
 	}
 }
 
+void GPRRegCache::StoreFromRegisterCond(int i)
+{
+	if (regs[i].away)
+	{
+		bool doStore;
+		if (regs[i].location.IsSimpleReg())
+		{
+			X64Reg xr = RX(i);
+			doStore = xregs[xr].dirty;
+		}
+		else
+		{
+			//must be immediate - do nothing
+			doStore = true;
+		}
+		OpArg newLoc = GetDefaultLocation(i);
+		if (doStore)
+			emit->MOV(32, newLoc, regs[i].location);
+	}
+}
+
 void FPURegCache::BindToRegister(int i, bool doLoad, bool makeDirty)
 {
 	_assert_msg_(DYNA_REC, !regs[i].location.IsImm(), "WTF - load - imm");
@@ -362,6 +383,19 @@ void FPURegCache::StoreFromRegister(int i)
 	}
 }
 
+void FPURegCache::StoreFromRegisterCond(int i)
+{
+	_assert_msg_(DYNA_REC, !regs[i].location.IsImm(), "WTF - store - imm");
+	if (regs[i].away)
+	{
+		X64Reg xr = regs[i].location.GetSimpleReg();
+		_assert_msg_(DYNA_REC, xr < NUMXREGS, "WTF - store - invalid reg");
+		OpArg newLoc = GetDefaultLocation(i);
+		if (xregs[xr].dirty)
+			emit->MOVAPD(newLoc, xr);
+	}
+}
+
 void RegCache::Flush(FlushMode mode)
 {
 	for (int i = 0; i < NUMXREGS; i++)
@@ -391,6 +425,29 @@ void RegCache::Flush(FlushMode mode)
 			else
 			{
 				_assert_msg_(DYNA_REC,0,"Jit64 - Flush unhandled case, reg %i PC: %08x", i, PC);
+			}
+		}
+	}
+}
+
+void RegCache::FlushCond()
+{
+	for (int i = 0; i < 32; i++)
+	{
+		if (regs[i].away)
+		{
+			if (regs[i].location.IsSimpleReg())
+			{
+				X64Reg xr = RX(i);
+				StoreFromRegisterCond(i);
+			}
+			else if (regs[i].location.IsImm())
+			{
+				StoreFromRegisterCond(i);
+			}
+			else
+			{
+				_assert_msg_(DYNA_REC, 0, "Jit64 - Flush unhandled case, reg %i PC: %08x", i, PC);
 			}
 		}
 	}

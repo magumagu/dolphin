@@ -81,6 +81,7 @@ public:
 	}
 	virtual void Flush(FlushMode mode);
 	virtual void Flush(PPCAnalyst::CodeOp *op) {Flush(FLUSH_ALL);}
+	virtual void FlushCond();
 	int SanityCheck() const;
 	void KillImmediate(int preg, bool doLoad, bool makeDirty);
 
@@ -88,6 +89,7 @@ public:
 	//read only will not set dirty flag
 	virtual void BindToRegister(int preg, bool doLoad = true, bool makeDirty = true) = 0;
 	virtual void StoreFromRegister(int preg) = 0;
+	virtual void StoreFromRegisterCond(int preg) = 0;
 
 	const OpArg &R(int preg) const {return regs[preg].location;}
 	X64Reg RX(int preg) const
@@ -128,6 +130,7 @@ public:
 	void Start(PPCAnalyst::BlockRegStats &stats) override;
 	void BindToRegister(int preg, bool doLoad = true, bool makeDirty = true) override;
 	void StoreFromRegister(int preg) override;
+	void StoreFromRegisterCond(int preg) override;
 	OpArg GetDefaultLocation(int reg) const override;
 	const int *GetAllocationOrder(int &count) override;
 	void SetImmediate32(int preg, u32 immValue);
@@ -140,6 +143,7 @@ public:
 	void Start(PPCAnalyst::BlockRegStats &stats) override;
 	void BindToRegister(int preg, bool doLoad = true, bool makeDirty = true) override;
 	void StoreFromRegister(int preg) override;
+	void StoreFromRegisterCond(int preg) override;
 	const int *GetAllocationOrder(int &count) override;
 	OpArg GetDefaultLocation(int reg) const override;
 };

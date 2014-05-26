@@ -11,6 +11,139 @@
 #include "Core/PowerPC/Jit64/JitAsm.h"
 #include "Core/PowerPC/Jit64/JitRegCache.h"
 
+#include "Core/HW/MMIO.h"
+void Jit64::SafeLoadToReg2(X64Reg reg_value, const Gen::OpArg & opAddress, int accessSize, s32 offset, u32 registersInUse, bool signExtend, int flags)
+{
+	registersInUse &= ~(1 << RAX | 1 << reg_value);
+
+#if _M_X86_64
+	if (0 && Core::g_CoreStartupParameter.bFastmem &&
+		!opAddress.IsImm() &&
+		!(flags & (SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_FASTMEM))
+#ifdef ENABLE_MEM_CHECK
+		&& !Core::g_CoreStartupParameter.bEnableDebugging
+#endif
+		)
+	{
+		u8 *mov = UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
+
+		registersInUseAtLoc[mov] = registersInUse;
+	}
+	else
+#endif
+	{
+		u32 mem_mask = Memory::ADDR_MASK_HW_ACCESS;
+		if (Core::g_CoreStartupParameter.bMMU || Core::g_CoreStartupParameter.bTLBHack)
+		{
+			mem_mask |= Memory::ADDR_MASK_MEM1;
+		}
+
+#ifdef ENABLE_MEM_CHECK
+		if (Core::g_CoreStartupParameter.bEnableDebugging)
+		{
+			mem_mask |= Memory::EXRAM_MASK;
+		}
+#endif
+
+		if (opAddress.IsImm())
+		{
+			u32 address = (u32)opAddress.offset + offset;
+
+			// If we know the address, try the following loading methods in
+			// order:
+			//
+			// 1. If the address is in RAM, generate an unsafe load (directly
+			//    access the RAM buffer and load from there).
+			// 2. If the address is in the MMIO range, find the appropriate
+			//    MMIO handler and generate the code to load using the handler.
+			// 3. Otherwise, just generate a call to Memory::Read_* with the
+			//    address hardcoded.
+			if ((address & mem_mask) == 0)
+			{
+				UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
+			}
+			else if (!Core::g_CoreStartupParameter.bMMU && MMIO::IsMMIOAddress(address))
+			{
+				MMIOLoadToReg(Memory::mmio_mapping, reg_value, registersInUse,
+					address, accessSize, signExtend);
+			}
+			else
+			{
+				ABI_PushRegistersAndAdjustStack(registersInUse, false);
+				switch (accessSize)
+				{
+				case 32: ABI_CallFunctionAC((void *)&Memory::Read_U32_Val, R(reg_value), address); break;
+				case 16: ABI_CallFunctionAC((void *)&Memory::Read_U16_ZX_Val, R(reg_value), address); break;
+				case 8:  ABI_CallFunctionAC((void *)&Memory::Read_U8_ZX_Val, R(reg_value), address); break;
+				}
+				ABI_PopRegistersAndAdjustStack(registersInUse, false);
+
+				if (signExtend && accessSize < 32)
+				{
+					// Need to sign extend values coming from the Read_U* functions.
+					MOVSX(32, accessSize, reg_value, R(EAX));
+				}
+				else if (reg_value != EAX)
+				{
+					MOVZX(32, accessSize, reg_value, R(EAX));
+				}
+			}
+		}
+		else
+		{
+			OpArg addr_loc = opAddress;
+			if (offset)
+			{
+				addr_loc = R(EAX);
+				MOV(32, R(EAX), opAddress);
+				ADD(32, R(EAX), Imm32(offset));
+			}
+			TEST(32, addr_loc, Imm32(mem_mask));
+
+			FixupBranch fast = J_CC(CC_Z, true);
+
+			ABI_PushRegistersAndAdjustStack(registersInUse, false);
+			switch (accessSize)
+			{
+			case 32: ABI_CallFunctionAA((void *)&Memory::Read_U32_Val, R(reg_value), addr_loc); break;
+			case 16: ABI_CallFunctionAA((void *)&Memory::Read_U16_ZX_Val, R(reg_value), addr_loc); break;
+			case 8:  ABI_CallFunctionAA((void *)&Memory::Read_U8_ZX_Val, R(reg_value), addr_loc);  break;
+			}
+			ABI_PopRegistersAndAdjustStack(registersInUse, false);
+
+			if (signExtend && accessSize < 32)
+			{
+				// Need to sign extend values coming from the Read_U* functions.
+				MOVSX(32, accessSize, reg_value, R(EAX));
+			}
+			else if (reg_value != EAX)
+			{
+				MOVZX(32, accessSize, reg_value, R(EAX));
+			}
+
+			TEST(32, M((void *)&PowerPC::ppcState.Exceptions), Imm32(EXCEPTION_DSI));
+			FixupBranch noMemException = J_CC(CC_Z, true);
+
+			// If a memory exception occurs, the exception handler will read
+			// from PC.  Update PC with the latest value in case that happens.
+			MOV(32, M(&PC), Imm32(js.compilerPC));
+			// In case we are about to jump to the dispatcher, flush regs
+			gpr.FlushCond();
+			fpr.FlushCond();
+
+			WriteExceptionExit();
+			SetJumpTarget(noMemException);
+
+			js.handledLoadStoreException = true;
+
+			FixupBranch exit = J();
+			SetJumpTarget(fast);
+			UnsafeLoadToReg(reg_value, addr_loc, accessSize, 0, signExtend);
+			SetJumpTarget(exit);
+		}
+	}
+}
+
 void Jit64::lXXx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
@@ -209,7 +342,7 @@ void Jit64::lXXx(UGeckoInstruction inst)
 
 	gpr.Lock(a, b, d);
 	gpr.BindToRegister(d, js.memcheck, true);
-	SafeLoadToReg(gpr.RX(d), opAddress, accessSize, 0, RegistersInUse(), signExtend);
+	SafeLoadToReg2(gpr.RX(d), opAddress, accessSize, 0, RegistersInUse(), signExtend);
 
 	if (update && js.memcheck && !zeroOffset)
 	{

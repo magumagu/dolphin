@@ -426,6 +426,7 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 	js.cancel = false;
 	jit->js.numLoadStoreInst = 0;
 	jit->js.numFloatingPointInst = 0;
+	js.handledLoadStoreException = false;
 
 	u32 nextPC = em_address;
 	// Analyze the block, collect all instructions it is made of (including inlining,
@@ -604,7 +605,7 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 
 			Jit64Tables::CompileInstruction(ops[i]);
 
-			if (js.memcheck && (opinfo->flags & FL_LOADSTORE))
+			if (js.memcheck && (opinfo->flags & FL_LOADSTORE) && !js.handledLoadStoreException)
 			{
 				// In case we are about to jump to the dispatcher, flush regs
 				gpr.Flush(FLUSH_ALL);
@@ -618,6 +619,10 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 				MOV(32, M(&PC), Imm32(ops[i].address));
 				WriteExceptionExit();
 				SetJumpTarget(noMemException);
+			}
+			else
+			{
+				js.handledLoadStoreException = false;
 			}
 
 			if (opinfo->flags & FL_LOADSTORE)

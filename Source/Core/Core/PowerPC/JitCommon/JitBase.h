@@ -61,6 +61,7 @@ protected:
 		int downcountAmount;
 		u32 numLoadStoreInst;
 		u32 numFloatingPointInst;
+		bool handledLoadStoreException;
 
 		bool firstFPInstructionFound;
 		bool isLastInstruction;

@@ -106,6 +106,8 @@ public:
 	void GenerateRC();
 	void ComputeRC(const Gen::OpArg & arg);
 
+	void SafeLoadToReg2(Gen::X64Reg reg_value, const Gen::OpArg & opAddress, int accessSize, s32 offset, u32 registersInUse, bool signExtend, int flags = 0);
+
 	void tri_op(int d, int a, int b, bool reversible, void (XEmitter::*op)(Gen::X64Reg, Gen::OpArg));
 	typedef u32 (*Operation)(u32 a, u32 b);
 	void regimmop(int d, int a, bool binary, u32 value, Operation doop, void (XEmitter::*op)(int, const Gen::OpArg&, const Gen::OpArg&), bool Rc = false, bool carry = false);
