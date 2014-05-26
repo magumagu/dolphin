@@ -372,13 +372,11 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 			ABI_PushRegistersAndAdjustStack(registersInUse, false);
 			switch (accessSize)
 			{
-			case 32: ABI_CallFunctionA((void *)&Memory::Read_U32, addr_loc); break;
-			case 16: ABI_CallFunctionA((void *)&Memory::Read_U16_ZX, addr_loc); break;
-			case 8:  ABI_CallFunctionA((void *)&Memory::Read_U8_ZX, addr_loc);  break;
+			case 32: ABI_CallFunctionAA((void *)&Memory::Read_U32_Val, R(reg_value), addr_loc); break;
+			case 16: ABI_CallFunctionAA((void *)&Memory::Read_U16_ZX_Val, R(reg_value), addr_loc); break;
+			case 8:  ABI_CallFunctionAA((void *)&Memory::Read_U8_ZX_Val, R(reg_value), addr_loc);  break;
 			}
 			ABI_PopRegistersAndAdjustStack(registersInUse, false);
-
-			MEMCHECK_START
 
 			if (signExtend && accessSize < 32)
 			{
@@ -389,8 +387,6 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 			{
 				MOVZX(32, accessSize, reg_value, R(EAX));
 			}
-
-			MEMCHECK_END
 
 			FixupBranch exit = J();
 			SetJumpTarget(fast);

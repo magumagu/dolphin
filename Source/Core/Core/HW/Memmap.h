@@ -133,6 +133,10 @@ double Read_F64(const u32 _Address);
 u32 Read_U8_ZX(const u32 _Address);
 u32 Read_U16_ZX(const u32 _Address);
 
+u32 Read_U8_ZX_Val(u32 val, u32 address);
+u32 Read_U16_ZX_Val(u32 val, u32 address);
+u32 Read_U32_Val(u32 val, u32 address);
+
 // used by JIT (Jit64::lXz)
 u32 EFB_Read(const u32 addr);
 
