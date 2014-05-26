@@ -277,8 +277,7 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 	registersInUse &= ~(1 << RAX | 1 << reg_value);
 
 #if _M_X86_64
-	if (!Core::g_CoreStartupParameter.bMMU &&
-	    Core::g_CoreStartupParameter.bFastmem &&
+	if (Core::g_CoreStartupParameter.bFastmem &&
 	    !opAddress.IsImm() &&
 	    !(flags & (SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_FASTMEM))
 #ifdef ENABLE_MEM_CHECK
