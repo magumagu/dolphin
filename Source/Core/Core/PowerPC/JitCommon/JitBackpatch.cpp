@@ -65,24 +65,42 @@ const u8 *TrampolineCache::GetReadTrampoline(const InstructionInfo &info, u32 re
 	// It ought to be necessary to align the stack here.  Since it seems to not
 	// affect anybody, I'm not going to add it just to be completely safe about
 	// performance.
-
-	if (addrReg != ABI_PARAM1)
-		MOV(32, R(ABI_PARAM1), R((X64Reg)addrReg));
-	if (info.displacement) {
-		ADD(32, R(ABI_PARAM1), Imm32(info.displacement));
-	}
 	ABI_PushRegistersAndAdjustStack(registersInUse, true);
+
+	if (addrReg == ABI_PARAM1)
+	{
+		if (dataReg == ABI_PARAM2)
+		{
+			XCHG(32, R(ABI_PARAM1), R(ABI_PARAM2));
+		}
+		else
+		{
+			MOV(32, R(ABI_PARAM2), R(ABI_PARAM1));
+			MOV(32, R(ABI_PARAM1), R(dataReg));
+		}
+	}
+	else {
+		if (dataReg != ABI_PARAM1)
+			MOV(32, R(ABI_PARAM1), R((X64Reg)dataReg));
+		if (addrReg != ABI_PARAM2)
+			MOV(32, R(ABI_PARAM2), R((X64Reg)addrReg));
+	}
+
+	if (info.displacement) {
+		ADD(32, R(ABI_PARAM2), Imm32(info.displacement));
+	}
+
 	switch (info.operandSize)
 	{
 	case 4:
-		CALL((void *)&Memory::Read_U32);
+		CALL((void *)&Memory::Read_U32_Val);
 		break;
 	case 2:
-		CALL((void *)&Memory::Read_U16);
+		CALL((void *)&Memory::Read_U16_ZX_Val);
 		SHL(32, R(EAX), Imm8(16));
 		break;
 	case 1:
-		CALL((void *)&Memory::Read_U8);
+		CALL((void *)&Memory::Read_U8_ZX_Val);
 		break;
 	}
 
