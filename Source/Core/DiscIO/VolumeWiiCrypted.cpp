@@ -12,6 +12,7 @@
 #include "Common/Common.h"
 #include "DiscIO/Blob.h"
 #include "DiscIO/Volume.h"
+#include "DiscIO/VolumeCreator.h"
 #include "DiscIO/VolumeGC.h"
 #include "DiscIO/VolumeWiiCrypted.h"
 
@@ -29,6 +30,17 @@ CVolumeWiiCrypted::CVolumeWiiCrypted(IBlobReader* _pReader, u64 _VolumeOffset,
 	m_AES_ctx = new aes_context;
 	aes_setkey_dec(m_AES_ctx, _pVolumeKey, 128);
 	m_pBuffer = new u8[0x8000];
+}
+
+bool CVolumeWiiCrypted::ChangePartition(u64 offset)
+{
+	m_VolumeOffset = offset;
+	m_LastDecryptedBlockOffset = -1;
+
+	u8 volume_key[16];
+	DiscIO::VolumeKeyForParition(*m_pReader, offset, volume_key);
+	aes_setkey_dec(m_AES_ctx, volume_key, 128);
+	return true;
 }
 
 
