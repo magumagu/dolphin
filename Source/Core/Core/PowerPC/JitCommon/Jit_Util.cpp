@@ -92,8 +92,8 @@ u8 *EmuCodeBlock::UnsafeLoadToReg(X64Reg reg_value, Gen::OpArg opAddress, int ac
 		// *could* try to wrap an address around, however, this is the correct
 		// place to address the issue.)
 		if ((u32) offset >= 0x1000) {
-			LEA(32, reg_value, MDisp(opAddress.GetSimpleReg(), offset));
-			opAddress = R(reg_value);
+			LEA(32, EAX, MDisp(opAddress.GetSimpleReg(), offset));
+			opAddress = R(EAX);
 			offset = 0;
 		}
 
@@ -105,12 +105,12 @@ u8 *EmuCodeBlock::UnsafeLoadToReg(X64Reg reg_value, Gen::OpArg opAddress, int ac
 	}
 	else
 	{
-		MOV(32, R(reg_value), opAddress);
+		MOV(32, R(EAX), opAddress);
 		result = GetWritableCodePtr();
 		if (accessSize == 8 && signExtend)
-			MOVSX(32, accessSize, reg_value, MComplex(RBX, reg_value, SCALE_1, offset));
+			MOVSX(32, accessSize, reg_value, MComplex(RBX, RAX, SCALE_1, offset));
 		else
-			MOVZX(32, accessSize, reg_value, MComplex(RBX, reg_value, SCALE_1, offset));
+			MOVZX(32, accessSize, reg_value, MComplex(RBX, RAX, SCALE_1, offset));
 	}
 #else
 	if (opAddress.IsImm())
@@ -272,6 +272,8 @@ void EmuCodeBlock::MMIOLoadToReg(MMIO::Mapping* mmio, Gen::X64Reg reg_value,
 	}
 }
 
+// Always clobbers EAX.  Preserves the address.
+// Preserves the value if the load fails if js.memcheck is enabled.
 void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress, int accessSize, s32 offset, u32 registersInUse, bool signExtend, int flags)
 {
 	if (!jit->js.memcheck)
