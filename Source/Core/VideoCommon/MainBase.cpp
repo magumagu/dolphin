@@ -100,6 +100,9 @@ void VideoFifo_CheckSwapRequestAt(u32 xfbAddr, u32 fbWidth, u32 fbHeight)
 // Run from the CPU thread (from VideoInterface.cpp)
 void VideoBackendHardware::Video_BeginField(u32 xfbAddr, u32 fbWidth, u32 fbHeight)
 {
+	while (CommandProcessor::GPUHasWork())
+		Common::YieldCPU();
+
 	if (s_BackendInitialized && g_ActiveConfig.bUseXFB)
 	{
 		if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bCPUThread)
