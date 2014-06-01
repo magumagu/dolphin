@@ -491,17 +491,16 @@ void SetCpControlRegister()
 		ProcessorInterface::Fifo_CPUEnd = fifo.CPEnd;
 	}
 
-	if (fifo.bFF_GPReadEnable && !m_CPCtrlReg.GPReadEnable)
+	if (!fifo.bFF_GPReadEnable && m_CPCtrlReg.GPReadEnable)
 	{
 		fifo.bFF_GPReadEnable = m_CPCtrlReg.GPReadEnable;
+		while (GPUHasWork())
+			Common::YieldCPU();
 	}
 	else
 	{
 		fifo.bFF_GPReadEnable = m_CPCtrlReg.GPReadEnable;
 	}
-
-	while (GPUHasWork())
-		Common::YieldCPU();
 
 	DEBUG_LOG(COMMANDPROCESSOR, "\t GPREAD %s | BP %s | Int %s | OvF %s | UndF %s | LINK %s"
 		, fifo.bFF_GPReadEnable              ? "ON" : "OFF"
