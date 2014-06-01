@@ -45,6 +45,7 @@ volatile bool interruptSet= false;
 volatile bool interruptWaiting= false;
 volatile bool interruptTokenWaiting = false;
 volatile bool interruptFinishWaiting = false;
+volatile bool gpuRunning = false;
 
 volatile u32 VITicks = CommandProcessor::m_cpClockOrigin;
 
@@ -115,6 +116,15 @@ void Init()
 	isPossibleWaitingSetDrawDone = false;
 
 	et_UpdateInterrupts = CoreTiming::RegisterEvent("CPInterrupt", UpdateInterrupts_Wrapper);
+}
+
+bool GPUHasWork()
+{
+	return gpuRunning &&
+		fifo.bFF_GPReadEnable &&
+		!interruptWaiting &&
+		fifo.CPReadWriteDistance &&
+		!AtBreakpoint();
 }
 
 void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
@@ -484,12 +494,14 @@ void SetCpControlRegister()
 	if (fifo.bFF_GPReadEnable && !m_CPCtrlReg.GPReadEnable)
 	{
 		fifo.bFF_GPReadEnable = m_CPCtrlReg.GPReadEnable;
-		while (fifo.isGpuReadingData) Common::YieldCPU();
 	}
 	else
 	{
 		fifo.bFF_GPReadEnable = m_CPCtrlReg.GPReadEnable;
 	}
+
+	while (GPUHasWork())
+		Common::YieldCPU();
 
 	DEBUG_LOG(COMMANDPROCESSOR, "\t GPREAD %s | BP %s | Int %s | OvF %s | UndF %s | LINK %s"
 		, fifo.bFF_GPReadEnable              ? "ON" : "OFF"
@@ -510,10 +522,10 @@ void SetCpClearRegister()
 
 void Update()
 {
-	while (VITicks > m_cpClockOrigin && fifo.isGpuReadingData && IsOnThread())
+	while (VITicks > m_cpClockOrigin && GPUHasWork() && IsOnThread())
 		Common::YieldCPU();
 
-	if (fifo.isGpuReadingData)
+	if (GPUHasWork())
 		Common::AtomicAdd(VITicks, SystemTimers::GetTicksPerSecond() / 10000);
 }
 } // end of namespace CommandProcessor

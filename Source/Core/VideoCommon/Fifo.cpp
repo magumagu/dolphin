@@ -23,7 +23,6 @@ extern u8* g_pVideoData;
 
 namespace
 {
-static volatile bool GpuRunningState = false;
 static volatile bool EmuRunningState = false;
 static std::mutex m_csHWVidOccupied;
 // STATE_TO_SAVE
@@ -46,7 +45,6 @@ void Fifo_PauseAndLock(bool doLock, bool unpauseOnUnlock)
 		EmulatorState(false);
 		if (!Core::IsGPUThread())
 			m_csHWVidOccupied.lock();
-		_dbg_assert_(COMMON, !CommandProcessor::fifo.isGpuReadingData);
 	}
 	else
 	{
@@ -62,13 +60,13 @@ void Fifo_Init()
 {
 	videoBuffer = (u8*)AllocateMemoryPages(FIFO_SIZE);
 	size = 0;
-	GpuRunningState = false;
+	CommandProcessor::gpuRunning = false;
 	Common::AtomicStore(CommandProcessor::VITicks, CommandProcessor::m_cpClockOrigin);
 }
 
 void Fifo_Shutdown()
 {
-	if (GpuRunningState) PanicAlert("Fifo shutting down while active");
+	if (CommandProcessor::gpuRunning) PanicAlert("Fifo shutting down while active");
 	FreeMemoryPages(videoBuffer, FIFO_SIZE);
 	videoBuffer = nullptr;
 }
@@ -92,12 +90,8 @@ void Fifo_SetRendering(bool enabled)
 // Created to allow for self shutdown.
 void ExitGpuLoop()
 {
-	// This should break the wait loop in CPU thread
-	CommandProcessor::fifo.bFF_GPReadEnable = false;
-	SCPFifoStruct &fifo = CommandProcessor::fifo;
-	while (fifo.isGpuReadingData) Common::YieldCPU();
 	// Terminate GPU thread loop
-	GpuRunningState = false;
+	CommandProcessor::gpuRunning = false;
 	EmuRunningState = true;
 }
 
@@ -138,11 +132,11 @@ void ResetVideoBuffer()
 void RunGpuLoop()
 {
 	std::lock_guard<std::mutex> lk(m_csHWVidOccupied);
-	GpuRunningState = true;
+	CommandProcessor::gpuRunning = true;
 	SCPFifoStruct &fifo = CommandProcessor::fifo;
 	u32 cyclesExecuted = 0;
 
-	while (GpuRunningState)
+	while (CommandProcessor::gpuRunning)
 	{
 		g_video_backend->PeekMessages();
 
@@ -153,9 +147,8 @@ void RunGpuLoop()
 		Common::AtomicStore(CommandProcessor::VITicks, CommandProcessor::m_cpClockOrigin);
 
 		// check if we are able to run this buffer
-		while (GpuRunningState && !CommandProcessor::interruptWaiting && fifo.bFF_GPReadEnable && fifo.CPReadWriteDistance && !AtBreakpoint())
+		while (CommandProcessor::GPUHasWork())
 		{
-			fifo.isGpuReadingData = true;
 			CommandProcessor::isPossibleWaitingSetDrawDone = fifo.bFF_GPLinkEnable ? true : false;
 
 			if (!Core::g_CoreStartupParameter.bSyncGPU || Common::AtomicLoad(CommandProcessor::VITicks) > CommandProcessor::m_cpClockOrigin)
@@ -193,8 +186,6 @@ void RunGpuLoop()
 			CommandProcessor::isPossibleWaitingSetDrawDone = false;
 		}
 
-		fifo.isGpuReadingData = false;
-
 		if (EmuRunningState)
 		{
 			// NOTE(jsd): Calling SwitchToThread() on Windows 7 x64 is a hot spot, according to profiler.
@@ -228,7 +219,7 @@ bool AtBreakpoint()
 void RunGpu()
 {
 	SCPFifoStruct &fifo = CommandProcessor::fifo;
-	while (fifo.bFF_GPReadEnable && fifo.CPReadWriteDistance && !AtBreakpoint() )
+	while (CommandProcessor::GPUHasWork())
 	{
 		u8 *uData = Memory::GetPointer(fifo.CPReadPointer);
 

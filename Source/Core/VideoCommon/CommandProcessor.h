@@ -21,6 +21,7 @@ extern volatile bool interruptSet;
 extern volatile bool interruptWaiting;
 extern volatile bool interruptTokenWaiting;
 extern volatile bool interruptFinishWaiting;
+extern volatile bool gpuRunning;
 
 // internal hardware addresses
 enum
@@ -135,6 +136,7 @@ void DoState(PointerWrap &p);
 
 void RegisterMMIO(MMIO::Mapping* mmio, u32 base);
 
+bool GPUHasWork();
 void SetCpStatus(bool isCPUThread = false);
 void GatherPipeBursted();
 void UpdateInterrupts(u64 userdata);
