@@ -362,6 +362,10 @@ bool VideoSoftware::Video_IsPossibleWaitingSetDrawDone(void)
 	return false;
 }
 
+void VideoSoftware::Video_UpdateWantDeterminism()
+{
+}
+
 void VideoSoftware::RegisterCPMMIO(MMIO::Mapping* mmio, u32 base)
 {
 	SWCommandProcessor::RegisterMMIO(mmio, base);

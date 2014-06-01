@@ -148,6 +148,7 @@ void VideoFifo_CheckEFBAccess()
 
 u32 VideoBackendHardware::Video_AccessEFB(EFBAccessType type, u32 x, u32 y, u32 InputData)
 {
+	CommandProcessor::SyncGPUIfDeterministic();
 	if (s_BackendInitialized && g_ActiveConfig.bEFBAccessEnable)
 	{
 		s_accessEFBArgs.type = type;
@@ -198,6 +199,8 @@ u32 VideoBackendHardware::Video_GetQueryResult(PerfQueryType type)
 	{
 		return 0;
 	}
+
+	CommandProcessor::SyncGPUIfDeterministic();
 
 	// TODO: Is this check sane?
 	if (!g_perf_query->IsFlushed())
@@ -299,7 +302,14 @@ void VideoBackendHardware::Video_GatherPipeBursted()
 
 bool VideoBackendHardware::Video_IsPossibleWaitingSetDrawDone()
 {
-	return CommandProcessor::isPossibleWaitingSetDrawDone;
+	// this is called from Idle
+	return CommandProcessor::IsPossibleWaitingSetDrawDone();
+}
+
+
+void VideoBackendHardware::Video_UpdateWantDeterminism()
+{
+	CommandProcessor::UpdateDeterministicGPUSync();
 }
 
 void VideoBackendHardware::RegisterCPMMIO(MMIO::Mapping* mmio, u32 base)

@@ -62,6 +62,8 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base);
 void SetToken(const u16 _token, const int _bSetTokenAcknowledge);
 void SetFinish(void);
 UPEAlphaReadReg GetAlphaReadMode();
+void SetToken_OnMainThread(u64 userdata, int cyclesLate);
+void SetFinish_OnMainThread(u64 userdata, int cyclesLate);
 
 // Bounding box functionality. Paper Mario (both) are a couple of the few games that use it.
 extern u16 bbox[4];

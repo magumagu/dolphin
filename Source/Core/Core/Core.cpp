@@ -60,6 +60,8 @@
 #include "VideoCommon/OnScreenDisplay.h"
 #include "VideoCommon/VideoBackendBase.h"
 
+#include "NetPlayProto.h"
+
 // TODO: ugly, remove
 bool g_aspect_wide;
 
@@ -180,6 +182,19 @@ bool IsGPUThread()
 	else
 	{
 		return IsCPUThread();
+	}
+}
+
+bool WantDeterminism()
+{
+	return Movie::IsPlayingInput() || Movie::IsRecordingInput() || NetPlay::IsNetPlayRunning();
+}
+
+void UpdateWantDeterminism()
+{
+	if (g_video_backend)
+	{
+		g_video_backend->Video_UpdateWantDeterminism();
 	}
 }
 

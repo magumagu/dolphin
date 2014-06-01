@@ -35,11 +35,16 @@ struct SCPFifoStruct
 	volatile u32 CPEnd;
 	u32 CPHiWatermark;
 	u32 CPLoWatermark;
+	// Only for use when this is being written.
 	volatile u32 CPReadWriteDistance;
 	volatile u32 CPWritePointer;
-	volatile u32 CPReadPointer;
 	volatile u32 CPBreakpoint;
+
+	// Where we actually are in copying from the fifo to g_pVideoData.
+	volatile u32 CPReadPointer;
+	// The location of the command we're currently on, rounded down to 32.
 	volatile u32 SafeCPReadPointer;
+
 	// Super Monkey Ball Adventure require this.
 	// Because the read&check-PEToken-loop stays in its JITed block I suppose.
 	// So no possiblity to ack the Token irq by the scheduler until some sort of PPC watchdog do its mess.
@@ -59,7 +64,6 @@ struct SCPFifoStruct
 
 	// for GP watchdog hack
 	volatile u32 Fake_GPWDToken; // cicular incrementer
-	volatile u32 isGpuReadingData;
 };
 
 class VideoBackend
@@ -106,6 +110,8 @@ public:
 	// Registers MMIO handlers for the CommandProcessor registers.
 	virtual void RegisterCPMMIO(MMIO::Mapping* mmio, u32 base) = 0;
 
+	virtual void Video_UpdateWantDeterminism() = 0;
+
 	static void PopulateList();
 	static void ClearList();
 	static void ActivateBackend(const std::string& name);
@@ -151,6 +157,8 @@ class VideoBackendHardware : public VideoBackend
 	bool Video_IsPossibleWaitingSetDrawDone() override;
 
 	void RegisterCPMMIO(MMIO::Mapping* mmio, u32 base) override;
+
+	void Video_UpdateWantDeterminism();
 
 	void PauseAndLock(bool doLock, bool unpauseOnUnlock=true) override;
 	void DoState(PointerWrap &p) override;

@@ -230,7 +230,7 @@ u32 FifoCommandRunnable(u32 &command_size)
 			Host_SysMessage(szTemp);
 			INFO_LOG(VIDEO, "%s", szTemp);
 			{
-				SCPFifoStruct &fifo = CommandProcessor::fifo;
+				SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
 
 				char szTmp[512];
 				// sprintf(szTmp, "Illegal command %02x (at %08x)",cmd_byte,g_pDataReader->GetPtr());
@@ -239,7 +239,6 @@ u32 FifoCommandRunnable(u32 &command_size)
 					"CPEnd: 0x%08x\n"
 					"CPHiWatermark: 0x%08x\n"
 					"CPLoWatermark: 0x%08x\n"
-					"CPReadWriteDistance: 0x%08x\n"
 					"CPWritePointer: 0x%08x\n"
 					"CPReadPointer: 0x%08x\n"
 					"CPBreakpoint: 0x%08x\n"
@@ -247,7 +246,7 @@ u32 FifoCommandRunnable(u32 &command_size)
 					"bFF_BPEnable: %s\n"
 					"bFF_BPInt: %s\n"
 					"bFF_Breakpoint: %s\n"
-					,cmd_byte, fifo.CPBase, fifo.CPEnd, fifo.CPHiWatermark, fifo.CPLoWatermark, fifo.CPReadWriteDistance
+					,cmd_byte, fifo.CPBase, fifo.CPEnd, fifo.CPHiWatermark, fifo.CPLoWatermark
 					,fifo.CPWritePointer, fifo.CPReadPointer, fifo.CPBreakpoint, fifo.bFF_GPReadEnable ? "true" : "false"
 					,fifo.bFF_BPEnable ? "true" : "false" ,fifo.bFF_BPInt ? "true" : "false"
 					,fifo.bFF_Breakpoint ? "true" : "false");

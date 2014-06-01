@@ -49,7 +49,7 @@ struct ConfigCache
 {
 	bool valid, bCPUThread, bSkipIdle, bEnableFPRF, bMMU, bDCBZOFF, m_EnableJIT, bDSPThread,
 	     bVBeamSpeedHack, bSyncGPU, bFastDiscSpeed, bMergeBlocks, bDSPHLE, bHLE_BS2, bTLBHack;
-	int iCPUCore, Volume;
+	int iCPUCore, iDeterministicGPUSync, Volume;
 	int iWiimoteSource[MAX_BBMOTES];
 	SIDevices Pads[MAX_SI_CHANNELS];
 	unsigned int framelimit, frameSkip;
@@ -107,6 +107,7 @@ bool BootCore(const std::string& _rFilename)
 		config_cache.bTLBHack = StartUp.bTLBHack;
 		config_cache.bVBeamSpeedHack = StartUp.bVBeamSpeedHack;
 		config_cache.bSyncGPU = StartUp.bSyncGPU;
+		config_cache.iDeterministicGPUSync = StartUp.iDeterministicGPUSync;
 		config_cache.bFastDiscSpeed = StartUp.bFastDiscSpeed;
 		config_cache.bMergeBlocks = StartUp.bMergeBlocks;
 		config_cache.bDSPHLE = StartUp.bDSPHLE;
@@ -144,6 +145,7 @@ bool BootCore(const std::string& _rFilename)
 		game_ini.Get("Core", "DCBZ",             &StartUp.bDCBZOFF, StartUp.bDCBZOFF);
 		game_ini.Get("Core", "VBeam",            &StartUp.bVBeamSpeedHack, StartUp.bVBeamSpeedHack);
 		game_ini.Get("Core", "SyncGPU",          &StartUp.bSyncGPU, StartUp.bSyncGPU);
+		game_ini.Get("Core", "DeterministicGPUSync", &StartUp.iDeterministicGPUSync, StartUp.iDeterministicGPUSync);
 		game_ini.Get("Core", "FastDiscSpeed",    &StartUp.bFastDiscSpeed, StartUp.bFastDiscSpeed);
 		game_ini.Get("Core", "BlockMerging",     &StartUp.bMergeBlocks, StartUp.bMergeBlocks);
 		game_ini.Get("Core", "DSPHLE",           &StartUp.bDSPHLE, StartUp.bDSPHLE);
@@ -212,6 +214,7 @@ bool BootCore(const std::string& _rFilename)
 		StartUp.bFastDiscSpeed = Movie::IsFastDiscSpeed();
 		StartUp.iCPUCore = Movie::GetCPUMode();
 		StartUp.bSyncGPU = Movie::IsSyncGPU();
+		StartUp.iDeterministicGPUSync = Movie::IsDeterministicGPUSync();
 		if (Movie::IsUsingMemcard() && Movie::IsStartingFromClearSave() && !StartUp.bWii)
 		{
 			if (File::Exists(File::GetUserPath(D_GCUSER_IDX) + "Movie.raw"))
@@ -262,6 +265,7 @@ void Stop()
 		StartUp.bTLBHack = config_cache.bTLBHack;
 		StartUp.bVBeamSpeedHack = config_cache.bVBeamSpeedHack;
 		StartUp.bSyncGPU = config_cache.bSyncGPU;
+		StartUp.iDeterministicGPUSync = config_cache.iDeterministicGPUSync;
 		StartUp.bFastDiscSpeed = config_cache.bFastDiscSpeed;
 		StartUp.bMergeBlocks = config_cache.bMergeBlocks;
 		StartUp.bDSPHLE = config_cache.bDSPHLE;

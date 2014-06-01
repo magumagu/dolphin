@@ -15,12 +15,16 @@ extern bool MT;
 namespace CommandProcessor
 {
 
-extern SCPFifoStruct fifo; //This one is shared between gfx thread and emulator thread.
-extern volatile bool isPossibleWaitingSetDrawDone; //This one is used for sync gfx thread and emulator thread.
+//extern SCPFifoStruct fifo; //This one is shared between gfx thread and emulator thread.
+extern SCPFifoStruct *gpuFifo;
+extern SCPFifoStruct cpuFifo;
 extern volatile bool interruptSet;
 extern volatile bool interruptWaiting;
+extern volatile bool gpuRunning;
 extern volatile bool interruptTokenWaiting;
+extern u32 interruptTokenData;
 extern volatile bool interruptFinishWaiting;
+extern bool deterministicGPUSync;
 
 // internal hardware addresses
 enum
@@ -135,7 +139,12 @@ void DoState(PointerWrap &p);
 
 void RegisterMMIO(MMIO::Mapping* mmio, u32 base);
 
-void SetCpStatus(bool isCPUThread = false);
+bool GPUHasWork();
+void SyncGPUIfDeterministic();
+void UpdateDeterministicGPUSync();
+bool IsPossibleWaitingSetDrawDone();
+
+void SetCpStatus(bool isCPUThread);
 void GatherPipeBursted();
 void UpdateInterrupts(u64 userdata);
 void UpdateInterruptsFromVideoBackend(u64 userdata);
