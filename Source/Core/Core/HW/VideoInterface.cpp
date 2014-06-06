@@ -129,8 +129,8 @@ void Preset(bool _bNTSC)
 	m_InterruptRegister[1].IR_MASK = 1;
 	m_InterruptRegister[1].IR_INT = 0;
 
-	m_PictureConfiguration.STD = 40;
-	m_PictureConfiguration.WPL = 40;
+	m_PictureConfiguration.STD = 74;
+	m_PictureConfiguration.WPL = 37;
 
 	m_HBeamPos = -1; // NTSC-U N64 VC games check for a non-zero HBeamPos
 	m_VBeamPos = 0; // RG4JC0 checks for a zero VBeamPos
