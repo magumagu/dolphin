@@ -34,7 +34,7 @@ void ClearCoverInterrupt();
 // DVD Access Functions
 bool DVDRead(u32 dvd_offset, u32 ram_address, u32 length);
 // For AudioInterface
-void DVDReadAudio(u8* dest_buffer, u32 length);
+u32 DVDReadAudio(u8* dest_buffer, u32 length);
 
 // Not sure about endianness here. I'll just name them like this...
 enum DIErrorLow

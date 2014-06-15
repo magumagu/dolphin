@@ -313,7 +313,14 @@ void UpdateSamples(bool schedule_next_event, int cycles_late)
 		samples_processed < MAX_SAMPLES_TO_DECODE - NGCADPCM::SAMPLES_PER_BLOCK)
 	{
 		u8 tempADPCM[NGCADPCM::ONE_BLOCK_SIZE];
-		DVDInterface::DVDReadAudio(tempADPCM, sizeof(tempADPCM));
+		u32 samples_read = DVDInterface::DVDReadAudio(tempADPCM, sizeof(tempADPCM));
+		if (samples_read != sizeof(tempADPCM))
+		{
+			if (!m_Control.AIINTVLD)
+				GenerateAudioInterrupt();
+			break;
+		}
+
 		NGCADPCM::DecodeBlock(tempPCM + samples_processed * 2, tempADPCM);
 		samples_processed += NGCADPCM::SAMPLES_PER_BLOCK;
 		g_samples_to_emit -= NGCADPCM::SAMPLES_PER_BLOCK;
@@ -327,7 +334,7 @@ void UpdateSamples(bool schedule_next_event, int cycles_late)
 	}
 	soundStream->GetMixer()->PushStreamingSamples(tempPCM, samples_processed);
 
-	// Schedule the nect audio event
+	// Schedule the next audio event.
 	if (schedule_next_event)
 	{
 		int ticks_to_dtk = int(SystemTimers::GetTicksPerSecond() / 2000 * 5);

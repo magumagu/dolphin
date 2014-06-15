@@ -367,21 +367,17 @@ bool DVDRead(u32 _iDVDOffset, u32 _iRamAddress, u32 _iLength)
 	return VolumeHandler::ReadToPtr(Memory::GetPointer(_iRamAddress), _iDVDOffset, _iLength);
 }
 
-void DVDReadAudio(u8* dest_buffer, u32 length)
+u32 DVDReadAudio(u8* dest_buffer, u32 length)
 {
-	while (length)
+	u32 samples_emitted = 0;
+	while (length && CurrentLength)
 	{
-		if (CurrentLength == 0)
-		{
-			memset(dest_buffer, 0, length);
-			return;
-		}
-
 		if (AudioPos + length <= CurrentStart + CurrentLength)
 		{
 			VolumeHandler::ReadToPtr(dest_buffer, AudioPos, length);
 			AudioPos += length;
-			return;
+			samples_emitted += length;
+			return samples_emitted;
 		}
 
 		// Read the remaining bytes
@@ -389,12 +385,14 @@ void DVDReadAudio(u8* dest_buffer, u32 length)
 		VolumeHandler::ReadToPtr(dest_buffer, AudioPos, remaining_bytes);
 		length -= remaining_bytes;
 		dest_buffer += remaining_bytes;
+		samples_emitted += remaining_bytes;
 
 		// Loop the stream
 		AudioPos = LoopStart;
 		CurrentStart = LoopStart;
 		CurrentLength = LoopLength;
 	}
+	return samples_emitted;
 }
 
 void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
