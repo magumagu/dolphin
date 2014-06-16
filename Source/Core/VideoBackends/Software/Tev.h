@@ -5,7 +5,8 @@
 #pragma once
 
 #include "Common/ChunkFile.h"
-#include "VideoBackends/Software/BPMemLoader.h"
+
+#include "VideoCommon/BPMemory.h"
 
 class Tev
 {

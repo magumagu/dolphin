@@ -6,8 +6,10 @@
 #include <cmath>
 
 #include "Core/HW/Memmap.h"
-#include "VideoBackends/Software/BPMemLoader.h"
+
 #include "VideoBackends/Software/TextureSampler.h"
+
+#include "VideoCommon/BPMemory.h"
 #include "VideoCommon/TextureDecoder.h"
 
 #define ALLOW_MIPMAP 1

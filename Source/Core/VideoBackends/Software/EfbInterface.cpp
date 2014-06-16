@@ -7,12 +7,12 @@
 #include "Common/Common.h"
 #include "Core/HW/Memmap.h"
 
-#include "VideoBackends/Software/BPMemLoader.h"
 #include "VideoBackends/Software/EfbInterface.h"
 
 #include "VideoCommon/LookUpTables.h"
 #include "VideoCommon/PixelEngine.h"
 
+#include "VideoCommon/BPMemory.h"
 
 u8 efb[EFB_WIDTH*EFB_HEIGHT*6];
 
