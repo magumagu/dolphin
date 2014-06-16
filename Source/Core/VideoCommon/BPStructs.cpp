@@ -11,16 +11,9 @@
 
 #include "VideoCommon/BPFunctions.h"
 #include "VideoCommon/BPStructs.h"
-#include "VideoCommon/PerfQueryBase.h"
 #include "VideoCommon/PixelEngine.h"
-#include "VideoCommon/PixelShaderManager.h"
-#include "VideoCommon/RenderBase.h"
-#include "VideoCommon/Statistics.h"
 #include "VideoCommon/TextureDecoder.h"
-#include "VideoCommon/VertexLoader.h"
-#include "VideoCommon/VertexShaderManager.h"
 #include "VideoCommon/VideoCommon.h"
-#include "VideoCommon/VideoConfig.h"
 
 using namespace BPFunctions;
 
@@ -106,15 +99,15 @@ static void BPWritten(const BPCmd& bp)
 	case BPMEM_IND_MTXB+6:
 	case BPMEM_IND_MTXC+6:
 		if (bp.changes)
-			PixelShaderManager::SetIndMatrixChanged((bp.address - BPMEM_IND_MTXA) / 3);
+			SetIndMatrixChanged((bp.address - BPMEM_IND_MTXA) / 3);
 		return;
 	case BPMEM_RAS1_SS0: // Index Texture Coordinate Scale 0
 		if (bp.changes)
-			PixelShaderManager::SetIndTexScaleChanged(false);
+			SetIndTexScaleChanged(false);
 		return;
 	case BPMEM_RAS1_SS1: // Index Texture Coordinate Scale 1
 		if (bp.changes)
-			PixelShaderManager::SetIndTexScaleChanged(true);
+			SetIndTexScaleChanged(true);
 		return;
 	// ----------------
 	// Scissor Control
@@ -123,7 +116,7 @@ static void BPWritten(const BPCmd& bp)
 	case BPMEM_SCISSORBR: // Scissor Rectable Bottom, Right
 	case BPMEM_SCISSOROFFSET: // Scissor Offset
 		SetScissor();
-		VertexShaderManager::SetViewportChanged();
+		SetViewportChanged();
 		return;
 	case BPMEM_LINEPTWIDTH: // Line Width
 		SetLineWidth();
@@ -161,7 +154,7 @@ static void BPWritten(const BPCmd& bp)
 	case BPMEM_CONSTANTALPHA: // Set Destination Alpha
 		PRIM_LOG("constalpha: alp=%d, en=%d", bpmem.dstalpha.alpha, bpmem.dstalpha.enable);
 		if (bp.changes & 0xFF)
-			PixelShaderManager::SetDestAlpha();
+			SetDestAlpha();
 		if (bp.changes & 0x100)
 			SetBlendMode();
 		return;
@@ -215,9 +208,6 @@ static void BPWritten(const BPCmd& bp)
 			// Check if we are to copy from the EFB or draw to the XFB
 			if (PE_copy.copy_to_xfb == 0)
 			{
-				if (g_ActiveConfig.bShowEFBCopyRegions)
-					stats.efb_regions.push_back(srcRect);
-
 				CopyEFB(destAddr, srcRect,
 					PE_copy.tp_realFormat(), bpmem.zcontrol.pixel_format,
 					PE_copy.intensity_fmt, PE_copy.half_scale);
@@ -246,9 +236,7 @@ static void BPWritten(const BPCmd& bp)
 				u32 width = bpmem.copyMipMapStrideChannels << 4;
 				u32 height = xfbLines;
 
-				Renderer::RenderToXFB(destAddr, srcRect,
-						      width, height,
-						      s_gammaLUT[PE_copy.gamma]);
+				RenderToXFB(destAddr, srcRect, width, height, s_gammaLUT[PE_copy.gamma]);
 			}
 
 			// Clear the rectangular region after copying it.
@@ -288,18 +276,18 @@ static void BPWritten(const BPCmd& bp)
 	case BPMEM_FOGRANGE+4:
 	case BPMEM_FOGRANGE+5:
 		if (bp.changes)
-			PixelShaderManager::SetFogRangeAdjustChanged();
+			SetFogRangeAdjustChanged();
 		return;
 	case BPMEM_FOGPARAM0:
 	case BPMEM_FOGBMAGNITUDE:
 	case BPMEM_FOGBEXPONENT:
 	case BPMEM_FOGPARAM3:
 		if (bp.changes)
-			PixelShaderManager::SetFogParamChanged();
+			SetFogParamChanged();
 		return;
 	case BPMEM_FOGCOLOR: // Fog Color
 		if (bp.changes)
-			PixelShaderManager::SetFogColorChanged();
+			SetFogColorChanged();
 		return;
 	case BPMEM_ALPHACOMPARE: // Compare Alpha Values
 		PRIM_LOG("alphacmp: ref0=%d, ref1=%d, comp0=%d, comp1=%d, logic=%d",
@@ -307,19 +295,19 @@ static void BPWritten(const BPCmd& bp)
 		         (int)bpmem.alpha_test.comp0, (int)bpmem.alpha_test.comp1,
 		         (int)bpmem.alpha_test.logic);
 		if (bp.changes & 0xFFFF)
-			PixelShaderManager::SetAlpha();
+			SetAlpha();
 		if (bp.changes)
-			g_renderer->SetColorMask();
+			SetColorMask();
 		return;
 	case BPMEM_BIAS: // BIAS
 		PRIM_LOG("ztex bias=0x%x", bpmem.ztex1.bias);
 		if (bp.changes)
-			PixelShaderManager::SetZTextureBias();
+			SetZTextureBias();
 		return;
 	case BPMEM_ZTEX2: // Z Texture type
 		{
 			if (bp.changes & 3)
-				PixelShaderManager::SetZTextureTypeChanged();
+				SetZTextureTypeChanged();
 			#if defined(_DEBUG) || defined(DEBUGFAST)
 			const char* pzop[] = {"DISABLE", "ADD", "REPLACE", "?"};
 			const char* pztype[] = {"Z8", "Z16", "Z24", "?"};
@@ -375,7 +363,7 @@ static void BPWritten(const BPCmd& bp)
 	case BPMEM_CLEARBBOX2:
 		// Don't compute bounding box if this frame is being skipped!
 		// Wrong but valid values are better than bogus values...
-		if (g_ActiveConfig.bUseBBox && !g_bSkipCurrentFrame)
+		if (!g_bSkipCurrentFrame)
 		{
 			u8 offset = bp.address & 2;
 
@@ -393,7 +381,7 @@ static void BPWritten(const BPCmd& bp)
 		if (bp.changes & 7)
 		{
 			SetBlendMode(); // dual source could be activated by changing to PIXELFMT_RGBA6_Z24
-			g_renderer->SetColorMask(); // alpha writing needs to be disabled if the new pixel format doesn't have an alpha channel
+			SetColorMask(); // alpha writing needs to be disabled if the new pixel format doesn't have an alpha channel
 		}
 		return;
 
@@ -512,7 +500,7 @@ static void BPWritten(const BPCmd& bp)
 	case BPMEM_SU_SSIZE+14:
 	case BPMEM_SU_TSIZE+14:
 		if (bp.changes)
-			PixelShaderManager::SetTexCoordChanged((bp.address - BPMEM_SU_SSIZE) >> 1);
+			SetTexCoordChanged((bp.address - BPMEM_SU_SSIZE) >> 1);
 		return;
 	// ------------------------
 	// BPMEM_TX_SETMODE0 - (Texture lookup and filtering mode) LOD/BIAS Clamp, MaxAnsio, LODBIAS, DiagLoad, Min Filter, Mag Filter, Wrap T, S
@@ -566,9 +554,9 @@ static void BPWritten(const BPCmd& bp)
 			// don't compare with changes!
 			int num = (bp.address >> 1) & 0x3;
 			if ((bp.address & 1) == 0)
-				PixelShaderManager::SetColorChanged(bpmem.tevregs[num].type_ra, num);
+				SetColorChanged((int)bpmem.tevregs[num].type_ra, num);
 			else
-				PixelShaderManager::SetColorChanged(bpmem.tevregs[num].type_bg, num);
+				SetColorChanged((int)bpmem.tevregs[num].type_bg, num);
 		}
 		return;
 	default:

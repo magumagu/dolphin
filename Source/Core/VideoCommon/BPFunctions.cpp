@@ -8,7 +8,9 @@
 #include "Core/HW/Memmap.h"
 
 #include "VideoCommon/BPFunctions.h"
+#include "VideoCommon/PixelShaderManager.h"
 #include "VideoCommon/RenderBase.h"
+#include "VideoCommon/Statistics.h"
 #include "VideoCommon/TextureCacheBase.h"
 #include "VideoCommon/VertexManagerBase.h"
 #include "VideoCommon/VertexShaderManager.h"
@@ -94,12 +96,21 @@ void CopyEFB(u32 dstAddr, const EFBRectangle& srcRect,
 	     unsigned int dstFormat, PEControl::PixelFormat srcFormat,
 	     bool isIntensity, bool scaleByHalf)
 {
+	if (g_ActiveConfig.bShowEFBCopyRegions)
+		stats.efb_regions.push_back(srcRect);
+
 	// bpmem.zcontrol.pixel_format to PEControl::Z24 is when the game wants to copy from ZBuffer (Zbuffer uses 24-bit Format)
 	if (g_ActiveConfig.bEFBCopyEnable)
 	{
 		TextureCache::CopyRenderTargetToTexture(dstAddr, dstFormat, srcFormat,
 			srcRect, isIntensity, scaleByHalf);
 	}
+}
+
+void RenderToXFB(u32 xfbAddr, const EFBRectangle& sourceRc,
+	             u32 fbWidth, u32 fbHeight, float Gamma)
+{
+	Renderer::RenderToXFB(xfbAddr, sourceRc, fbWidth, fbHeight, Gamma);
 }
 
 /* Explanation of the magic behind ClearScreen:
@@ -251,6 +262,66 @@ void SetInterlacingMode(const BPCmd &bp)
 		ERROR_LOG(VIDEO, "SetInterlacingMode default");
 		break;
 	}
+}
+
+void SetViewportChanged()
+{
+	VertexShaderManager::SetViewportChanged();
+}
+
+void SetColorChanged(int type, int num)
+{
+	PixelShaderManager::SetColorChanged(type, num);
+}
+
+void SetTexCoordChanged(u8 texmapid)
+{
+	PixelShaderManager::SetTexCoordChanged(texmapid);
+}
+
+void SetZTextureBias()
+{
+	PixelShaderManager::SetZTextureBias();
+}
+
+void SetZTextureTypeChanged()
+{
+	PixelShaderManager::SetZTextureTypeChanged();
+}
+
+void SetAlpha()
+{
+	PixelShaderManager::SetAlpha();
+}
+
+void SetFogColorChanged()
+{
+	PixelShaderManager::SetFogColorChanged();
+}
+
+void SetFogParamChanged()
+{
+	PixelShaderManager::SetFogParamChanged();
+}
+
+void SetFogRangeAdjustChanged()
+{
+	PixelShaderManager::SetFogRangeAdjustChanged();
+}
+
+void SetDestAlpha()
+{
+	PixelShaderManager::SetDestAlpha();
+}
+
+void SetIndTexScaleChanged(bool high)
+{
+	PixelShaderManager::SetIndTexScaleChanged(high);
+}
+
+void SetIndMatrixChanged(int matrixidx)
+{
+	PixelShaderManager::SetIndMatrixChanged(matrixidx);
 }
 
 };
