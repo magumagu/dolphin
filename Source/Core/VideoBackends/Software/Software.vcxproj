@@ -43,7 +43,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
-    <ClCompile Include="BPMemLoader.cpp" />
+    <ClCompile Include="StateManagerSoftware.cpp" />
     <ClCompile Include="Clipper.cpp" />
     <ClCompile Include="CPMemLoader.cpp" />
     <ClCompile Include="DebugUtil.cpp" />
@@ -71,7 +71,7 @@
     <ClCompile Include="XFMemLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BPMemLoader.h" />
+    <ClInclude Include="StateManagerSoftware.h" />
     <ClInclude Include="Clipper.h" />
     <ClInclude Include="CPMemLoader.h" />
     <ClInclude Include="DebugUtil.h" />

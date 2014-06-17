@@ -5,7 +5,6 @@
 #include "Common/Common.h"
 #include "Core/HW/Memmap.h"
 
-#include "VideoBackends/Software/BPMemLoader.h"
 #include "VideoBackends/Software/CPMemLoader.h"
 #include "VideoBackends/Software/DebugUtil.h"
 #include "VideoBackends/Software/OpcodeDecoder.h"
@@ -14,6 +13,8 @@
 #include "VideoBackends/Software/SWVertexLoader.h"
 #include "VideoBackends/Software/SWVideoConfig.h"
 #include "VideoBackends/Software/XFMemLoader.h"
+
+#include "VideoCommon/BPStructs.h"
 #include "VideoCommon/DataReader.h"
 
 typedef void (*DecodingFunction)(u32);
@@ -196,7 +197,7 @@ void DecodeStandard(u32 bufferSize)
 	case GX_LOAD_BP_REG: //0x61
 		{
 			u32 cmd = DataReadU32();
-			SWLoadBPReg(cmd);
+			LoadBPReg(cmd);
 		}
 		break;
 

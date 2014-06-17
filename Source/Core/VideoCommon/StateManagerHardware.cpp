@@ -7,34 +7,33 @@
 #include "Core/ConfigManager.h"
 #include "Core/HW/Memmap.h"
 
-#include "VideoCommon/BPFunctions.h"
 #include "VideoCommon/PixelShaderManager.h"
 #include "VideoCommon/RenderBase.h"
+#include "VideoCommon/StateManager.h"
 #include "VideoCommon/Statistics.h"
 #include "VideoCommon/TextureCacheBase.h"
 #include "VideoCommon/VertexManagerBase.h"
 #include "VideoCommon/VertexShaderManager.h"
 #include "VideoCommon/VideoConfig.h"
 
-namespace BPFunctions
+StateManager *g_state_manager;
+
+void InitHWStateManager()
 {
-// ----------------------------------------------
-// State translation lookup tables
-// Reference: Yet Another GameCube Documentation
-// ----------------------------------------------
+	g_state_manager = new StateManagerHardware;
+}
 
-
-void FlushPipeline()
+void StateManagerHardware::FlushPipeline()
 {
 	VertexManager::Flush();
 }
 
-void SetGenerationMode()
+void StateManagerHardware::SetGenerationMode()
 {
 	g_renderer->SetGenerationMode();
 }
 
-void SetScissor()
+void StateManagerHardware::SetScissor()
 {
 	/* NOTE: the minimum value here for the scissor rect and offset is -342.
 	 * GX internally adds on an offset of 342 to both the offset and scissor
@@ -64,37 +63,40 @@ void SetScissor()
 	g_renderer->SetScissorRect(rc);
 }
 
-void SetLineWidth()
+void StateManagerHardware::SetLineWidth()
 {
 	g_renderer->SetLineWidth();
 }
 
-void SetDepthMode()
+void StateManagerHardware::SetDepthMode()
 {
 	g_renderer->SetDepthMode();
 }
 
-void SetBlendMode()
+void StateManagerHardware::SetBlendMode()
 {
 	g_renderer->SetBlendMode(false);
 }
-void SetDitherMode()
+
+void StateManagerHardware::SetDitherMode()
 {
 	g_renderer->SetDitherMode();
 }
-void SetLogicOpMode()
+
+void StateManagerHardware::SetLogicOpMode()
 {
 	g_renderer->SetLogicOpMode();
 }
 
-void SetColorMask()
+void StateManagerHardware::SetColorMask()
 {
 	g_renderer->SetColorMask();
 }
 
-void CopyEFB(u32 dstAddr, const EFBRectangle& srcRect,
-	     unsigned int dstFormat, PEControl::PixelFormat srcFormat,
-	     bool isIntensity, bool scaleByHalf)
+void StateManagerHardware::CopyEFB(u32 dstAddr, const EFBRectangle& srcRect,
+	                               unsigned int dstFormat,
+                                   PEControl::PixelFormat srcFormat,
+	                               bool isIntensity, bool scaleByHalf)
 {
 	if (g_ActiveConfig.bShowEFBCopyRegions)
 		stats.efb_regions.push_back(srcRect);
@@ -107,8 +109,8 @@ void CopyEFB(u32 dstAddr, const EFBRectangle& srcRect,
 	}
 }
 
-void RenderToXFB(u32 xfbAddr, const EFBRectangle& sourceRc,
-	             u32 fbWidth, u32 fbHeight, float Gamma)
+void StateManagerHardware::RenderToXFB(u32 xfbAddr, const EFBRectangle& sourceRc,
+	                                   u32 fbWidth, u32 fbHeight, float Gamma)
 {
 	Renderer::RenderToXFB(xfbAddr, sourceRc, fbWidth, fbHeight, Gamma);
 }
@@ -129,7 +131,7 @@ void RenderToXFB(u32 xfbAddr, const EFBRectangle& sourceRc,
 		- convert the RGBA8 color to RGBA6/RGB8/RGB565 and convert it to RGBA8 again
 		- convert the Z24 depth value to Z16 and back to Z24
 */
-void ClearScreen(const EFBRectangle &rc)
+void StateManagerHardware::ClearScreen(const EFBRectangle &rc)
 {
 	bool colorEnable = bpmem.blendmode.colorupdate;
 	bool alphaEnable = bpmem.blendmode.alphaupdate;
@@ -163,7 +165,7 @@ void ClearScreen(const EFBRectangle &rc)
 	}
 }
 
-void OnPixelFormatChange()
+void StateManagerHardware::OnPixelFormatChange()
 {
 	int convtype = -1;
 
@@ -235,93 +237,71 @@ skip:
 	Renderer::StorePixelFormat(new_format);
 }
 
-void SetInterlacingMode(const BPCmd &bp)
-{
-	// TODO
-	switch (bp.address)
-	{
-	case BPMEM_FIELDMODE:
-		{
-			// SDK always sets bpmem.lineptwidth.lineaspect via BPMEM_LINEPTWIDTH
-			// just before this cmd
-			const char *action[] = { "don't adjust", "adjust" };
-			DEBUG_LOG(VIDEO, "BPMEM_FIELDMODE texLOD:%s lineaspect:%s",
-				action[bpmem.fieldmode.texLOD],
-				action[bpmem.lineptwidth.lineaspect]);
-		}
-		break;
-	case BPMEM_FIELDMASK:
-		{
-			// Determines if fields will be written to EFB (always computed)
-			const char *action[] = { "skip", "write" };
-			DEBUG_LOG(VIDEO, "BPMEM_FIELDMASK even:%s odd:%s",
-				action[bpmem.fieldmask.even], action[bpmem.fieldmask.odd]);
-		}
-		break;
-	default:
-		ERROR_LOG(VIDEO, "SetInterlacingMode default");
-		break;
-	}
-}
-
-void SetViewportChanged()
+void StateManagerHardware::SetViewportChanged()
 {
 	VertexShaderManager::SetViewportChanged();
+	PixelShaderManager::SetViewportChanged();
 }
 
-void SetColorChanged(int type, int num)
+void StateManagerHardware::SetColorChanged(int num, bool ra)
 {
-	PixelShaderManager::SetColorChanged(type, num);
+	TevReg& reg = bpmem.tevregs[num];
+	bool konst = ra ? (bool)reg.type_ra : (bool)reg.type_bg;
+	PixelShaderManager::SetColorChanged(konst, num);
 }
 
-void SetTexCoordChanged(u8 texmapid)
+void StateManagerHardware::SetTexCoordChanged(u8 texmapid)
 {
 	PixelShaderManager::SetTexCoordChanged(texmapid);
 }
 
-void SetZTextureBias()
+void StateManagerHardware::SetZTextureBias()
 {
 	PixelShaderManager::SetZTextureBias();
 }
 
-void SetZTextureTypeChanged()
+void StateManagerHardware::SetZTextureTypeChanged()
 {
 	PixelShaderManager::SetZTextureTypeChanged();
 }
 
-void SetAlpha()
+void StateManagerHardware::SetAlpha()
 {
 	PixelShaderManager::SetAlpha();
 }
 
-void SetFogColorChanged()
+void StateManagerHardware::SetFogColorChanged()
 {
 	PixelShaderManager::SetFogColorChanged();
 }
 
-void SetFogParamChanged()
+void StateManagerHardware::SetFogParamChanged()
 {
 	PixelShaderManager::SetFogParamChanged();
 }
 
-void SetFogRangeAdjustChanged()
+void StateManagerHardware::SetFogRangeAdjustChanged()
 {
 	PixelShaderManager::SetFogRangeAdjustChanged();
 }
 
-void SetDestAlpha()
+void StateManagerHardware::SetDestAlpha()
 {
 	PixelShaderManager::SetDestAlpha();
 }
 
-void SetIndTexScaleChanged(bool high)
+void StateManagerHardware::SetIndTexScaleChanged(bool high)
 {
 	PixelShaderManager::SetIndTexScaleChanged(high);
 }
 
-void SetIndMatrixChanged(int matrixidx)
+void StateManagerHardware::SetIndMatrixChanged(int matrixidx)
 {
 	PixelShaderManager::SetIndMatrixChanged(matrixidx);
 }
 
-};
+void StateManagerHardware::ClearPixelPerf()
+{
+	if (PerfQueryBase::ShouldEmulate())
+		g_perf_query->ResetQuery();
+}

@@ -71,6 +71,7 @@ Make AA apply instantly during gameplay if possible
 #include "VideoCommon/OpcodeDecoding.h"
 #include "VideoCommon/PixelEngine.h"
 #include "VideoCommon/PixelShaderManager.h"
+#include "VideoCommon/StateManager.h"
 #include "VideoCommon/VertexLoader.h"
 #include "VideoCommon/VertexLoaderManager.h"
 #include "VideoCommon/VertexShaderManager.h"
@@ -208,6 +209,7 @@ void VideoBackend::Video_Prepare()
 	CommandProcessor::Init();
 	PixelEngine::Init();
 
+	InitHWStateManager();
 	BPInit();
 	g_vertex_manager = new VertexManager;
 	g_perf_query = new PerfQuery;

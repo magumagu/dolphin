@@ -32,7 +32,6 @@
 #include "VideoBackends/OGL/TextureConverter.h"
 #include "VideoBackends/OGL/VertexManager.h"
 
-#include "VideoCommon/BPFunctions.h"
 #include "VideoCommon/BPStructs.h"
 #include "VideoCommon/DriverDetails.h"
 #include "VideoCommon/Fifo.h"
@@ -40,6 +39,7 @@
 #include "VideoCommon/ImageWrite.h"
 #include "VideoCommon/OnScreenDisplay.h"
 #include "VideoCommon/PixelEngine.h"
+#include "VideoCommon/StateManager.h"
 #include "VideoCommon/Statistics.h"
 #include "VideoCommon/VertexLoader.h"
 #include "VideoCommon/VertexLoaderManager.h"
@@ -1667,7 +1667,7 @@ void Renderer::RestoreAPIState()
 	// Gets us back into a more game-like state.
 	glEnable(GL_SCISSOR_TEST);
 	SetGenerationMode();
-	BPFunctions::SetScissor();
+	g_state_manager->SetScissor();
 	SetColorMask();
 	SetDepthMode();
 	SetBlendMode(true);

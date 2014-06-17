@@ -25,12 +25,12 @@
 #include "VideoBackends/D3D/VertexShaderCache.h"
 
 #include "VideoCommon/AVIDump.h"
-#include "VideoCommon/BPFunctions.h"
 #include "VideoCommon/Fifo.h"
 #include "VideoCommon/FPSCounter.h"
 #include "VideoCommon/ImageWrite.h"
 #include "VideoCommon/OnScreenDisplay.h"
 #include "VideoCommon/PixelEngine.h"
+#include "VideoCommon/StateManager.h"
 #include "VideoCommon/Statistics.h"
 #include "VideoCommon/VertexShaderManager.h"
 #include "VideoCommon/VideoConfig.h"
@@ -1009,7 +1009,7 @@ void Renderer::RestoreAPIState()
 	D3D::stateman->PopDepthState();
 	D3D::stateman->PopRasterizerState();
 	SetViewport();
-	BPFunctions::SetScissor();
+	g_state_manager->SetScissor();
 }
 
 void Renderer::ApplyState(bool bUseDstAlpha)

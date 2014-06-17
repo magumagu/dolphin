@@ -9,13 +9,11 @@
 #include "Core/Core.h"
 #include "Core/HW/Memmap.h"
 
-#include "VideoCommon/BPFunctions.h"
 #include "VideoCommon/BPStructs.h"
 #include "VideoCommon/PixelEngine.h"
 #include "VideoCommon/TextureDecoder.h"
+#include "VideoCommon/StateManager.h"
 #include "VideoCommon/VideoCommon.h"
-
-using namespace BPFunctions;
 
 extern volatile bool g_bSkipCurrentFrame;
 
@@ -73,7 +71,7 @@ static void BPWritten(const BPCmd& bp)
 		}
 	}
 
-	FlushPipeline();
+	g_state_manager->FlushPipeline();
 
 	((u32*)&bpmem)[bp.address] = bp.newvalue;
 
@@ -87,7 +85,7 @@ static void BPWritten(const BPCmd& bp)
 
 		// Only call SetGenerationMode when cull mode changes.
 		if (bp.changes & 0xC000)
-			SetGenerationMode();
+			g_state_manager->SetGenerationMode();
 		return;
 	case BPMEM_IND_MTXA: // Index Matrix Changed
 	case BPMEM_IND_MTXB:
@@ -99,15 +97,15 @@ static void BPWritten(const BPCmd& bp)
 	case BPMEM_IND_MTXB+6:
 	case BPMEM_IND_MTXC+6:
 		if (bp.changes)
-			SetIndMatrixChanged((bp.address - BPMEM_IND_MTXA) / 3);
+			g_state_manager->SetIndMatrixChanged((bp.address - BPMEM_IND_MTXA) / 3);
 		return;
 	case BPMEM_RAS1_SS0: // Index Texture Coordinate Scale 0
 		if (bp.changes)
-			SetIndTexScaleChanged(false);
+			g_state_manager->SetIndTexScaleChanged(false);
 		return;
 	case BPMEM_RAS1_SS1: // Index Texture Coordinate Scale 1
 		if (bp.changes)
-			SetIndTexScaleChanged(true);
+			g_state_manager->SetIndTexScaleChanged(true);
 		return;
 	// ----------------
 	// Scissor Control
@@ -115,16 +113,16 @@ static void BPWritten(const BPCmd& bp)
 	case BPMEM_SCISSORTL: // Scissor Rectable Top, Left
 	case BPMEM_SCISSORBR: // Scissor Rectable Bottom, Right
 	case BPMEM_SCISSOROFFSET: // Scissor Offset
-		SetScissor();
-		SetViewportChanged();
+		g_state_manager->SetScissor();
+		g_state_manager->SetViewportChanged();
 		return;
 	case BPMEM_LINEPTWIDTH: // Line Width
-		SetLineWidth();
+		g_state_manager->SetLineWidth();
 		return;
 	case BPMEM_ZMODE: // Depth Control
 		PRIM_LOG("zmode: test=%d, func=%d, upd=%d", (int)bpmem.zmode.testenable,
 		         (int)bpmem.zmode.func, (int)bpmem.zmode.updateenable);
-		SetDepthMode();
+		g_state_manager->SetDepthMode();
 		return;
 	case BPMEM_BLENDMODE: // Blending Control
 		if (bp.changes & 0xFFFF)
@@ -136,27 +134,27 @@ static void BPWritten(const BPCmd& bp)
 
 			// Set LogicOp Blending Mode
 			if (bp.changes & 0xF002) // logicopenable | logicmode
-				SetLogicOpMode();
+				g_state_manager->SetLogicOpMode();
 
 			// Set Dithering Mode
 			if (bp.changes & 4) // dither
-				SetDitherMode();
+				g_state_manager->SetDitherMode();
 
 			// Set Blending Mode
 			if (bp.changes & 0xFF1) // blendenable | alphaupdate | dstfactor | srcfactor | subtract
-				SetBlendMode();
+				g_state_manager->SetBlendMode();
 
 			// Set Color Mask
 			if (bp.changes & 0x18) // colorupdate | alphaupdate
-				SetColorMask();
+				g_state_manager->SetColorMask();
 		}
 		return;
 	case BPMEM_CONSTANTALPHA: // Set Destination Alpha
 		PRIM_LOG("constalpha: alp=%d, en=%d", bpmem.dstalpha.alpha, bpmem.dstalpha.enable);
 		if (bp.changes & 0xFF)
-			SetDestAlpha();
+			g_state_manager->SetDestAlpha();
 		if (bp.changes & 0x100)
-			SetBlendMode();
+			g_state_manager->SetBlendMode();
 		return;
 
 	// This is called when the game is done drawing the new frame (eg: like in DX: Begin(); Draw(); End();)
@@ -208,7 +206,7 @@ static void BPWritten(const BPCmd& bp)
 			// Check if we are to copy from the EFB or draw to the XFB
 			if (PE_copy.copy_to_xfb == 0)
 			{
-				CopyEFB(destAddr, srcRect,
+				g_state_manager->CopyEFB(destAddr, srcRect,
 					PE_copy.tp_realFormat(), bpmem.zcontrol.pixel_format,
 					PE_copy.intensity_fmt, PE_copy.half_scale);
 			}
@@ -236,13 +234,14 @@ static void BPWritten(const BPCmd& bp)
 				u32 width = bpmem.copyMipMapStrideChannels << 4;
 				u32 height = xfbLines;
 
-				RenderToXFB(destAddr, srcRect, width, height, s_gammaLUT[PE_copy.gamma]);
+				g_state_manager->RenderToXFB(destAddr, srcRect, width, height,
+					s_gammaLUT[PE_copy.gamma]);
 			}
 
 			// Clear the rectangular region after copying it.
 			if (PE_copy.clear)
 			{
-				ClearScreen(srcRect);
+				g_state_manager->ClearScreen(srcRect);
 			}
 
 			return;
@@ -276,18 +275,18 @@ static void BPWritten(const BPCmd& bp)
 	case BPMEM_FOGRANGE+4:
 	case BPMEM_FOGRANGE+5:
 		if (bp.changes)
-			SetFogRangeAdjustChanged();
+			g_state_manager->SetFogRangeAdjustChanged();
 		return;
 	case BPMEM_FOGPARAM0:
 	case BPMEM_FOGBMAGNITUDE:
 	case BPMEM_FOGBEXPONENT:
 	case BPMEM_FOGPARAM3:
 		if (bp.changes)
-			SetFogParamChanged();
+			g_state_manager->SetFogParamChanged();
 		return;
 	case BPMEM_FOGCOLOR: // Fog Color
 		if (bp.changes)
-			SetFogColorChanged();
+			g_state_manager->SetFogColorChanged();
 		return;
 	case BPMEM_ALPHACOMPARE: // Compare Alpha Values
 		PRIM_LOG("alphacmp: ref0=%d, ref1=%d, comp0=%d, comp1=%d, logic=%d",
@@ -295,19 +294,19 @@ static void BPWritten(const BPCmd& bp)
 		         (int)bpmem.alpha_test.comp0, (int)bpmem.alpha_test.comp1,
 		         (int)bpmem.alpha_test.logic);
 		if (bp.changes & 0xFFFF)
-			SetAlpha();
+			g_state_manager->SetAlpha();
 		if (bp.changes)
-			SetColorMask();
+			g_state_manager->SetColorMask();
 		return;
 	case BPMEM_BIAS: // BIAS
 		PRIM_LOG("ztex bias=0x%x", bpmem.ztex1.bias);
 		if (bp.changes)
-			SetZTextureBias();
+			g_state_manager->SetZTextureBias();
 		return;
 	case BPMEM_ZTEX2: // Z Texture type
 		{
 			if (bp.changes & 3)
-				SetZTextureTypeChanged();
+				g_state_manager->SetZTextureTypeChanged();
 			#if defined(_DEBUG) || defined(DEBUGFAST)
 			const char* pzop[] = {"DISABLE", "ADD", "REPLACE", "?"};
 			const char* pztype[] = {"Z8", "Z16", "Z24", "?"};
@@ -377,11 +376,11 @@ static void BPWritten(const BPCmd& bp)
 		return;
 
 	case BPMEM_ZCOMPARE:      // Set the Z-Compare and EFB pixel format
-		OnPixelFormatChange();
+		g_state_manager->OnPixelFormatChange();
 		if (bp.changes & 7)
 		{
-			SetBlendMode(); // dual source could be activated by changing to PIXELFMT_RGBA6_Z24
-			SetColorMask(); // alpha writing needs to be disabled if the new pixel format doesn't have an alpha channel
+			g_state_manager->SetBlendMode(); // dual source could be activated by changing to PIXELFMT_RGBA6_Z24
+			g_state_manager->SetColorMask(); // alpha writing needs to be disabled if the new pixel format doesn't have an alpha channel
 		}
 		return;
 
@@ -420,8 +419,7 @@ static void BPWritten(const BPCmd& bp)
 
 	case BPMEM_CLEAR_PIXEL_PERF:
 		// GXClearPixMetric writes 0xAAA here, Sunshine alternates this register between values 0x000 and 0xAAA
-		if (PerfQueryBase::ShouldEmulate())
-			g_perf_query->ResetQuery();
+		g_state_manager->ClearPixelPerf();
 		return;
 
 	case BPMEM_PRELOAD_ADDR:
@@ -500,7 +498,7 @@ static void BPWritten(const BPCmd& bp)
 	case BPMEM_SU_SSIZE+14:
 	case BPMEM_SU_TSIZE+14:
 		if (bp.changes)
-			SetTexCoordChanged((bp.address - BPMEM_SU_SSIZE) >> 1);
+			g_state_manager->SetTexCoordChanged((bp.address - BPMEM_SU_SSIZE) >> 1);
 		return;
 	// ------------------------
 	// BPMEM_TX_SETMODE0 - (Texture lookup and filtering mode) LOD/BIAS Clamp, MaxAnsio, LODBIAS, DiagLoad, Min Filter, Mag Filter, Wrap T, S
@@ -553,10 +551,8 @@ static void BPWritten(const BPCmd& bp)
 		{
 			// don't compare with changes!
 			int num = (bp.address >> 1) & 0x3;
-			if ((bp.address & 1) == 0)
-				SetColorChanged((int)bpmem.tevregs[num].type_ra, num);
-			else
-				SetColorChanged((int)bpmem.tevregs[num].type_bg, num);
+			bool ra = (bp.address & 1) == 0;
+			g_state_manager->SetColorChanged(num, ra);
 		}
 		return;
 	default:
@@ -1297,13 +1293,13 @@ void BPReload()
 	// restore anything that goes straight to the renderer.
 	// let's not risk actually replaying any writes.
 	// note that PixelShaderManager is already covered since it has its own DoState.
-	SetGenerationMode();
-	SetScissor();
-	SetLineWidth();
-	SetDepthMode();
-	SetLogicOpMode();
-	SetDitherMode();
-	SetBlendMode();
-	SetColorMask();
-	OnPixelFormatChange();
+	g_state_manager->SetGenerationMode();
+	g_state_manager->SetScissor();
+	g_state_manager->SetLineWidth();
+	g_state_manager->SetDepthMode();
+	g_state_manager->SetLogicOpMode();
+	g_state_manager->SetDitherMode();
+	g_state_manager->SetBlendMode();
+	g_state_manager->SetColorMask();
+	g_state_manager->OnPixelFormatChange();
 }

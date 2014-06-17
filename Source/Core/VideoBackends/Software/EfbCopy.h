@@ -6,9 +6,11 @@
 
 #include "Common/Common.h"
 
+#include "VideoCommon/VideoCommon.h"
+
 namespace EfbCopy
 {
-	// Copy the EFB to RAM as a texture format or XFB
-	// Clear the EFB if needed
-	void CopyEfb();
+	void CopyToXfb(u32 xfbAddr, u32 fbWidth, u32 fbHeight, const EFBRectangle& sourceRc, float Gamma);
+	void CopyToRam();
+	void ClearEfb();
 }

@@ -15,14 +15,6 @@
 #include "VideoBackends/Software/SWVideoConfig.h"
 #include "VideoBackends/Software/TextureEncoder.h"
 
-static const float s_gammaLUT[] =
-{
-	1.0f,
-	1.7f,
-	2.2f,
-	1.0f
-};
-
 namespace EfbCopy
 {
 	void CopyToXfb(u32 xfbAddr, u32 fbWidth, u32 fbHeight, const EFBRectangle& sourceRc, float Gamma)
@@ -86,59 +78,6 @@ namespace EfbCopy
 			{
 				EfbInterface::SetColor(x, y, (u8*)(&clearColor));
 				EfbInterface::SetDepth(x, y, bpmem.clearZValue);
-			}
-		}
-	}
-
-	void CopyEfb()
-	{
-		EFBRectangle rc;
-		rc.left = (int)bpmem.copyTexSrcXY.x;
-		rc.top = (int)bpmem.copyTexSrcXY.y;
-
-		// flipper represents the widths internally as last pixel minus starting pixel, so
-		// these are zero indexed.
-		rc.right = rc.left + (int)bpmem.copyTexSrcWH.x + 1;
-		rc.bottom = rc.top + (int)bpmem.copyTexSrcWH.y + 1;
-
-		if (!g_bSkipCurrentFrame)
-		{
-			if (bpmem.triggerEFBCopy.copy_to_xfb)
-			{
-				float yScale;
-				if (bpmem.triggerEFBCopy.scale_invert)
-					yScale = 256.0f / (float)bpmem.dispcopyyscale;
-				else
-					yScale = (float)bpmem.dispcopyyscale / 256.0f;
-
-				float xfbLines = ((bpmem.copyTexSrcWH.y + 1.0f) * yScale);
-
-				if (yScale != 1.0)
-					WARN_LOG(VIDEO, "yScale of %f is currently unsupported", yScale);
-
-				if ((u32)xfbLines > MAX_XFB_HEIGHT)
-				{
-					INFO_LOG(VIDEO, "Tried to scale EFB to too many XFB lines (%f)", xfbLines);
-					xfbLines = MAX_XFB_HEIGHT;
-				}
-
-				CopyToXfb(bpmem.copyTexDest << 5,
-						  bpmem.copyMipMapStrideChannels << 4,
-						  (u32)xfbLines,
-						  rc,
-						  s_gammaLUT[bpmem.triggerEFBCopy.gamma]);
-			}
-			else
-			{
-				CopyToRam(); // FIXME: should use the rectangle we have already created above
-			}
-
-			if (bpmem.triggerEFBCopy.clear)
-			{
-				if (g_SWVideoConfig.bHwRasterizer)
-					HwRasterizer::Clear();
-				else
-					ClearEfb();
 			}
 		}
 	}

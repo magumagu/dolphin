@@ -44,7 +44,7 @@
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
     <ClCompile Include="AVIDump.cpp" />
-    <ClCompile Include="BPFunctions.cpp" />
+    <ClCompile Include="StateManagerHardware.cpp" />
     <ClCompile Include="BPMemory.cpp" />
     <ClCompile Include="BPStructs.cpp" />
     <ClCompile Include="CommandProcessor.cpp" />
@@ -89,7 +89,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AVIDump.h" />
-    <ClInclude Include="BPFunctions.h" />
+    <ClInclude Include="StateManager.h" />
     <ClInclude Include="BPMemory.h" />
     <ClInclude Include="BPStructs.h" />
     <ClInclude Include="CommandProcessor.h" />

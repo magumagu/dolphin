@@ -35,6 +35,7 @@
 #include "VideoCommon/OpcodeDecoding.h"
 #include "VideoCommon/PixelEngine.h"
 #include "VideoCommon/PixelShaderManager.h"
+#include "VideoCommon/StateManager.h"
 #include "VideoCommon/VertexLoaderManager.h"
 #include "VideoCommon/VertexShaderManager.h"
 #include "VideoCommon/VideoConfig.h"
@@ -185,6 +186,7 @@ void VideoBackend::Video_Prepare()
 	D3D::InitUtils();
 
 	// VideoCommon
+	InitHWStateManager();
 	BPInit();
 	Fifo_Init();
 	IndexGenerator::Init();

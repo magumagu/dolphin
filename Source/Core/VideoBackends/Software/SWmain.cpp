@@ -16,13 +16,13 @@
 #include "Core/HW/VideoInterface.h"
 
 #include "VideoBackends/OGL/GLExtensions/GLExtensions.h"
-#include "VideoBackends/Software/BPMemLoader.h"
 #include "VideoBackends/Software/Clipper.h"
 #include "VideoBackends/Software/DebugUtil.h"
 #include "VideoBackends/Software/EfbInterface.h"
 #include "VideoBackends/Software/HwRasterizer.h"
 #include "VideoBackends/Software/OpcodeDecoder.h"
 #include "VideoBackends/Software/Rasterizer.h"
+#include "VideoBackends/Software/StateManagerSoftware.h"
 #include "VideoBackends/Software/SWCommandProcessor.h"
 #include "VideoBackends/Software/SWRenderer.h"
 #include "VideoBackends/Software/SWStatistics.h"
@@ -36,6 +36,7 @@
 #endif // HAVE_WX
 
 #include "VideoCommon/BPMemory.h"
+#include "VideoCommon/BPStructs.h"
 #include "VideoCommon/OnScreenDisplay.h"
 #include "VideoCommon/PixelEngine.h"
 #include "VideoCommon/XFMemory.h"
@@ -88,7 +89,8 @@ bool VideoSoftware::Initialize(void *&window_handle)
 		return false;
 	}
 
-	InitBPMemory();
+	InitSWStateManager();
+	BPInit();
 	InitXFMemory();
 	SWCommandProcessor::Init();
 	PixelEngine::Init();
