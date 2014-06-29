@@ -107,8 +107,6 @@ static const float GC_ALIGNED16(m_m128) = -128.0f;
 
 static const float GC_ALIGNED16(m_one[]) = {1.0f, 0.0f, 0.0f, 0.0f};
 
-#define QUANTIZE_OVERFLOW_SAFE
-
 // according to Intel Docs CVTPS2DQ writes 0x80000000 if the source floating point value is out of int32 range
 // while it's OK for large negatives, it isn't for positives
 // I don't know whether the overflow actually happens in any games
@@ -167,11 +165,9 @@ void CommonAsmRoutines::GenQuantizedStores()
 	MOVSS(XMM1, MDisp(EAX, (u32)(u64)m_quantizeTableS));
 	PUNPCKLDQ(XMM1, R(XMM1));
 	MULPS(XMM0, R(XMM1));
-#ifdef QUANTIZE_OVERFLOW_SAFE
 	MOVSS(XMM1, M((void *)&m_65535));
 	PUNPCKLDQ(XMM1, R(XMM1));
 	MINPS(XMM0, R(XMM1));
-#endif
 	CVTTPS2DQ(XMM0, R(XMM0));
 	PACKSSDW(XMM0, R(XMM0));
 	PACKUSWB(XMM0, R(XMM0));
@@ -185,11 +181,9 @@ void CommonAsmRoutines::GenQuantizedStores()
 	MOVSS(XMM1, MDisp(EAX, (u32)(u64)m_quantizeTableS));
 	PUNPCKLDQ(XMM1, R(XMM1));
 	MULPS(XMM0, R(XMM1));
-#ifdef QUANTIZE_OVERFLOW_SAFE
 	MOVSS(XMM1, M((void *)&m_65535));
 	PUNPCKLDQ(XMM1, R(XMM1));
 	MINPS(XMM0, R(XMM1));
-#endif
 	CVTTPS2DQ(XMM0, R(XMM0));
 	PACKSSDW(XMM0, R(XMM0));
 	PACKSSWB(XMM0, R(XMM0));
@@ -231,11 +225,9 @@ void CommonAsmRoutines::GenQuantizedStores()
 	// SHUFPS or UNPCKLPS might be a better choice here. The last one might just be an alias though.
 	PUNPCKLDQ(XMM1, R(XMM1));
 	MULPS(XMM0, R(XMM1));
-#ifdef QUANTIZE_OVERFLOW_SAFE
 	MOVSS(XMM1, M((void *)&m_65535));
 	PUNPCKLDQ(XMM1, R(XMM1));
 	MINPS(XMM0, R(XMM1));
-#endif
 	CVTTPS2DQ(XMM0, R(XMM0));
 	PACKSSDW(XMM0, R(XMM0));
 	MOVD_xmm(R(EAX), XMM0);
