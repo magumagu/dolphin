@@ -79,7 +79,7 @@ void EmuCodeBlock::UnsafeLoadRegToRegNoSwap(X64Reg reg_addr, X64Reg reg_value, i
 #endif
 }
 
-u8 *EmuCodeBlock::UnsafeLoadToReg(X64Reg reg_value, Gen::OpArg opAddress, int accessSize, s32 offset, bool signExtend)
+u8 *EmuCodeBlock::UnsafeLoadToReg(X64Reg reg_value, Gen::OpArg opAddress, int accessSize, s32 offset, bool signExtend, bool swap)
 {
 	u8 *result;
 #if _M_X86_64
@@ -141,19 +141,28 @@ u8 *EmuCodeBlock::UnsafeLoadToReg(X64Reg reg_value, Gen::OpArg opAddress, int ac
 		break;
 
 	case 16:
-		BSWAP(32, reg_value);
-		if (signExtend)
-			SAR(32, R(reg_value), Imm8(16));
-		else
-			SHR(32, R(reg_value), Imm8(16));
+		if (swap)
+		{
+			BSWAP(32, reg_value);
+			if (signExtend)
+				SAR(32, R(reg_value), Imm8(16));
+			else
+				SHR(32, R(reg_value), Imm8(16));
+		}
+		else if (signExtend)
+		{
+			MOVSX(32, 16, reg_value, R(reg_value));
+		}
 		break;
 
 	case 32:
-		BSWAP(32, reg_value);
+		if (swap)
+			BSWAP(32, reg_value);
 		break;
 
 	case 64:
-		BSWAP(64, reg_value);
+		if (swap)
+			BSWAP(64, reg_value);
 		break;
 	}
 
@@ -280,6 +289,8 @@ void EmuCodeBlock::MMIOLoadToReg(MMIO::Mapping* mmio, Gen::X64Reg reg_value,
 // Preserves the value if the load fails and js.memcheck is enabled.
 void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress, int accessSize, s32 offset, u32 registersInUse, bool signExtend, int flags)
 {
+	bool swap = !(flags & SAFE_LOADSTORE_NO_SWAP);
+
 	if (!jit->js.memcheck)
 	{
 		registersInUse &= ~(1 << RAX | 1 << reg_value);
@@ -288,13 +299,13 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 	if (!Core::g_CoreStartupParameter.bMMU &&
 	    Core::g_CoreStartupParameter.bFastmem &&
 	    !opAddress.IsImm() &&
-	    !(flags & (SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_FASTMEM))
+	    !(flags & SAFE_LOADSTORE_NO_FASTMEM)
 #ifdef ENABLE_MEM_CHECK
 	    && !Core::g_CoreStartupParameter.bEnableDebugging
 #endif
 	    )
 	{
-		u8 *mov = UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
+		u8 *mov = UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend, swap);
 
 		registersInUseAtLoc[mov] = registersInUse;
 	}
@@ -329,9 +340,10 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 			//    address hardcoded.
 			if ((address & mem_mask) == 0)
 			{
-				UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
+				UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend, swap);
 			}
-			else if (!Core::g_CoreStartupParameter.bMMU && MMIO::IsMMIOAddress(address) && accessSize != 64)
+			else if (!Core::g_CoreStartupParameter.bMMU && MMIO::IsMMIOAddress(address) &&
+				accessSize != 64 && swap)
 			{
 				MMIOLoadToReg(Memory::mmio_mapping, reg_value, registersInUse,
 				              address, accessSize, signExtend);
@@ -347,6 +359,12 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 				case 8:  ABI_CallFunctionC((void *)&Memory::Read_U8_ZX, address); break;
 				}
 				ABI_PopRegistersAndAdjustStack(registersInUse, false);
+
+				// If we weren't supposed to swap, unswap.
+				if (!swap)
+				{
+					BSWAP(accessSize, RAX);
+				}
 
 				MEMCHECK_START
 
@@ -385,6 +403,12 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 			case 8:  ABI_CallFunctionA((void *)&Memory::Read_U8_ZX, addr_loc);  break;
 			}
 			ABI_PopRegistersAndAdjustStack(registersInUse, false);
+
+			// If we weren't supposed to swap, unswap.
+			if (!swap)
+			{
+				BSWAP(accessSize, RAX);
+			}
 
 			MEMCHECK_START
 
