@@ -112,142 +112,107 @@ static const float GC_ALIGNED16(m_one[]) = {1.0f, 0.0f, 0.0f, 0.0f};
 // I don't know whether the overflow actually happens in any games
 // but it potentially can cause problems, so we need some clamping
 
-static void WriteDual32(u32 address)
+// See comment in header for in/outs.
+int CommonAsmRoutines::GenQuantizedPairedStore(EQuantizeType kind)
 {
-	Memory::Write_U64(*(u64 *) psTemp, address);
+	switch (kind)
+	{
+	case QUANTIZE_FLOAT:
+		MOVQ_xmm(R(RAX), XMM0);
+		BSWAP(64, RAX);
+		ROL(64, R(RAX), Imm8(32));
+		return 64;
+
+	case QUANTIZE_U8:
+		SHR(32, R(EAX), Imm8(6));
+		MOVSS(XMM1, MDisp(EAX, (u32)(u64)m_quantizeTableS));
+		PUNPCKLDQ(XMM1, R(XMM1));
+		MULPS(XMM0, R(XMM1));
+		MOVSS(XMM1, M((void *)&m_65535));
+		PUNPCKLDQ(XMM1, R(XMM1));
+		MINPS(XMM0, R(XMM1));
+		CVTTPS2DQ(XMM0, R(XMM0));
+		PACKSSDW(XMM0, R(XMM0));
+		PACKUSWB(XMM0, R(XMM0));
+		MOVD_xmm(R(EAX), XMM0);
+		return 16;
+
+	case QUANTIZE_S8:
+		SHR(32, R(EAX), Imm8(6));
+		MOVSS(XMM1, MDisp(EAX, (u32)(u64)m_quantizeTableS));
+		PUNPCKLDQ(XMM1, R(XMM1));
+		MULPS(XMM0, R(XMM1));
+		MOVSS(XMM1, M((void *)&m_65535));
+		PUNPCKLDQ(XMM1, R(XMM1));
+		MINPS(XMM0, R(XMM1));
+		CVTTPS2DQ(XMM0, R(XMM0));
+		PACKSSDW(XMM0, R(XMM0));
+		PACKSSWB(XMM0, R(XMM0));
+		MOVD_xmm(R(EAX), XMM0);
+		return 16;
+
+	case QUANTIZE_U16:
+		SHR(32, R(EAX), Imm8(6));
+		MOVSS(XMM1, MDisp(EAX, (u32)(u64)m_quantizeTableS));
+		PUNPCKLDQ(XMM1, R(XMM1));
+		MULPS(XMM0, R(XMM1));
+
+		// PACKUSDW is available only in SSE4
+		PXOR(XMM1, R(XMM1));
+		MAXPS(XMM0, R(XMM1));
+		MOVSS(XMM1, M((void *)&m_65535));
+		PUNPCKLDQ(XMM1, R(XMM1));
+		MINPS(XMM0, R(XMM1));
+
+		CVTTPS2DQ(XMM0, R(XMM0));
+		MOVQ_xmm(M(psTemp), XMM0);
+		// place ps[0] into the higher word, ps[1] into the lower
+		// so no need in ROL after BSWAP
+		MOVZX(32, 16, EAX, M((char*)psTemp + 0));
+		SHL(32, R(EAX), Imm8(16));
+		MOV(16, R(AX), M((char*)psTemp + 4));
+
+		BSWAP(32, EAX);
+		return 32;
+
+	case QUANTIZE_S16:
+		SHR(32, R(EAX), Imm8(6));
+		MOVSS(XMM1, MDisp(EAX, (u32)(u64)m_quantizeTableS));
+		// SHUFPS or UNPCKLPS might be a better choice here. The last one might just be an alias though.
+		PUNPCKLDQ(XMM1, R(XMM1));
+		MULPS(XMM0, R(XMM1));
+		MOVSS(XMM1, M((void *)&m_65535));
+		PUNPCKLDQ(XMM1, R(XMM1));
+		MINPS(XMM0, R(XMM1));
+		CVTTPS2DQ(XMM0, R(XMM0));
+		PACKSSDW(XMM0, R(XMM0));
+		MOVD_xmm(R(EAX), XMM0);
+		BSWAP(32, EAX);
+		ROL(32, R(EAX), Imm8(16));
+		return 32;
+
+	default:
+		UD2();
+		return 0;
+	}
 }
 
-// See comment in header for in/outs.
+
 void CommonAsmRoutines::GenQuantizedStores()
 {
-	const u8* storePairedIllegal = AlignCode4();
-	UD2();
 	const u8* storePairedFloat = AlignCode4();
-
-#if _M_X86_64
-	SHUFPS(XMM0, R(XMM0), 1);
-	MOVQ_xmm(M(&psTemp[0]), XMM0);
-	TEST(32, R(ECX), Imm32(0x0C000000));
-	FixupBranch too_complex = J_CC(CC_NZ, true);
-	MOV(64, R(RAX), M(&psTemp[0]));
-	SwapAndStore(64, MComplex(RBX, RCX, SCALE_1, 0), RAX);
-	FixupBranch skip_complex = J(true);
-	SetJumpTarget(too_complex);
-	ABI_PushRegistersAndAdjustStack(QUANTIZED_REGS_TO_SAVE, true);
-	ABI_CallFunctionR((void *)&WriteDual32, RCX);
-	ABI_PopRegistersAndAdjustStack(QUANTIZED_REGS_TO_SAVE, true);
-	SetJumpTarget(skip_complex);
-	RET();
-#else
-	TEST(32, R(ECX), Imm32(0x0C000000));
-	FixupBranch argh = J_CC(CC_NZ, true);
-	MOVQ_xmm(M(&psTemp[0]), XMM0);
-	MOV(32, R(EAX), M(&psTemp));
-	BSWAP(32, EAX);
-	AND(32, R(ECX), Imm32(Memory::MEMVIEW32_MASK));
-	MOV(32, MDisp(ECX, (u32)Memory::base), R(EAX));
-	MOV(32, R(EAX), M(((char*)&psTemp) + 4));
-	BSWAP(32, EAX);
-	MOV(32, MDisp(ECX, 4+(u32)Memory::base), R(EAX));
-	FixupBranch arg2 = J(true);
-	SetJumpTarget(argh);
-	SHUFPS(XMM0, R(XMM0), 1);
-	MOVQ_xmm(M(&psTemp[0]), XMM0);
-	ABI_PushRegistersAndAdjustStack(QUANTIZED_REGS_TO_SAVE, true);
-	ABI_CallFunctionR((void *)&WriteDual32, ECX);
-	ABI_PopRegistersAndAdjustStack(QUANTIZED_REGS_TO_SAVE, true);
-	SetJumpTarget(arg2);
-	RET();
-#endif
-
-	const u8* storePairedU8 = AlignCode4();
-	SHR(32, R(EAX), Imm8(6));
-	MOVSS(XMM1, MDisp(EAX, (u32)(u64)m_quantizeTableS));
-	PUNPCKLDQ(XMM1, R(XMM1));
-	MULPS(XMM0, R(XMM1));
-	MOVSS(XMM1, M((void *)&m_65535));
-	PUNPCKLDQ(XMM1, R(XMM1));
-	MINPS(XMM0, R(XMM1));
-	CVTTPS2DQ(XMM0, R(XMM0));
-	PACKSSDW(XMM0, R(XMM0));
-	PACKUSWB(XMM0, R(XMM0));
-	MOVD_xmm(R(EAX), XMM0);
-	SafeWriteRegToReg(AX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
-
-	RET();
-
-	const u8* storePairedS8 = AlignCode4();
-	SHR(32, R(EAX), Imm8(6));
-	MOVSS(XMM1, MDisp(EAX, (u32)(u64)m_quantizeTableS));
-	PUNPCKLDQ(XMM1, R(XMM1));
-	MULPS(XMM0, R(XMM1));
-	MOVSS(XMM1, M((void *)&m_65535));
-	PUNPCKLDQ(XMM1, R(XMM1));
-	MINPS(XMM0, R(XMM1));
-	CVTTPS2DQ(XMM0, R(XMM0));
-	PACKSSDW(XMM0, R(XMM0));
-	PACKSSWB(XMM0, R(XMM0));
-	MOVD_xmm(R(EAX), XMM0);
-
-	SafeWriteRegToReg(AX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
-
-	RET();
-
-	const u8* storePairedU16 = AlignCode4();
-	SHR(32, R(EAX), Imm8(6));
-	MOVSS(XMM1, MDisp(EAX, (u32)(u64)m_quantizeTableS));
-	PUNPCKLDQ(XMM1, R(XMM1));
-	MULPS(XMM0, R(XMM1));
-
-	// PACKUSDW is available only in SSE4
-	PXOR(XMM1, R(XMM1));
-	MAXPS(XMM0, R(XMM1));
-	MOVSS(XMM1, M((void *)&m_65535));
-	PUNPCKLDQ(XMM1, R(XMM1));
-	MINPS(XMM0, R(XMM1));
-
-	CVTTPS2DQ(XMM0, R(XMM0));
-	MOVQ_xmm(M(psTemp), XMM0);
-	// place ps[0] into the higher word, ps[1] into the lower
-	// so no need in ROL after BSWAP
-	MOVZX(32, 16, EAX, M((char*)psTemp + 0));
-	SHL(32, R(EAX), Imm8(16));
-	MOV(16, R(AX), M((char*)psTemp + 4));
-
-	BSWAP(32, EAX);
-	SafeWriteRegToReg(EAX, ECX, 32, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
-
-	RET();
-
-	const u8* storePairedS16 = AlignCode4();
-	SHR(32, R(EAX), Imm8(6));
-	MOVSS(XMM1, MDisp(EAX, (u32)(u64)m_quantizeTableS));
-	// SHUFPS or UNPCKLPS might be a better choice here. The last one might just be an alias though.
-	PUNPCKLDQ(XMM1, R(XMM1));
-	MULPS(XMM0, R(XMM1));
-	MOVSS(XMM1, M((void *)&m_65535));
-	PUNPCKLDQ(XMM1, R(XMM1));
-	MINPS(XMM0, R(XMM1));
-	CVTTPS2DQ(XMM0, R(XMM0));
-	PACKSSDW(XMM0, R(XMM0));
-	MOVD_xmm(R(EAX), XMM0);
-	BSWAP(32, EAX);
-	ROL(32, R(EAX), Imm8(16));
-	SafeWriteRegToReg(EAX, ECX, 32, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
-
-	RET();
+	const u8* pairedStores[8];
+	for (unsigned i = 0; i < 8; ++i)
+	{
+		pairedStores[i] = AlignCode16();
+		int size = GenQuantizedPairedStore((EQuantizeType)i);
+		SafeWriteRegToReg(EAX, ECX, size, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM | SAFE_LOADSTORE_NO_SWAP);
+		RET();
+	}
 
 	pairedStoreQuantized = reinterpret_cast<const u8**>(const_cast<u8*>(AlignCode16()));
 	ReserveCodeSpace(8 * sizeof(u8*));
-
-	pairedStoreQuantized[0] = storePairedFloat;
-	pairedStoreQuantized[1] = storePairedIllegal;
-	pairedStoreQuantized[2] = storePairedIllegal;
-	pairedStoreQuantized[3] = storePairedIllegal;
-	pairedStoreQuantized[4] = storePairedU8;
-	pairedStoreQuantized[5] = storePairedU16;
-	pairedStoreQuantized[6] = storePairedS8;
-	pairedStoreQuantized[7] = storePairedS16;
+	memcpy(pairedStoreQuantized, pairedStores, 8 * sizeof(u8*));
 }
 
 // See comment in header for in/outs.
@@ -260,18 +225,6 @@ void CommonAsmRoutines::GenQuantizedSingleStores()
 	const u8* storeSingleFloat = AlignCode4();
 	SafeWriteF32ToReg(XMM0, ECX, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 	RET();
-	/*
-	if (cpu_info.bSSSE3) {
-		PSHUFB(XMM0, M((void *)pbswapShuffle2x4));
-		// TODO: SafeWriteFloat
-		MOVSS(M(&psTemp[0]), XMM0);
-		MOV(32, R(EAX), M(&psTemp[0]));
-		SafeWriteRegToReg(EAX, ECX, 32, 0, SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
-	} else {
-		MOVSS(M(&psTemp[0]), XMM0);
-		MOV(32, R(EAX), M(&psTemp[0]));
-		SafeWriteRegToReg(EAX, ECX, 32, 0, SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
-	}*/
 
 	const u8* storeSingleU8 = AlignCode4();  // Used by MKWii
 	SHR(32, R(EAX), Imm8(6));
@@ -335,64 +288,24 @@ void CommonAsmRoutines::GenQuantizedLoads()
 
 	const u8* loadPairedFloatTwo = AlignCode4();
 	if (cpu_info.bSSSE3) {
-#if _M_X86_64
 		MOVQ_xmm(XMM0, MComplex(RBX, RCX, 1, 0));
-#else
-		AND(32, R(ECX), Imm32(Memory::MEMVIEW32_MASK));
-		MOVQ_xmm(XMM0, MDisp(ECX, (u32)Memory::base));
-#endif
 		PSHUFB(XMM0, M((void *)pbswapShuffle2x4));
 	} else {
-#if _M_X86_64
 		LoadAndSwap(64, RCX, MComplex(RBX, RCX, 1, 0));
 		ROL(64, R(RCX), Imm8(32));
 		MOVQ_xmm(XMM0, R(RCX));
-#else
-#if 0
-		AND(32, R(ECX), Imm32(Memory::MEMVIEW32_MASK));
-		MOVQ_xmm(XMM0, MDisp(ECX, (u32)Memory::base));
-		PXOR(XMM1, R(XMM1));
-		PSHUFLW(XMM0, R(XMM0), 0xB1);
-		MOVAPD(XMM1, R(XMM0));
-		PSRLW(XMM0, 8);
-		PSLLW(XMM1, 8);
-		POR(XMM0, R(XMM1));
-#else
-		AND(32, R(ECX), Imm32(Memory::MEMVIEW32_MASK));
-		MOV(32, R(EAX), MDisp(ECX, (u32)Memory::base));
-		BSWAP(32, EAX);
-		MOV(32, M(&psTemp[0]), R(RAX));
-		MOV(32, R(EAX), MDisp(ECX, (u32)Memory::base + 4));
-		BSWAP(32, EAX);
-		MOV(32, M(((float *)&psTemp[0]) + 1), R(RAX));
-		MOVQ_xmm(XMM0, M(&psTemp[0]));
-#endif
-#endif
 	}
 	RET();
 
 	const u8* loadPairedFloatOne = AlignCode4();
 	if (cpu_info.bSSSE3) {
-#if _M_X86_64
 		MOVD_xmm(XMM0, MComplex(RBX, RCX, 1, 0));
-#else
-		AND(32, R(ECX), Imm32(Memory::MEMVIEW32_MASK));
-		MOVD_xmm(XMM0, MDisp(ECX, (u32)Memory::base));
-#endif
 		PSHUFB(XMM0, M((void *)pbswapShuffle1x4));
 		UNPCKLPS(XMM0, M((void*)m_one));
 	} else {
-#if _M_X86_64
 		LoadAndSwap(32, RCX, MComplex(RBX, RCX, 1, 0));
 		MOVD_xmm(XMM0, R(RCX));
 		UNPCKLPS(XMM0, M((void*)m_one));
-#else
-		AND(32, R(ECX), Imm32(Memory::MEMVIEW32_MASK));
-		MOV(32, R(EAX), MDisp(ECX, (u32)Memory::base));
-		BSWAP(32, EAX);
-		MOVD_xmm(XMM0, R(EAX));
-		UNPCKLPS(XMM0, M((void*)m_one));
-#endif
 	}
 	RET();
 

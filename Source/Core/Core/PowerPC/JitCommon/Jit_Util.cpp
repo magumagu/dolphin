@@ -426,7 +426,7 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 
 			FixupBranch exit = J();
 			SetJumpTarget(fast);
-			UnsafeLoadToReg(reg_value, addr_loc, accessSize, 0, signExtend);
+			UnsafeLoadToReg(reg_value, addr_loc, accessSize, 0, signExtend, swap);
 			SetJumpTarget(exit);
 		}
 	}

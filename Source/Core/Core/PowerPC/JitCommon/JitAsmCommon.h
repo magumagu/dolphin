@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "Core/PowerPC/Gekko.h"
 #include "Core/PowerPC/JitCommon/Jit_Util.h"
 
 class CommonAsmRoutinesBase
@@ -47,6 +48,8 @@ public:
 
 class CommonAsmRoutines : public CommonAsmRoutinesBase, public EmuCodeBlock
 {
+	int GenQuantizedPairedStore(EQuantizeType kind);
+
 protected:
 	void GenQuantizedLoads();
 	void GenQuantizedStores();
