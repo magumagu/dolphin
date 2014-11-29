@@ -320,9 +320,4 @@ private:
 
 	static void Helper_FloatCompareOrdered(UGeckoInstruction _inst, double a, double b);
 	static void Helper_FloatCompareUnordered(UGeckoInstruction _inst, double a, double b);
-
-	// TODO: These should really be in the save state, although it's unlikely to matter much.
-	// They are for lwarx and its friend stwcxd.
-	static bool g_bReserve;
-	static u32  g_reserveAddr;
 };

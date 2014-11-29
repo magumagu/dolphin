@@ -10,10 +10,6 @@
 #include "Core/PowerPC/Interpreter/Interpreter.h"
 #include "Core/PowerPC/Interpreter/Interpreter_FPUtils.h"
 
-
-bool Interpreter::g_bReserve;
-u32  Interpreter::g_reserveAddr;
-
 u32 Interpreter::Helper_Get_EA(const UGeckoInstruction _inst)
 {
 	return _inst.RA ? (rGPR[_inst.RA] + _inst.SIMM_16) : (u32)_inst.SIMM_16;
@@ -780,8 +776,8 @@ void Interpreter::lwarx(UGeckoInstruction _inst)
 	if (!(PowerPC::ppcState.Exceptions & EXCEPTION_DSI))
 	{
 		rGPR[_inst.RD] = temp;
-		g_bReserve = true;
-		g_reserveAddr = uAddress;
+		PowerPC::ppcState.exclusive_reserve = true;
+		PowerPC::ppcState.exclusive_reserve_address = uAddress;
 	}
 }
 
@@ -789,16 +785,16 @@ void Interpreter::stwcxd(UGeckoInstruction _inst)
 {
 	// Stores Word Conditional indeXed
 	u32 uAddress;
-	if (g_bReserve)
+	if (PowerPC::ppcState.exclusive_reserve)
 	{
 		uAddress = Helper_Get_EA_X(_inst);
 
-		if (uAddress == g_reserveAddr)
+		if (uAddress == PowerPC::ppcState.exclusive_reserve_address)
 		{
 			Memory::Write_U32(rGPR[_inst.RS], uAddress);
 			if (!(PowerPC::ppcState.Exceptions & EXCEPTION_DSI))
 			{
-				g_bReserve = false;
+				PowerPC::ppcState.exclusive_reserve = false;
 				SetCRField(0, 2 | GetXER_SO());
 				return;
 			}

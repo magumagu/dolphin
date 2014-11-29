@@ -40,7 +40,6 @@ void Interpreter::RunTable63(UGeckoInstruction _inst) { m_opTable63[_inst.SUBOP1
 
 void Interpreter::Init()
 {
-	g_bReserve = false;
 	m_EndBlock = false;
 }
 

@@ -98,6 +98,9 @@ struct GC_ALIGNED64(PowerPCState)
 	u32 pagetable_base;
 	u32 pagetable_hashmask;
 
+	bool exclusive_reserve;
+	u32 exclusive_reserve_address;
+
 	InstructionCache iCache;
 };
 
