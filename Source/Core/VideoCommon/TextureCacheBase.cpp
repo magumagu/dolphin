@@ -363,7 +363,7 @@ static TextureCache::TCacheEntryBase* ReturnEntry(unsigned int stage, TextureCac
 
 TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 	u32 const address, unsigned int width, unsigned int height, int const texformat,
-	unsigned int const tlutaddr, int const tlutfmt, bool const use_mipmaps, unsigned int maxlevel, bool const from_tmem)
+	bool const use_mipmaps, unsigned int maxlevel, bool const from_tmem)
 {
 	if (0 == address)
 		return nullptr;
@@ -380,14 +380,8 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 	u32 texID = address;
 	// Hash assigned to texcache entry (also used to generate filenames used for texture dumping and custom texture lookup)
 	u64 tex_hash = TEXHASH_INVALID;
-	u64 tlut_hash = TEXHASH_INVALID;
 
-	u32 full_format = texformat;
 	PC_TexFormat pcfmt = PC_TEX_FMT_NONE;
-
-	const bool isPaletteTexture = (texformat == GX_TF_C4 || texformat == GX_TF_C8 || texformat == GX_TF_C14X2);
-	if (isPaletteTexture)
-		full_format = texformat | (tlutfmt << 16);
 
 	const u32 texture_size = TexDecoder_GetTextureSizeInBytes(expandedWidth, expandedHeight, texformat);
 
@@ -399,23 +393,6 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 
 	// TODO: This doesn't hash GB tiles for preloaded RGBA8 textures (instead, it's hashing more data from the low tmem bank than it should)
 	tex_hash = GetHash64(src_data, texture_size, g_ActiveConfig.iSafeTextureCache_ColorSamples);
-	if (isPaletteTexture)
-	{
-		const u32 palette_size = TexDecoder_GetPaletteSize(texformat);
-		tlut_hash = GetHash64(&texMem[tlutaddr], palette_size, g_ActiveConfig.iSafeTextureCache_ColorSamples);
-
-		// NOTE: For non-paletted textures, texID is equal to the texture address.
-		//       A paletted texture, however, may have multiple texIDs assigned though depending on the currently used tlut.
-		//       This (changing texID depending on the tlut_hash) is a trick to get around
-		//       an issue with Metroid Prime's fonts (it has multiple sets of fonts on each other
-		//       stored in a single texture and uses the palette to make different characters
-		//       visible or invisible. Thus, unless we want to recreate the textures for every drawn character,
-		//       we must make sure that a paletted texture gets assigned multiple IDs for each tlut used.
-		//
-		// TODO: Because texID isn't always the same as the address now, CopyRenderTargetToTexture might be broken now
-		texID ^= ((u32)tlut_hash) ^(u32)(tlut_hash >> 32);
-		tex_hash ^= tlut_hash;
-	}
 
 	// D3D doesn't like when the specified mipmap count would require more than one 1x1-sized LOD in the mipmap chain
 	// e.g. 64x64 with 7 LODs would have the mipmap chain 64x64,32x32,16x16,8x8,4x4,2x2,1x1,1x1, so we limit the mipmap count to 6 there
@@ -426,7 +403,7 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 	if (entry)
 	{
 		// 1. Calculate reference hash:
-		// calculated from RAM texture data for normal textures. Hashes for paletted textures are modified by tlut_hash. 0 for virtual EFB copies.
+		// calculated from RAM texture data for normal textures. 0 for virtual EFB copies.
 		if (g_ActiveConfig.bCopyEFBToTexture && entry->IsEfbCopy())
 			tex_hash = TEXHASH_INVALID;
 
@@ -442,7 +419,7 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 		}
 
 		// 2. b) For normal textures, all texture parameters need to match
-		if (address == entry->addr && tex_hash == entry->hash && full_format == entry->format &&
+		if (address == entry->addr && tex_hash == entry->hash && texformat == entry->format &&
 			entry->num_mipmaps > maxlevel && entry->native_width == nativeW && entry->native_height == nativeH)
 		{
 			return ReturnEntry(stage, entry);
@@ -456,7 +433,7 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 		if (((entry->type == TCET_NORMAL &&
 		     width == entry->virtual_width &&
 		     height == entry->virtual_height &&
-		     full_format == entry->format &&
+			 texformat == entry->format &&
 		     entry->num_mipmaps > maxlevel) ||
 		    (entry->type == TCET_EC_DYNAMIC &&
 		     entry->native_width == width &&
@@ -500,8 +477,7 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 	{
 		if (!(texformat == GX_TF_RGBA8 && from_tmem))
 		{
-			const u8* tlut = &texMem[tlutaddr];
-			pcfmt = TexDecoder_Decode(temp, src_data, expandedWidth, expandedHeight, texformat, tlut, (TlutFormat) tlutfmt);
+			pcfmt = TexDecoder_Decode(temp, src_data, expandedWidth, expandedHeight, texformat);
 		}
 		else
 		{
@@ -540,7 +516,7 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 		entry->Load(width, height, expandedWidth, 0);
 	}
 
-	entry->SetGeneralParameters(address, texture_size, full_format, entry->num_mipmaps, entry->num_layers);
+	entry->SetGeneralParameters(address, texture_size, texformat, entry->num_mipmaps, entry->num_layers);
 	entry->SetDimensions(nativeW, nativeH, width, height);
 	entry->hash = tex_hash;
 
@@ -578,8 +554,7 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 				const u8*& mip_src_data = from_tmem
 					? ((level % 2) ? ptr_odd : ptr_even)
 					: src_data;
-				const u8* tlut = &texMem[tlutaddr];
-				TexDecoder_Decode(temp, mip_src_data, expanded_mip_width, expanded_mip_height, texformat, tlut, (TlutFormat) tlutfmt);
+				TexDecoder_Decode(temp, mip_src_data, expanded_mip_width, expanded_mip_height, texformat);
 				mip_src_data += TexDecoder_GetTextureSizeInBytes(expanded_mip_width, expanded_mip_height, texformat);
 
 				entry->Load(mip_width, mip_height, expanded_mip_width, level);

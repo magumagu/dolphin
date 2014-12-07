@@ -133,19 +133,6 @@ int TexDecoder_GetBlockHeightInTexels(u32 format)
 	}
 }
 
-//returns bytes
-int TexDecoder_GetPaletteSize(int format)
-{
-	switch (format)
-	{
-	case GX_TF_C4: return 16 * 2;
-	case GX_TF_C8: return 256 * 2;
-	case GX_TF_C14X2: return 16384 * 2;
-	default:
-		return 0;
-	}
-}
-
 void TexDecoder_SetTexFmtOverlayOptions(bool enable, bool center)
 {
 	TexFmt_Overlay_Enable = enable;
@@ -246,9 +233,9 @@ static void TexDecoder_DrawOverlay(u8 *dst, int width, int height, int texformat
 	}
 }
 
-PC_TexFormat TexDecoder_Decode(u8 *dst, const u8 *src, int width, int height, int texformat, const u8* tlut, TlutFormat tlutfmt)
+PC_TexFormat TexDecoder_Decode(u8 *dst, const u8 *src, int width, int height, int texformat)
 {
-	PC_TexFormat pc_texformat = _TexDecoder_DecodeImpl((u32*)dst, src, width, height, texformat, tlut, tlutfmt);
+	PC_TexFormat pc_texformat = _TexDecoder_DecodeImpl((u32*)dst, src, width, height, texformat);
 
 	if (TexFmt_Overlay_Enable && pc_texformat != PC_TEX_FMT_NONE)
 		TexDecoder_DrawOverlay(dst, width, height, texformat, pc_texformat);
@@ -293,21 +280,6 @@ static inline u32 DecodePixel_RGB5A3(u16 val)
 	return r | (g<<8) | (b << 16) | (a << 24);
 }
 
-static inline u32 DecodePixel_Paletted(u16 pixel, TlutFormat tlutfmt)
-{
-	switch (tlutfmt)
-	{
-	case GX_TL_IA8:
-		return DecodePixel_IA8(pixel);
-	case GX_TL_RGB565:
-		return DecodePixel_RGB565(Common::swap16(pixel));
-	case GX_TL_RGB5A3:
-		return DecodePixel_RGB5A3(Common::swap16(pixel));
-	default:
-		return 0;
-	}
-}
-
 struct DXTBlock
 {
 	u16 color1;
@@ -320,7 +292,7 @@ static inline u32 MakeRGBA(int r, int g, int b, int a)
 	return (a<<24)|(b<<16)|(g<<8)|r;
 }
 
-void TexDecoder_DecodeTexel(u8 *dst, const u8 *src, int s, int t, int imageWidth, int texformat, const u8* tlut_, TlutFormat tlutfmt)
+void TexDecoder_DecodeTexel(u8 *dst, const u8 *src, int s, int t, int imageWidth, int texformat)
 {
 	/* General formula for computing texture offset
 	//
@@ -336,23 +308,7 @@ void TexDecoder_DecodeTexel(u8 *dst, const u8 *src, int s, int t, int imageWidth
 	switch (texformat)
 	{
 	case GX_TF_C4:
-		{
-			u16 sBlk = s >> 3;
-			u16 tBlk = t >> 3;
-			u16 widthBlks = (imageWidth >> 3) + 1;
-			u32 base = (tBlk * widthBlks + sBlk) << 5;
-			u16 blkS = s & 7;
-			u16 blkT =  t & 7;
-			u32 blkOff = (blkT << 3) + blkS;
-
-			int rs = (blkOff & 1)?0:4;
-			u32 offset = base + (blkOff >> 1);
-
-			u8 val = (*(src + offset) >> rs) & 0xF;
-			u16 *tlut = (u16*) tlut_;
-
-			*((u32*)dst) = DecodePixel_Paletted(tlut[val], tlutfmt);
-		}
+		assert(0 && "Unimplemented");
 		break;
 	case GX_TF_I4:
 		{
@@ -393,20 +349,7 @@ void TexDecoder_DecodeTexel(u8 *dst, const u8 *src, int s, int t, int imageWidth
 		}
 		break;
 	case GX_TF_C8:
-		{
-			u16 sBlk = s >> 3;
-			u16 tBlk = t >> 2;
-			u16 widthBlks = (imageWidth >> 3) + 1;
-			u32 base = (tBlk * widthBlks + sBlk) << 5;
-			u16 blkS = s & 7;
-			u16 blkT =  t & 3;
-			u32 blkOff = (blkT << 3) + blkS;
-
-			u8 val = *(src + base + blkOff);
-			u16 *tlut = (u16*) tlut_;
-
-			*((u32*)dst) = DecodePixel_Paletted(tlut[val], tlutfmt);
-		}
+		assert(0 && "Unimplemented");
 		break;
 	case GX_TF_IA4:
 		{
@@ -444,23 +387,7 @@ void TexDecoder_DecodeTexel(u8 *dst, const u8 *src, int s, int t, int imageWidth
 		}
 		break;
 	case GX_TF_C14X2:
-		{
-			u16 sBlk = s >> 2;
-			u16 tBlk = t >> 2;
-			u16 widthBlks = (imageWidth >> 2) + 1;
-			u32 base = (tBlk * widthBlks + sBlk) << 4;
-			u16 blkS = s & 3;
-			u16 blkT =  t & 3;
-			u32 blkOff = (blkT << 2) + blkS;
-
-			u32 offset = (base + blkOff) << 1;
-			const u16* valAddr = (u16*)(src + offset);
-
-			u16 val = Common::swap16(*valAddr) & 0x3FFF;
-			u16 *tlut = (u16*) tlut_;
-
-			*((u32*)dst) = DecodePixel_Paletted(tlut[val], tlutfmt);
-		}
+		assert(0 && "Unimplemented");
 		break;
 	case GX_TF_RGB565:
 		{
