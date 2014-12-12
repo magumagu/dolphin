@@ -396,6 +396,13 @@ void Advance()
 	PowerPC::ppcState.downcount = slicelength;
 
 	// Handle performance counters
+	// Notes on performance counters:
+	// 1. This code isn't sufficient to handle Harry Potter and the Prisoner of Azkaban
+	// 2. This code is extremely inaccurate in terms of timing, and it supports fewer types
+	// of statistics compared to the old code.
+	// 3. The old code is unusably slow, and that matters because Resident Evil turns on
+	// perf counters (although they aren't necessary for proper function there).  See 5666.
+	// The perf hit for this version is zero.
 	if (MMCR0.Hex || MMCR1.Hex)
 	{
 		if (MMCR0.PMC1SELECT == 1)
