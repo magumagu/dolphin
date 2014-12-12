@@ -302,6 +302,8 @@ bool Jit64::Cleanup()
 		ABI_PopRegistersAndAdjustStack({}, 0);
 		did_something = true;
 	}
+
+	return did_something;
 }
 
 void Jit64::WriteExit(u32 destination, bool bl, u32 after)
