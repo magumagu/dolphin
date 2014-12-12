@@ -366,6 +366,7 @@ void Interpreter::mtspr(UGeckoInstruction _inst)
 		WARN_LOG(POWERPC, "Changing MMCR1 %d %d", MMCR1.PMC3SELECT, MMCR1.PMC4SELECT);
 		break;
 	}
+	WARN_LOG(POWERPC, "Changing MMCR0 %d %d", MMCR0.PMC1SELECT, MMCR0.PMC2SELECT);
 }
 
 void Interpreter::crand(UGeckoInstruction _inst)
