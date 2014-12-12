@@ -404,6 +404,7 @@ void Advance()
 			pmc = std::min(pmc + cyclesExecuted, 0x80000000U);
 			if (pmc == 0x80000000U && MMCR0.ENINT && MMCR0.PMC1INTCONTROL)
 			{
+				WARN_LOG(POWERPC, "Setting exception 1");
 				PowerPC::ppcState.Exceptions |= EXCEPTION_PERFORMANCE_MONITOR;
 				MMCR0.ENINT = 0;
 			}
@@ -415,6 +416,7 @@ void Advance()
 			pmc = std::min(pmc + cyclesExecuted, 0x80000000U);
 			if (pmc == 0x80000000U && MMCR0.ENINT && MMCR0.PMCINTCONTROL)
 			{
+				WARN_LOG(POWERPC, "Setting exception 2");
 				PowerPC::ppcState.Exceptions |= EXCEPTION_PERFORMANCE_MONITOR;
 				MMCR0.ENINT = 0;
 			}
@@ -426,6 +428,7 @@ void Advance()
 			pmc = std::min(pmc + cyclesExecuted, 0x80000000U);
 			if (pmc == 0x80000000U && MMCR0.ENINT && MMCR0.PMCINTCONTROL)
 			{
+				WARN_LOG(POWERPC, "Setting exception 3");
 				PowerPC::ppcState.Exceptions |= EXCEPTION_PERFORMANCE_MONITOR;
 				MMCR0.ENINT = 0;
 			}
@@ -437,6 +440,7 @@ void Advance()
 			pmc = std::min(pmc + cyclesExecuted, 0x80000000U);
 			if (pmc == 0x80000000U && MMCR0.ENINT && MMCR0.PMCINTCONTROL)
 			{
+				WARN_LOG(POWERPC, "Setting exception 4");
 				PowerPC::ppcState.Exceptions |= EXCEPTION_PERFORMANCE_MONITOR;
 				MMCR0.ENINT = 0;
 			}
