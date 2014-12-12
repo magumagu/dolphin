@@ -357,6 +357,14 @@ void Interpreter::mtspr(UGeckoInstruction _inst)
 	case SPR_XER:
 		SetXER(rSPR(iIndex));
 		break;
+
+	case SPR_MMCR0:
+		WARN_LOG(POWERPC, "Changing MMCR0 %d %d", MMCR0.PMC1SELECT, MMCR0.PMC2SELECT);
+		break;
+
+	case SPR_MMCR1:
+		WARN_LOG(POWERPC, "Changing MMCR1 %d %d", MMCR1.PMC3SELECT, MMCR1.PMC4SELECT);
+		break;
 	}
 }
 
