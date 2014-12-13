@@ -213,6 +213,9 @@ void Jit64::ClearCache()
 	trampolines.ClearCodeSpace();
 	farcode.ClearCodeSpace();
 	ClearCodeSpace();
+	registersInUseAtLoc.clear();
+	pcAtLoc.clear();
+	dsiHandlerAtLoc.clear();
 	m_clear_cache_asap = false;
 }
 
