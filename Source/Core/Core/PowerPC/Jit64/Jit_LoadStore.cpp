@@ -13,43 +13,6 @@
 
 using namespace Gen;
 
-void Jit64::SafeLoadToReg_Fast(X64Reg reg_value, const Gen::OpArg & opAddress, int accessSize, s32 offset, BitSet32 registersInUse, bool signExtend, int flags)
-{
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bFastmem &&
-		!opAddress.IsImm() &&
-		!(flags & (SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_FASTMEM))
-#ifdef ENABLE_MEM_CHECK
-		&& !SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableDebugging
-#endif
-		)
-	{
-		u8 *mov = UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
-
-		registersInUseAtLoc[mov] = registersInUse;
-
-		// Write out DSI exception code; it will get used if the load is backpatched.
-		SwitchToFarCode();
-		dsiHandlerAtLoc[mov] = GetCodePtr();
-
-		UD2();
-		ADD(64, R(RSP), Imm8(8));
-
-		gpr.Flush(FLUSH_MAINTAIN_STATE);
-		fpr.Flush(FLUSH_MAINTAIN_STATE);
-
-		// If a memory exception occurs, the exception handler will read
-		// from PC.  Update PC with the latest value in case that happens.
-		MOV(32, PPCSTATE(pc), Imm32(js.compilerPC));
-		WriteExceptionExit();
-		SwitchToNearCode();
-		js.fastmem_loadstore = true;
-	}
-	else
-	{
-		SafeLoadToReg(reg_value, opAddress, accessSize, offset, registersInUse, signExtend, flags | SAFE_LOADSTORE_NO_FASTMEM);
-	}
-}
-
 void Jit64::lXXx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
@@ -287,14 +250,15 @@ void Jit64::lXXx(UGeckoInstruction inst)
 	BitSet32 registersInUse = CallerSavedRegistersInUse();
 	if (update && storeAddress)
 	{
+		gpr.BindToRegister(a, true, true);
 		// We need to save the (usually scratch) address register for the update.
 		registersInUse[RSCRATCH2] = true;
 	}
-	SafeLoadToReg_Fast(gpr.RX(d), opAddress, accessSize, loadOffset, registersInUse, signExtend);
+
+	SafeLoadToReg(gpr.RX(d), opAddress, accessSize, loadOffset, registersInUse, signExtend, SAFE_LOADSTORE_FAST_DSI);
 
 	if (update && storeAddress)
 	{
-		gpr.BindToRegister(a, true, true);
 		MEMCHECK_START(false)
 		MOV(32, gpr.R(a), opAddress);
 		MEMCHECK_END

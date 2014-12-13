@@ -83,7 +83,8 @@ protected:
 		bool carryFlagSet;
 		bool carryFlagInverted;
 		bool next_inst_bp;
-		bool fastmem_loadstore;
+		
+		const u8 *fastmem_loadstore;
 
 		int fifoBytesThisBlock;
 

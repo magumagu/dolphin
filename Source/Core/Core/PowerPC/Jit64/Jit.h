@@ -150,8 +150,6 @@ public:
 	               void (Gen::XEmitter::*sseOp)(Gen::X64Reg, Gen::OpArg), UGeckoInstruction inst, bool packed = false, bool roundRHS = false);
 	void FloatCompare(UGeckoInstruction inst, bool upper = false);
 
-	void SafeLoadToReg_Fast(Gen::X64Reg reg_value, const Gen::OpArg & opAddress, int accessSize, s32 offset, BitSet32 registersInUse, bool signExtend, int flags = 0);
-
 	// OPCODES
 	void unknown_instruction(UGeckoInstruction _inst);
 	void FallBackToInterpreter(UGeckoInstruction _inst);

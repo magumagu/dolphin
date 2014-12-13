@@ -307,6 +307,11 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 		u8 *mov = UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
 
 		registersInUseAtLoc[mov] = registersInUse;
+
+		if ((flags & SAFE_LOADSTORE_FAST_DSI))
+		{
+			jit->js.fastmem_loadstore = mov;
+		}
 	}
 	else
 	{

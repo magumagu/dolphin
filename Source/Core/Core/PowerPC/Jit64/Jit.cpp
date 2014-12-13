@@ -594,7 +594,7 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 	js.skipnext = false;
 	js.carryFlagSet = false;
 	js.carryFlagInverted = false;
-	js.fastmem_loadstore = false;
+	js.fastmem_loadstore = nullptr;
 	js.compilerPC = nextPC;
 	// Translate instructions
 	for (u32 i = 0; i < code_block.m_num_instructions; i++)
@@ -760,17 +760,24 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 			for (int j : ~ops[i].fprInUse)
 				fpr.StoreFromRegister(j);
 
-			if (js.fastmem_loadstore)
+			if (js.memcheck && (opinfo->flags & FL_LOADSTORE))
 			{
-				js.fastmem_loadstore = false;
-			}
-			else if (js.memcheck && (opinfo->flags & FL_LOADSTORE))
-			{
-				TEST(32, PPCSTATE(Exceptions), Imm32(EXCEPTION_DSI));
-				FixupBranch memException = J_CC(CC_NZ, true);
+				if (js.fastmem_loadstore)
+				{
+					SwitchToFarCode();
+					dsiHandlerAtLoc[(u8*)js.fastmem_loadstore] = GetCodePtr();
 
-				SwitchToFarCode();
-				SetJumpTarget(memException);
+					ADD(64, R(RSP), Imm8(8));
+					js.fastmem_loadstore = nullptr;
+				}
+				else
+				{
+					TEST(32, PPCSTATE(Exceptions), Imm32(EXCEPTION_DSI));
+					FixupBranch memException = J_CC(CC_NZ, true);
+
+					SwitchToFarCode();
+					SetJumpTarget(memException);
+				}
 
 				gpr.Flush(FLUSH_MAINTAIN_STATE);
 				fpr.Flush(FLUSH_MAINTAIN_STATE);

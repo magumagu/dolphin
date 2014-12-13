@@ -98,7 +98,8 @@ public:
 		SAFE_LOADSTORE_NO_SWAP = 1,
 		SAFE_LOADSTORE_NO_PROLOG = 2,
 		SAFE_LOADSTORE_NO_FASTMEM = 4,
-		SAFE_LOADSTORE_CLOBBER_RSCRATCH_INSTEAD_OF_ADDR = 8
+		SAFE_LOADSTORE_CLOBBER_RSCRATCH_INSTEAD_OF_ADDR = 8,
+		SAFE_LOADSTORE_FAST_DSI = 16
 	};
 
 	void SafeLoadToReg(Gen::X64Reg reg_value, const Gen::OpArg & opAddress, int accessSize, s32 offset, BitSet32 registersInUse, bool signExtend, int flags = 0);
