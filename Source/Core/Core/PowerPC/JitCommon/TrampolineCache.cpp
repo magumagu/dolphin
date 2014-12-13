@@ -197,6 +197,7 @@ size_t TrampolineCacheKeyHasher::operator()(const TrampolineCacheKey& k) const
 	res ^= std::hash<bool>()(k.info.signExtend)    << 2;
 	res ^= std::hash<bool>()(k.info.hasImmediate)  << 3;
 	res ^= std::hash<bool>()(k.info.isMemoryWrite) << 4;
+	res ^= std::hash<const u8*>()(k.dsiHandlerPtr);
 
 	return res;
 }
@@ -205,6 +206,6 @@ bool TrampolineCacheKey::operator==(const TrampolineCacheKey &other) const
 {
 	return pc == other.pc &&
 	       registersInUse == other.registersInUse &&
-		   dsiHandlerPtr == other.dsiHandlerPtr &&
+	       dsiHandlerPtr == other.dsiHandlerPtr &&
 	       info == other.info;
 }
