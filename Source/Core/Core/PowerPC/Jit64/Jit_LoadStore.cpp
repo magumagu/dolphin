@@ -255,7 +255,7 @@ void Jit64::lXXx(UGeckoInstruction inst)
 		registersInUse[RSCRATCH2] = true;
 	}
 
-	SafeLoadToReg(gpr.RX(d), opAddress, accessSize, loadOffset, registersInUse, signExtend);
+	SafeLoadToReg(gpr.RX(d), opAddress, accessSize, loadOffset, registersInUse, signExtend, SAFE_LOADSTORE_FAST_DSI);
 
 	if (update && storeAddress)
 	{
