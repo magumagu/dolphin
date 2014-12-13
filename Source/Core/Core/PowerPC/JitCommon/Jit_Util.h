@@ -141,4 +141,5 @@ public:
 protected:
 	std::unordered_map<u8 *, BitSet32> registersInUseAtLoc;
 	std::unordered_map<u8 *, u32> pcAtLoc;
+	std::unordered_map<u8 *, const u8*> dsiHandlerAtLoc;
 };

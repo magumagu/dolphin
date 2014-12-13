@@ -405,13 +405,13 @@ void RegCache::Flush(FlushMode mode)
 {
 	for (unsigned int i = 0; i < xregs.size(); i++)
 	{
-		if (xregs[i].locked)
+		if (xregs[i].locked && mode != FLUSH_MAINTAIN_STATE)
 			PanicAlert("Someone forgot to unlock X64 reg %u", i);
 	}
 
 	for (unsigned int i = 0; i < regs.size(); i++)
 	{
-		if (regs[i].locked)
+		if (regs[i].locked && mode != FLUSH_MAINTAIN_STATE)
 		{
 			PanicAlert("Someone forgot to unlock PPC reg %u (X64 reg %i).", i, RX(i));
 		}

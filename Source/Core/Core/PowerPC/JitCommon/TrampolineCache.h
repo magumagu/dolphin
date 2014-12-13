@@ -18,6 +18,7 @@ struct TrampolineCacheKey
 {
 	BitSet32 registersInUse;
 	u32 pc;
+	const u8* dsiHandlerPtr;
 	InstructionInfo info;
 
 	bool operator==(const TrampolineCacheKey &other) const;
@@ -34,12 +35,12 @@ public:
 	void Init();
 	void Shutdown();
 
-	const u8* GetReadTrampoline(const InstructionInfo &info, BitSet32 registersInUse);
+	const u8* GetReadTrampoline(const InstructionInfo &info, BitSet32 registersInUse, const u8* dsiHandlerPtr);
 	const u8* GetWriteTrampoline(const InstructionInfo &info, BitSet32 registersInUse, u32 pc);
 	void ClearCodeSpace();
 
 private:
-	const u8* GenerateReadTrampoline(const InstructionInfo &info, BitSet32 registersInUse);
+	const u8* GenerateReadTrampoline(const InstructionInfo &info, BitSet32 registersInUse, const u8* dsiHandlerPtr);
 	const u8* GenerateWriteTrampoline(const InstructionInfo &info, BitSet32 registersInUse, u32 pc);
 
 	std::unordered_map<TrampolineCacheKey, const u8*, TrampolineCacheKeyHasher> cachedTrampolines;

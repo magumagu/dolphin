@@ -594,6 +594,7 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 	js.skipnext = false;
 	js.carryFlagSet = false;
 	js.carryFlagInverted = false;
+	js.fastmem_loadstore = false;
 	js.compilerPC = nextPC;
 	// Translate instructions
 	for (u32 i = 0; i < code_block.m_num_instructions; i++)
@@ -759,7 +760,11 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 			for (int j : ~ops[i].fprInUse)
 				fpr.StoreFromRegister(j);
 
-			if (js.memcheck && (opinfo->flags & FL_LOADSTORE))
+			if (js.fastmem_loadstore)
+			{
+				js.fastmem_loadstore = false;
+			}
+			else if (js.memcheck && (opinfo->flags & FL_LOADSTORE))
 			{
 				TEST(32, PPCSTATE(Exceptions), Imm32(EXCEPTION_DSI));
 				FixupBranch memException = J_CC(CC_NZ, true);

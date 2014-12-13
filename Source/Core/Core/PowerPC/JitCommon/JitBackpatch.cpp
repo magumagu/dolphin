@@ -73,6 +73,13 @@ bool Jitx86Base::BackPatch(u32 emAddress, SContext* ctx)
 
 	BitSet32 registersInUse = it->second;
 
+	const u8 *dsiHandlerCode = nullptr;
+	auto it2 = dsiHandlerAtLoc.find(codePtr);
+	if (it2 != dsiHandlerAtLoc.end())
+	{
+		dsiHandlerCode = it2->second;
+	}
+
 	if (!info.isMemoryWrite)
 	{
 		XEmitter emitter(codePtr);
@@ -101,7 +108,7 @@ bool Jitx86Base::BackPatch(u32 emAddress, SContext* ctx)
 			totalSize += 3;
 		}
 
-		const u8 *trampoline = trampolines.GetReadTrampoline(info, registersInUse);
+		const u8 *trampoline = trampolines.GetReadTrampoline(info, registersInUse, dsiHandlerCode);
 		emitter.CALL((void *)trampoline);
 		int padding = totalSize - BACKPATCH_SIZE;
 		if (padding > 0)

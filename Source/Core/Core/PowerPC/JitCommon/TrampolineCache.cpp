@@ -36,20 +36,20 @@ void TrampolineCache::Shutdown()
 	cachedTrampolines.clear();
 }
 
-const u8* TrampolineCache::GetReadTrampoline(const InstructionInfo &info, BitSet32 registersInUse)
+const u8* TrampolineCache::GetReadTrampoline(const InstructionInfo &info, BitSet32 registersInUse, const u8* dsiHandlerPtr)
 {
-	TrampolineCacheKey key = { registersInUse, 0, info };
+	TrampolineCacheKey key = { registersInUse, 0, dsiHandlerPtr, info };
 
 	auto it = cachedTrampolines.find(key);
 	if (it != cachedTrampolines.end())
 		return it->second;
 
-	const u8* trampoline = GenerateReadTrampoline(info, registersInUse);
+	const u8* trampoline = GenerateReadTrampoline(info, registersInUse, dsiHandlerPtr);
 	cachedTrampolines[key] = trampoline;
 	return trampoline;
 }
 
-const u8* TrampolineCache::GenerateReadTrampoline(const InstructionInfo &info, BitSet32 registersInUse)
+const u8* TrampolineCache::GenerateReadTrampoline(const InstructionInfo &info, BitSet32 registersInUse, const u8* dsiHandlerPtr)
 {
 	if (GetSpaceLeft() < 1024)
 		PanicAlert("Trampoline cache full");
@@ -89,13 +89,20 @@ const u8* TrampolineCache::GenerateReadTrampoline(const InstructionInfo &info, B
 	MOV(dataRegSize, R(dataReg), R(ABI_RETURN));
 
 	ABI_PopRegistersAndAdjustStack(registersInUse, 8);
+
+	if (dsiHandlerPtr)
+	{
+		TEST(32, PPCSTATE(Exceptions), Imm32(EXCEPTION_DSI));
+		J_CC(CC_NZ, dsiHandlerPtr);
+	}
+
 	RET();
 	return trampoline;
 }
 
 const u8* TrampolineCache::GetWriteTrampoline(const InstructionInfo &info, BitSet32 registersInUse, u32 pc)
 {
-	TrampolineCacheKey key = { registersInUse, pc, info };
+	TrampolineCacheKey key = { registersInUse, pc, 0, info };
 
 	auto it = cachedTrampolines.find(key);
 	if (it != cachedTrampolines.end())
@@ -198,5 +205,6 @@ bool TrampolineCacheKey::operator==(const TrampolineCacheKey &other) const
 {
 	return pc == other.pc &&
 	       registersInUse == other.registersInUse &&
+		   dsiHandlerPtr == other.dsiHandlerPtr &&
 	       info == other.info;
 }
