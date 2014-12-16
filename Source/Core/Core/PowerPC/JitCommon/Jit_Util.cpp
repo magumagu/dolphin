@@ -307,6 +307,7 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 		u8 *mov = UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
 
 		registersInUseAtLoc[mov] = registersInUse;
+		dsiHandlerAtLoc[mov] = 0;
 
 		if ((flags & SAFE_LOADSTORE_FAST_DSI))
 		{
