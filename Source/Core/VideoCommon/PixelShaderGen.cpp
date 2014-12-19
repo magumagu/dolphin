@@ -317,54 +317,32 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 		// is always inside the primitive.
 		// Without MSAA, this flag is defined to have no effect.
 		uid_data->stereo = g_ActiveConfig.iStereoMode > 0;
-		if (g_ActiveConfig.backend_info.bSupportsGeometryShaders)
+		out.Write("in VertexData {\n");
+		out.Write("centroid in float4 colors_02;\n");
+		out.Write("centroid in float4 colors_12;\n");
+		// compute window position if needed because binding semantic WPOS is not widely supported
+		// Let's set up attributes
+		for (unsigned int i = 0; i < numTexgen; ++i)
 		{
-			out.Write("in VertexData {\n");
-			out.Write("\tcentroid %s VS_OUTPUT o;\n", g_ActiveConfig.backend_info.bSupportsBindingLayout ? "" : "in");
-
-			if (g_ActiveConfig.iStereoMode > 0)
-				out.Write("\tflat int layer;\n");
-
-			out.Write("};\n");
+			out.Write("centroid in float3 uv%d;\n", i);
 		}
-		else
+		out.Write("centroid in float4 clipPos;\n");
+		if (g_ActiveConfig.bEnablePixelLighting)
 		{
-			out.Write("centroid in float4 colors_02;\n");
-			out.Write("centroid in float4 colors_12;\n");
-			// compute window position if needed because binding semantic WPOS is not widely supported
-			// Let's set up attributes
-			for (unsigned int i = 0; i < numTexgen; ++i)
-			{
-				out.Write("centroid in float3 uv%d;\n", i);
-			}
-			out.Write("centroid in float4 clipPos;\n");
-			if (g_ActiveConfig.bEnablePixelLighting)
-			{
-				out.Write("centroid in float4 Normal;\n");
-			}
+			out.Write("centroid in float4 Normal;\n");
 		}
+
+		if (g_ActiveConfig.iStereoMode > 0)
+			out.Write("\tflat int layer;\n");
+
+		out.Write("};\n");
 
 		out.Write("void main()\n{\n");
 
-		if (g_ActiveConfig.backend_info.bSupportsGeometryShaders)
-		{
-			// compute window position if needed because binding semantic WPOS is not widely supported
-			// Let's set up attributes
-			for (unsigned int i = 0; i < numTexgen; ++i)
-			{
-				out.Write("\tfloat3 uv%d = o.tex%d;\n", i, i);
-			}
-			out.Write("\tfloat4 clipPos = o.clipPos;\n");
-			if (g_ActiveConfig.bEnablePixelLighting)
-			{
-				out.Write("\tfloat4 Normal = o.Normal;\n");
-			}
-		}
-
 		// On Mali, global variables must be initialized as constants.
 		// This is why we initialize these variables locally instead.
-		out.Write("\tfloat4 colors_0 = %s;\n", g_ActiveConfig.backend_info.bSupportsGeometryShaders ? "o.colors_0" : "colors_02");
-		out.Write("\tfloat4 colors_1 = %s;\n", g_ActiveConfig.backend_info.bSupportsGeometryShaders ? "o.colors_1" : "colors_12");
+		out.Write("\tfloat4 colors_0 = %s;\n", "colors_02");
+		out.Write("\tfloat4 colors_1 = %s;\n", "colors_12");
 
 		out.Write("\tfloat4 rawpos = gl_FragCoord;\n");
 	}

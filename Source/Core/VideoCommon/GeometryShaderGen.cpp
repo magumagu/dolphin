@@ -92,11 +92,27 @@ static inline void GenerateGeometryShader(T& out, u32 primitive_type, API_TYPE A
 			out.Write("#define InstanceID gl_InvocationID\n");
 
 		out.Write("in VertexData {\n");
-		out.Write("\tcentroid %s VS_OUTPUT o;\n", g_ActiveConfig.backend_info.bSupportsBindingLayout ? "" : "in");
-		out.Write("} vs[%d];\n", vertex_in);
+		for (size_t i = 0; i < xfmem.numTexGen.numTexGens; ++i)
+		{
+			out.Write("centroid in float3 uv%d;\n", i);
+		}
+		out.Write("centroid in float4 clipPos;\n");
+		if (g_ActiveConfig.bEnablePixelLighting)
+			out.Write("centroid in float4 Normal;\n");
+		out.Write("centroid in float4 colors_02;\n");
+		out.Write("centroid in float4 colors_12;\n");
+		out.Write("} vs_ib[%d];\n", vertex_in);
 
 		out.Write("out VertexData {\n");
-		out.Write("\tcentroid %s VS_OUTPUT o;\n", g_ActiveConfig.backend_info.bSupportsBindingLayout ? "" : "out");
+		for (size_t i = 0; i < xfmem.numTexGen.numTexGens; ++i)
+		{
+			out.Write("centroid out float3 uv%d;\n", i);
+		}
+		out.Write("centroid out float4 clipPos;\n");
+		if (g_ActiveConfig.bEnablePixelLighting)
+			out.Write("centroid out float4 Normal;\n");
+		out.Write("centroid out float4 colors_02;\n");
+		out.Write("centroid out float4 colors_12;\n");
 
 		if (g_ActiveConfig.iStereoMode > 0)
 			out.Write("\tflat int layer;\n");
@@ -104,6 +120,21 @@ static inline void GenerateGeometryShader(T& out, u32 primitive_type, API_TYPE A
 		out.Write("} ps;\n");
 
 		out.Write("void main()\n{\n");
+		out.Write("\tVS_OUTPUT o[%d];\n", vertex_in);
+
+		for (int index = 0; index < (int)vertex_in; ++index)
+		{
+			for (size_t i = 0; i < xfmem.numTexGen.numTexGens; ++i)
+			{
+				out.Write("\to[%d].tex%d = vs_ib[%d].uv%d;\n", index, i, index, i);
+			}
+			out.Write("\to[%d].clipPos = vs_ib[%d].clipPos;\n", index, index);
+			if (g_ActiveConfig.bEnablePixelLighting)
+				out.Write("\tvs[%d].Normal = vs_ib[%d].Normal;\n", index, index);
+			out.Write("\to[%d].colors_0 = vs_ib[%d].colors_02;\n", index, index);
+			out.Write("\to[%d].colors_1 = vs_ib[%d].colors_12;\n", index, index);
+			out.Write("\to[%d].pos = gl_in[%d].gl_Position;\n", index, index);
+		}
 	}
 	else // D3D
 	{
@@ -131,16 +162,8 @@ static inline void GenerateGeometryShader(T& out, u32 primitive_type, API_TYPE A
 
 	if (primitive_type == PRIMITIVE_LINES)
 	{
-		if (ApiType == API_OPENGL)
-		{
-			out.Write("\tVS_OUTPUT start = vs[0].o;\n");
-			out.Write("\tVS_OUTPUT end = vs[1].o;\n");
-		}
-		else
-		{
-			out.Write("\tVS_OUTPUT start = o[0];\n");
-			out.Write("\tVS_OUTPUT end = o[1];\n");
-		}
+		out.Write("\tVS_OUTPUT start = o[0];\n");
+		out.Write("\tVS_OUTPUT end = o[1];\n");
 
 		// GameCube/Wii's line drawing algorithm is a little quirky. It does not
 		// use the correct line caps. Instead, the line caps are vertical or
@@ -162,10 +185,7 @@ static inline void GenerateGeometryShader(T& out, u32 primitive_type, API_TYPE A
 	}
 	else if (primitive_type == PRIMITIVE_POINTS)
 	{
-		if (ApiType == API_OPENGL)
-			out.Write("\tVS_OUTPUT center = vs[0].o;\n");
-		else
-			out.Write("\tVS_OUTPUT center = o[0];\n");
+		out.Write("\tVS_OUTPUT center = o[0];\n");
 
 		// Offset from center to upper right vertex
 		// Lerp PointSize/2 from [0,0..VpWidth,VpHeight] to [-1,1..1,-1]
@@ -187,10 +207,7 @@ static inline void GenerateGeometryShader(T& out, u32 primitive_type, API_TYPE A
 
 	out.Write("\tfor (int i = 0; i < %d; ++i) {\n", vertex_in);
 
-	if (ApiType == API_OPENGL)
-		out.Write("\tVS_OUTPUT f = vs[i].o;\n");
-	else
-		out.Write("\tVS_OUTPUT f = o[i];\n");
+	out.Write("\tVS_OUTPUT f = o[i];\n");
 
 	if (g_ActiveConfig.iStereoMode > 0)
 	{
@@ -289,9 +306,22 @@ static inline void EmitVertex(T& out, const char* vertex, API_TYPE ApiType, bool
 		out.Write("\tif (i == 0) first = %s;\n", vertex);
 
 	if (ApiType == API_OPENGL)
+	{
+		for (size_t i = 0; i < xfmem.numTexGen.numTexGens; ++i)
+		{
+			out.Write("\tps.uv%d = %s.tex%d;\n", i, vertex, i);
+		}
+		out.Write("\tps.clipPos = %s.clipPos;\n", vertex);
+		if (g_ActiveConfig.bEnablePixelLighting)
+			out.Write("\tps.Normal = %s.Normal;\n", vertex);
+		out.Write("\tps.colors_02 = %s.colors_0;\n", vertex);
+		out.Write("\tps.colors_12 = %s.colors_1;\n", vertex);
 		out.Write("\tgl_Position = %s.pos;\n", vertex);
-
-	out.Write("\tps.o = %s;\n", vertex);
+	}
+	else
+	{
+		out.Write("\tps.o = %s;\n", vertex);
+	}
 
 	if (ApiType == API_OPENGL)
 		out.Write("\tEmitVertex();\n");
