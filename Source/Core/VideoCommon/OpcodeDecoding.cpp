@@ -277,6 +277,55 @@ u32 FifoCommandRunnable()
 
 static void Decode()
 {
+	int cmd_byte = DataReadU8();
+
+	u8 *opcodeStart;
+	bool record = g_bRecordFifoData && cmd_byte != GX_CMD_CALL_DL;
+	if (record)
+		opcodeStart = g_pVideoData-1;
+
+	if(cmd_byte==GX_LOAD_BP_REG){
+		u32 bp_cmd = DataReadU32();
+		LoadBPReg(bp_cmd);
+		INCSTAT(stats.thisFrame.numBPLoads);
+	} else if(cmd_byte==GX_LOAD_CP_REG){
+		u8 sub_cmd = DataReadU8();
+		u32 value = DataReadU32();
+		LoadCPReg(sub_cmd, value);
+		INCSTAT(stats.thisFrame.numCPLoads);
+	} else if(cmd_byte==GX_LOAD_XF_REG){
+		u32 Cmd2 = DataReadU32();
+		int transfer_size = ((Cmd2 >> 16) & 15) + 1;
+		u32 xf_address = Cmd2 & 0xFFFF;
+		GC_ALIGNED128(u32 data_buffer[16]);
+		DataReadU32xFuncs[transfer_size-1](data_buffer);
+		LoadXFReg(transfer_size, xf_address, data_buffer);
+		INCSTAT(stats.thisFrame.numXFLoads);
+	} else if(cmd_byte>=GX_LOAD_INDX_A && cmd_byte<=GX_LOAD_INDX_D){
+		LoadIndexedXF(DataReadU32(), 0xC + (cmd_byte-GX_LOAD_INDX_A)/0x8);
+	} else if(cmd_byte==GX_CMD_CALL_DL){
+		//DataSkip(8);
+		u32 address = DataReadU32();
+		u32 count = DataReadU32();
+		InterpretDisplayList(address, count);
+	} else if(cmd_byte==GX_CMD_UNKNOWN_METRICS || cmd_byte==GX_CMD_INVL_VC){
+		// none
+	} else if ((cmd_byte & 0xC0) == 0x80) {
+		// load vertices (use computed vertex size from FifoCommandRunnable above)
+		u16 numVertices = DataReadU16();
+
+		VertexLoaderManager::RunVertices(
+			cmd_byte & GX_VAT_MASK,   // Vertex loader index (0 - 7)
+			(cmd_byte & GX_PRIMITIVE_MASK) >> GX_PRIMITIVE_SHIFT,
+			numVertices );
+	}
+	// Display lists get added directly into the FIFO stream
+	if (record)
+		FifoRecorder::GetInstance().WriteGPCommand(opcodeStart, u32(g_pVideoData - opcodeStart));
+
+}
+static void Decode2()
+{
 	u8 *opcodeStart = g_pVideoData;
 
 	int cmd_byte = DataReadU8();

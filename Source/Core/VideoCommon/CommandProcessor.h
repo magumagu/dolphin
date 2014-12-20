@@ -16,13 +16,13 @@ namespace CommandProcessor
 {
 
 extern SCPFifoStruct fifo; //This one is shared between gfx thread and emulator thread.
-extern volatile bool isPossibleWaitingSetDrawDone; //This one is used for sync gfx thread and emulator thread.
-extern volatile bool isHiWatermarkActive;
-extern volatile bool isLoWatermarkActive;
-extern volatile bool interruptSet;
-extern volatile bool interruptWaiting;
-extern volatile bool interruptTokenWaiting;
-extern volatile bool interruptFinishWaiting;
+extern volatile u32 isPossibleWaitingSetDrawDone; //This one is used for sync gfx thread and emulator thread.
+extern volatile u32 isHiWatermarkActive;
+extern volatile u32 isLoWatermarkActive;
+extern volatile u32 interruptSet;
+extern volatile u32 interruptWaiting;
+extern volatile u32 interruptTokenWaiting;
+extern volatile u32 interruptFinishWaiting;
 
 // internal hardware addresses
 enum

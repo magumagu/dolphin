@@ -40,16 +40,16 @@ u16 m_bboxright;
 u16 m_bboxbottom;
 u16 m_tokenReg;
 
-static bool bProcessFifoToLoWatermark = false;
-static bool bProcessFifoAllDistance = false;
+static u32 bProcessFifoToLoWatermark = false;
+static u32 bProcessFifoAllDistance = false;
 
-volatile bool isPossibleWaitingSetDrawDone = false;
-volatile bool isHiWatermarkActive = false;
-volatile bool isLoWatermarkActive = false;
-volatile bool interruptSet= false;
-volatile bool interruptWaiting= false;
-volatile bool interruptTokenWaiting = false;
-volatile bool interruptFinishWaiting = false;
+volatile u32 isPossibleWaitingSetDrawDone = false;
+volatile u32 isHiWatermarkActive = false;
+volatile u32 isLoWatermarkActive = false;
+volatile u32 interruptSet= false;
+volatile u32 interruptWaiting= false;
+volatile u32 interruptTokenWaiting = false;
+volatile u32 interruptFinishWaiting = false;
 
 volatile u32 VITicks = CommandProcessor::m_cpClockOrigin;
 
@@ -414,7 +414,7 @@ void SetCpStatus(bool isCPUThread)
 	isHiWatermarkActive = ovfInt && m_CPCtrlReg.GPReadEnable;
 	isLoWatermarkActive = undfInt && m_CPCtrlReg.GPReadEnable;
 
-	if (interrupt != interruptSet && !interruptWaiting)
+	if (u32(interrupt) != interruptSet && !interruptWaiting)
 	{
 		u64 userdata = interrupt?1:0;
 		if (IsOnThread())

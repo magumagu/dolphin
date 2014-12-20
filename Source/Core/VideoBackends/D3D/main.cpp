@@ -89,6 +89,8 @@ void InitBackendInfo()
 	g_Config.backend_info.bSupportsPrimitiveRestart = true;
 	g_Config.backend_info.bSupportsOversizedViewports = false;
 
+	g_Config.backend_info.bSupportsLogicOp = false;
+
 	IDXGIFactory* factory;
 	IDXGIAdapter* ad;
 	hr = DX11::PCreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&factory);

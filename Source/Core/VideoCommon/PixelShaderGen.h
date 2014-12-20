@@ -78,7 +78,8 @@ struct pixel_shader_uid_data
 	u32 per_pixel_depth : 1;
 	u32 forced_early_z : 1;
 	u32 early_ztest : 1;
-	u32 pad1 : 1;
+
+	u32 debug_zfreeze : 1;
 
 	u32 texMtxInfo_n_projection : 8; // 8x1 bit
 	u32 tevindref_bi0 : 3;
@@ -105,34 +106,36 @@ struct pixel_shader_uid_data
 		else if (index == 3) { tevindref_bi4 = texmap; }
 	}
 
-	struct {
+	struct StageHash2{
 		// TODO: Can save a lot space by removing the padding bits
-		u32 cc : 24;
-		u32 ac : 24;
+		u64 cc : 24;
+		u64 ac : 24;
+		 
+		u64 tevorders_texmap : 3;
+		u64 tevorders_texcoord : 3;
+		u64 tevorders_enable : 1;
+		u64 tevorders_colorchan : 3;
+		u64 hasindstage : 1;
+		u64 pad0 : 5;
 
-		u32 tevorders_texmap : 3;
-		u32 tevorders_texcoord : 3;
-		u32 tevorders_enable : 1;
-		u32 tevorders_colorchan : 3;
-		u32 pad1 : 6;
-
+		u64 tevind : 21;
 		// TODO: Clean up the swapXY mess
-		u32 hasindstage : 1;
-		u32 tevind : 21;
-		u32 tevksel_swap1a : 2;
-		u32 tevksel_swap2a : 2;
-		u32 tevksel_swap1b : 2;
-		u32 tevksel_swap2b : 2;
-		u32 pad2 : 2;
+		u64 tevksel_swap1a : 2;
+		u64 tevksel_swap2a : 2;
+		u64 tevksel_swap1b : 2;
+		u64 tevksel_swap2b : 2;
+		u64 tevksel_swap1c : 2;
+		u64 tevksel_swap2c : 2;
+		u64 tevksel_swap1d : 2;
+		u64 tevksel_swap2d : 2;
+		u64 tevksel_kc : 5;
+		u64 tevksel_ka : 5;
+		u64 pad1 : 15;
+	};
+	
+	StageHash2 stagehash[16];
 
-		u32 tevksel_swap1c : 2;
-		u32 tevksel_swap2c : 2;
-		u32 tevksel_swap1d : 2;
-		u32 tevksel_swap2d : 2;
-		u32 tevksel_kc : 5;
-		u32 tevksel_ka : 5;
-		u32 pad3 : 14;
-	} stagehash[16];
+	static_assert(sizeof(StageHash2) == 8*2,"nnn");
 
 	// TODO: I think we're fine without an enablePixelLighting field, should probably double check, though..
 	LightingUidData lighting;

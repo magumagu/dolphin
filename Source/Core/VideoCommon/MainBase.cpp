@@ -1,7 +1,7 @@
 
 #include "Common/Atomic.h"
 #include "Core/ConfigManager.h"
-
+#include "Core/CoreTiming.h"
 #include "VideoCommon/BPStructs.h"
 #include "VideoCommon/CommandProcessor.h"
 #include "VideoCommon/Fifo.h"
@@ -116,6 +116,12 @@ void VideoBackendHardware::Video_EndField()
 	if (s_BackendInitialized)
 	{
 		Common::AtomicStoreRelease(s_swapRequested, true);
+		//ttttttttttt
+		/*while (g_video_backend->Video_IsPossibleWaitingSetDrawDone())
+		{
+			CoreTiming::ProcessFifoWaitEvents();
+			Common::YieldCPU();
+		}*/
 	}
 }
 
@@ -299,12 +305,12 @@ void VideoBackendHardware::Video_GatherPipeBursted()
 
 bool VideoBackendHardware::Video_IsPossibleWaitingSetDrawDone()
 {
-	return CommandProcessor::isPossibleWaitingSetDrawDone;
+	return CommandProcessor::isPossibleWaitingSetDrawDone!=0;
 }
 
 bool VideoBackendHardware::Video_IsHiWatermarkActive()
 {
-	return CommandProcessor::isHiWatermarkActive;
+	return CommandProcessor::isHiWatermarkActive!=0;
 }
 
 void VideoBackendHardware::Video_AbortFrame()

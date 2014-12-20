@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "d3d11.h"
+#include "d3d11_1.h"
 
 #include "VideoBackends/D3D/D3DTexture.h"
 #include "VideoCommon/FramebufferManagerBase.h"

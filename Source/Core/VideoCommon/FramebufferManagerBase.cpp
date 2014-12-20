@@ -89,9 +89,9 @@ const XFBSourceBase* const* FramebufferManagerBase::GetVirtualXFBSource(u32 xfbA
 	u32 srcLower = xfbAddr;
 	u32 srcUpper = xfbAddr + 2 * fbWidth * fbHeight;
 
-	VirtualXFBListType::reverse_iterator
-		it = m_virtualXFBList.rbegin(),
-		vlend = m_virtualXFBList.rend();
+	VirtualXFBListType::iterator
+		it = m_virtualXFBList.begin(),
+		vlend = m_virtualXFBList.end();
 	for (; it != vlend; ++it)
 	{
 		VirtualXFB* vxfb = &*it;
@@ -140,8 +140,13 @@ void FramebufferManagerBase::CopyToVirtualXFB(u32 xfbAddr, u32 fbWidth, u32 fbHe
 	//else // replace existing virtual XFB
 
 	// move this Virtual XFB to the front of the list.
-	if (m_virtualXFBList.begin() != vxfb)
-		m_virtualXFBList.splice(m_virtualXFBList.begin(), m_virtualXFBList, vxfb);
+	if (vxfb != m_virtualXFBList.begin()) {
+		auto v = *vxfb;
+		m_virtualXFBList.erase(vxfb);
+		m_virtualXFBList.push_front(v);
+		vxfb = begin(m_virtualXFBList);
+	}
+	
 
 	unsigned int target_width, target_height;
 	g_framebuffer_manager->GetTargetSize(&target_width, &target_height, sourceRc);

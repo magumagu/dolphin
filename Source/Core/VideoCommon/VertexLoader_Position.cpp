@@ -96,6 +96,13 @@ void LOADERDECL Pos_ReadIndex()
 	auto const index = DataRead<I>();
 	auto const data = reinterpret_cast<const T*>(cached_arraybases[ARRAY_POSITION] + (index * arraystrides[ARRAY_POSITION]));
 	auto const scale = posScale;
+	if (index == 0xFFFF) {
+		DataWriter dst;
+		dst.Write( NAN );
+		dst.Write( NAN );
+		dst.Write( NAN );
+		return;
+	}
 	DataWriter dst;
 
 	for (int i = 0; i < 3; ++i)

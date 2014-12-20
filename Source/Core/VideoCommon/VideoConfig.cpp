@@ -37,6 +37,7 @@ VideoConfig::VideoConfig()
 	backend_info.bUseRGBATextures = false;
 	backend_info.bUseMinimalMipCount = false;
 	backend_info.bSupports3DVision = false;
+	backend_info.bSupportsLogicOp = false;
 }
 
 void VideoConfig::Load(const std::string& ini_file)

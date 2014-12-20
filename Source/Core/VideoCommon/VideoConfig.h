@@ -108,6 +108,7 @@ struct VideoConfig final
 	bool bEFBAccessEnable;
 	bool bPerfQueriesEnable;
 
+	int itexDec;
 	bool bEFBCopyEnable;
 	bool bEFBCopyCacheEnable;
 	bool bEFBEmulateFormatChanges;
@@ -150,6 +151,7 @@ struct VideoConfig final
 		bool bSupportsOversizedViewports;
 		bool bSupportsEarlyZ; // needed by PixelShaderGen, so must stay in VideoCommon
 		bool bSupportsBindingLayout; // Needed by ShaderGen, so must stay in VideoCommon
+		bool bSupportsLogicOp;
 	} backend_info;
 
 	// Utility
