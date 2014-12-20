@@ -91,7 +91,7 @@ static void BPWritten(const BPCmd& bp)
 		         (u32)bpmem.genMode.numtexgens, (u32)bpmem.genMode.numcolchans,
 		         (u32)bpmem.genMode.multisampling, (u32)bpmem.genMode.numtevstages+1, (u32)bpmem.genMode.cullmode,
 		         (u32)bpmem.genMode.numindstages, (u32)bpmem.genMode.zfreeze);
-
+		SetDepthMode();
 		// Only call SetGenerationMode when cull mode changes.
 		if (bp.changes & 0xC000)
 			SetGenerationMode();
