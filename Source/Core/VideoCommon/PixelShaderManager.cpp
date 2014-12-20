@@ -186,7 +186,11 @@ void PixelShaderManager::SetTexDims(int texmapid, u32 width, u32 height, u32 wra
 
 void PixelShaderManager::SetZTextureBias()
 {
-	constants.zbias[1][3] = bpmem.ztex1.bias;
+	if (1&& bpmem.ztex1.bias == 0xffffff ) {
+		constants.zbias[1][3] = -4;
+	} else {
+		constants.zbias[1][3] = bpmem.ztex1.bias;
+	}
 	dirty = true;
 }
 
