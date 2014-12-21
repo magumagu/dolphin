@@ -185,6 +185,53 @@ bool CompilePixelShader(const std::string& code, D3DBlob** blob, const D3D_SHADE
 	return SUCCEEDED(hr);
 }
 
+bool CompileComputeShader(const std::string& code, D3DBlob** blob,
+	const D3D_SHADER_MACRO* pDefines)
+{
+	ID3DBlob* shaderBuffer;
+	ID3DBlob* errorBuffer;
+
+#if defined(_DEBUG) || defined(DEBUGFAST)
+	UINT flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+	UINT flags = D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+	HRESULT hr = PD3DCompile(code.data(), code.size(), nullptr, pDefines, nullptr, "main", D3D::ComputeShaderVersionString(),
+		flags, 0, &shaderBuffer, &errorBuffer);
+
+	if (errorBuffer)
+	{
+		INFO_LOG(VIDEO, "Pixel shader compiler messages:\n%s",
+			(const char*)errorBuffer->GetBufferPointer());
+	}
+
+	if (FAILED(hr))
+	{
+		static int num_failures = 0;
+		char szTemp[MAX_PATH];
+		sprintf(szTemp, "%sbad_cs_%04i.txt", File::GetUserPath(D_DUMP_IDX).c_str(), num_failures++);
+		std::ofstream file;
+		OpenFStream(file, szTemp, std::ios_base::out);
+		file << code;
+		file.close();
+
+		PanicAlert("Failed to compile pixel shader!\nThis usually happens when trying to use Dolphin with an outdated GPU or integrated GPU like the Intel GMA series.\n\nIf you're sure this is Dolphin's error anyway, post the contents of %s along with this error message at the forums.\n\nDebug info (%s):\n%s",
+			szTemp,
+			D3D::ComputeShaderVersionString(),
+			(char*)errorBuffer->GetBufferPointer());
+
+		*blob = nullptr;
+		errorBuffer->Release();
+	}
+	else
+	{
+		*blob = new D3DBlob(shaderBuffer);
+		shaderBuffer->Release();
+	}
+
+	return SUCCEEDED(hr);
+}
+
 ID3D11VertexShader* CompileAndCreateVertexShader(const std::string& code)
 {
 	D3DBlob* blob = nullptr;

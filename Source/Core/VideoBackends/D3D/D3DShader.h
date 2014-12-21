@@ -25,6 +25,7 @@ namespace D3D
 	bool CompileVertexShader(const std::string& code, D3DBlob** blob);
 	bool CompileGeometryShader(const std::string& code, D3DBlob** blob, const D3D_SHADER_MACRO* pDefines = nullptr);
 	bool CompilePixelShader(const std::string& code, D3DBlob** blob, const D3D_SHADER_MACRO* pDefines = nullptr);
+	bool CompileComputeShader(const std::string& code, D3DBlob** blob, const D3D_SHADER_MACRO* pDefines = nullptr);
 
 	// Utility functions
 	ID3D11VertexShader* CompileAndCreateVertexShader(const std::string& code);

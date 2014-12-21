@@ -66,7 +66,7 @@ private:
 			| (scaleByHalf ? (1<<0) : 0);
 	}
 
-	typedef std::map<ComboKey, ID3D11PixelShader*> ComboMap;
+	typedef std::map<ComboKey, ID3D11ComputeShader*> ComboMap;
 
 	ComboMap m_staticShaders;
 
