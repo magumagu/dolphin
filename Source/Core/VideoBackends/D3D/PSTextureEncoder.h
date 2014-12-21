@@ -39,9 +39,9 @@ private:
 
 	bool m_ready;
 
-	ID3D11Texture2D* m_out;
-	ID3D11RenderTargetView* m_outRTV;
-	ID3D11Texture2D* m_outStage;
+	ID3D11Buffer* m_out;
+	ID3D11UnorderedAccessView* m_outUav;
+	ID3D11Buffer* m_outStage;
 	ID3D11Buffer* m_encodeParams;
 	ID3D11Buffer* m_quad;
 	ID3D11VertexShader* m_vShader;
@@ -77,7 +77,7 @@ private:
 	bool SetDynamicShader(unsigned int dstFormat,
 		PEControl::PixelFormat srcFormat, bool isIntensity, bool scaleByHalf);
 
-	ID3D11PixelShader* m_dynamicShader;
+	ID3D11ComputeShader* m_dynamicShader;
 	ID3D11ClassLinkage* m_classLinkage;
 
 	// Interface slots

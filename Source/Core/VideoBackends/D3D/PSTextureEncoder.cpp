@@ -843,7 +843,7 @@ void main(in uint3 groupIdx : SV_GroupID, in uint3 subgroup : SV_GroupThreadID)
 )HLSL";
 
 PSTextureEncoder::PSTextureEncoder()
-	: m_ready(false), m_out(nullptr), m_outRTV(nullptr), m_outStage(nullptr),
+	: m_ready(false), m_out(nullptr), m_outUav(nullptr), m_outStage(nullptr),
 	m_encodeParams(nullptr),
 	m_quad(nullptr), m_vShader(nullptr), m_quadLayout(nullptr),
 	m_efbEncodeBlendState(nullptr), m_efbEncodeDepthState(nullptr),
@@ -860,48 +860,39 @@ PSTextureEncoder::PSTextureEncoder()
 		m_generatorClass[i] = nullptr;
 }
 
-static const D3D11_INPUT_ELEMENT_DESC QUAD_LAYOUT_DESC[] = {
-	{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-};
-
-static const struct QuadVertex
-{
-	float posX;
-	float posY;
-} QUAD_VERTS[4] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
-
 void PSTextureEncoder::Init()
 {
 	m_ready = false;
 
 	HRESULT hr;
 
-	// Create output texture RGBA format
+	// Create output buffer
+	auto outBd = CD3D11_BUFFER_DESC((4*4)*EFB_WIDTH*EFB_HEIGHT/4,D3D11_BIND_UNORDERED_ACCESS);
+	//TODO: check for SM5
+	//if (!g_ActiveConfig.backend_info.bSupportsShaderModel5) {
+	//	outBd.MiscFlags |= D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+	//}
+	hr = D3D::device->CreateBuffer(&outBd, nullptr, &m_out);
+	CHECK(SUCCEEDED(hr), "create efb encode output buffer");
+	D3D::SetDebugObjectName(m_out, "efb encoder output buffer");
 
-	// This format allows us to generate one cache line in two pixels.
-	D3D11_TEXTURE2D_DESC t2dd = CD3D11_TEXTURE2D_DESC(
-		DXGI_FORMAT_R32G32B32A32_UINT,
-		EFB_WIDTH, EFB_HEIGHT/4, 1, 1, D3D11_BIND_RENDER_TARGET);
-	hr = D3D::device->CreateTexture2D(&t2dd, nullptr, &m_out);
-	CHECK(SUCCEEDED(hr), "create efb encode output texture");
-	D3D::SetDebugObjectName(m_out, "efb encoder output texture");
+	// And the cpu side version
+	outBd.Usage = D3D11_USAGE_STAGING;
+	outBd.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	outBd.BindFlags = 0;
+	outBd.MiscFlags = 0;
+	hr = D3D::device->CreateBuffer(&outBd, nullptr, &m_outStage);
+	CHECK(SUCCEEDED(hr), "create efb encode staging buffer");
+	D3D::SetDebugObjectName(m_outStage, "efb encoder staging buffer");
 
-	// Create output render target view
-
-	D3D11_RENDER_TARGET_VIEW_DESC rtvd = CD3D11_RENDER_TARGET_VIEW_DESC(m_out,
-		D3D11_RTV_DIMENSION_TEXTURE2D, DXGI_FORMAT_R32G32B32A32_UINT);
-	hr = D3D::device->CreateRenderTargetView(m_out, &rtvd, &m_outRTV);
-	CHECK(SUCCEEDED(hr), "create efb encode output render target view");
-	D3D::SetDebugObjectName(m_outRTV, "efb encoder output rtv");
-
-	// Create output staging buffer
-
-	t2dd.Usage = D3D11_USAGE_STAGING;
-	t2dd.BindFlags = 0;
-	t2dd.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-	hr = D3D::device->CreateTexture2D(&t2dd, nullptr, &m_outStage);
-	CHECK(SUCCEEDED(hr), "create efb encode output staging buffer");
-	D3D::SetDebugObjectName(m_outStage, "efb encoder output staging buffer");
+	// UAV to write the shader result
+	auto outUavDesc = CD3D11_UNORDERED_ACCESS_VIEW_DESC(m_out,DXGI_FORMAT_R32_UINT,0,(4)*EFB_WIDTH*EFB_HEIGHT/4);
+	//TODO: check for SM5
+	//if (!g_ActiveConfig.backend_info.bSupportsShaderModel5) {
+	//	outUavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	//	outUavDesc.Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_RAW;
+	//}
+	hr = D3D::device->CreateUnorderedAccessView(m_out,&outUavDesc,&m_outUav);
 
 	// Create constant buffer for uploading data to shaders
 
@@ -987,7 +978,7 @@ void PSTextureEncoder::Shutdown()
 	SAFE_RELEASE(m_quad);
 	SAFE_RELEASE(m_encodeParams);
 	SAFE_RELEASE(m_outStage);
-	SAFE_RELEASE(m_outRTV);
+	SAFE_RELEASE(m_outUav);
 	SAFE_RELEASE(m_out);
 }
 
@@ -1045,21 +1036,7 @@ size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 	if (SetStaticShader(dstFormat, srcFormat, isIntensity, scaleByHalf))
 #endif
 	{
-		D3D::stateman->SetVertexShader(m_vShader);
-		D3D::stateman->SetGeometryShader(nullptr);
-
-		D3D::stateman->PushBlendState(m_efbEncodeBlendState);
-		D3D::stateman->PushDepthState(m_efbEncodeDepthState);
-		D3D::stateman->PushRasterizerState(m_efbEncodeRastState);
-
-		D3D11_VIEWPORT vp = CD3D11_VIEWPORT(0.f, 0.f, FLOAT(cacheLinesPerRow*2), FLOAT(numBlocksY));
-		D3D::context->RSSetViewports(1, &vp);
-
-		D3D::stateman->SetInputLayout(m_quadLayout);
-		D3D::stateman->SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-		UINT stride = sizeof(QuadVertex);
-		UINT offset = 0;
-		D3D::stateman->SetVertexBuffer(m_quad, stride, offset);
+		D3D::context->OMSetRenderTargets(0, nullptr, nullptr);
 
 		EFBRectangle fullSrcRect;
 		fullSrcRect.left = 0;
@@ -1080,6 +1057,9 @@ size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 		D3D::context->UpdateSubresource(m_encodeParams, 0, nullptr, &params, 0, 0);
 
 		D3D::context->OMSetRenderTargets(1, &m_outRTV, nullptr);
+		D3D::context->CSSetConstantBuffers(0, 1, &m_encodeParams);
+
+		D3D::context->CSSetUnorderedAccessViews(0, 1, &m_outUav);
 
 		ID3D11ShaderResourceView* pEFB = (srcFormat == PEControl::Z24) ?
 			FramebufferManager::GetEFBDepthTexture()->GetSRV() :
@@ -1088,55 +1068,55 @@ size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 			// expecting the blurred edges around multisampled shapes.
 			FramebufferManager::GetResolvedEFBColorTexture()->GetSRV();
 
-		D3D::stateman->SetVertexConstants(m_encodeParams);
-		D3D::stateman->SetPixelConstants(m_encodeParams);
-		D3D::stateman->SetTexture(0, pEFB);
-		D3D::stateman->SetSampler(0, m_efbSampler);
+		D3D::context->CSSetShaderResources(0, 1, &pEFB);
+		D3D::context->CSSetSamplers(0, 1, &m_efbSampler);
 
 		// Encode!
 
-		D3D::stateman->Apply();
-		D3D::context->Draw(4, 0);
+		//D3D::context->Draw(4, 0);
+		D3D::context->Dispatch((cacheLinesPerRow * 2 + 7) / 8, (numBlocksY + 7) / 8, 1);
 
 		// Copy to staging buffer
 
-		D3D11_BOX srcBox = CD3D11_BOX(0, 0, 0, cacheLinesPerRow*2, numBlocksY, 1);
+		//D3D11_BOX srcBox = CD3D11_BOX(0, 0, 0, cacheLinesPerRow*2, numBlocksY, 1);
+		D3D11_BOX srcBox = CD3D11_BOX(0, 0, 0, (4 * 4)*cacheLinesPerRow * 2 * numBlocksY, 1, 1);
 		D3D::context->CopySubresourceRegion(m_outStage, 0, 0, 0, 0, m_out, 0, &srcBox);
 
 		// Clean up state
 
-		D3D::context->OMSetRenderTargets(0, nullptr, nullptr);
+		IUnknown* nullDummy = nullptr;
 
-		D3D::stateman->SetSampler(0, nullptr);
-		D3D::stateman->SetTexture(0, nullptr);
-		D3D::stateman->SetPixelConstants(nullptr);
-		D3D::stateman->SetVertexConstants(nullptr);
-
-		D3D::stateman->SetPixelShader(nullptr);
-		D3D::stateman->SetVertexBuffer(nullptr, 0, 0);
-
-		D3D::stateman->PopRasterizerState();
-		D3D::stateman->PopDepthState();
-		D3D::stateman->PopBlendState();
-
-		D3D::stateman->Apply();
+		D3D::context->CSSetUnorderedAccessViews(0, 1, (ID3D11UnorderedAccessView**)&nullDummy);
+		D3D::context->CSSetShaderResources(0, 1, (ID3D11ShaderResourceView**)&nullDummy);
 
 		// Transfer staging buffer to GameCube/Wii RAM
 
+		// nVidia is unable to sync properly with a blocking Map
+		// That workaround works and NES games do not flick as hell anymore
+		D3D::context->Flush();
 		D3D11_MAPPED_SUBRESOURCE map = { 0 };
-		hr = D3D::context->Map(m_outStage, 0, D3D11_MAP_READ, 0, &map);
-		CHECK(SUCCEEDED(hr), "map staging buffer (0x%x)", hr);
+		//hr = D3D::context->Map(m_outStage, 0, D3D11_MAP_READ, 0, &map);
+		//CHECK(SUCCEEDED(hr), "map staging buffer (0x%x)", hr);
 
-		u8* src = (u8*)map.pData;
-		for (unsigned int y = 0; y < numBlocksY; ++y)
+		while ( (hr = D3D::context->Map(m_outStage, 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, &map)) != S_OK && hr==DXGI_ERROR_WAS_STILL_DRAWING )
 		{
-			memcpy(dst, src, cacheLinesPerRow*32);
-			dst += bpmem.copyMipMapStrideChannels*32;
-			src += map.RowPitch;
+			//D3D::context->Flush();
 		}
 
-		D3D::context->Unmap(m_outStage, 0);
+		CHECK(SUCCEEDED(hr), "map staging buffer (0x%x)", hr);
+		if (hr == S_OK)
+		{
+			u8* src = (u8*)map.pData;
+			for (unsigned int y = 0; y < numBlocksY; ++y)
+			{
+				memcpy(dst, src, cacheLinesPerRow*32);
+				dst += bpmem.copyMipMapStrideChannels*32;
+				//src += map.RowPitch;
+				src += cacheLinesPerRow * 32;
+			}
 
+			D3D::context->Unmap(m_outStage, 0);
+		}
 		encodeSize = bpmem.copyMipMapStrideChannels*32 * numBlocksY;
 	}
 
@@ -1275,9 +1255,9 @@ bool PSTextureEncoder::InitDynamicMode()
 	CHECK(SUCCEEDED(hr), "create efb encode class linkage");
 	D3D::SetDebugObjectName(m_classLinkage, "efb encoder class linkage");
 
-	hr = D3D::device->CreatePixelShader(bytecode->Data(), bytecode->Size(), m_classLinkage, &m_dynamicShader);
-	CHECK(SUCCEEDED(hr), "create efb encode pixel shader");
-	D3D::SetDebugObjectName(m_dynamicShader, "efb encoder pixel shader");
+	hr = D3D::device->CreateComputeShader(bytecode->Data(), bytecode->Size(), m_classLinkage, &m_dynamicShader);
+	CHECK(SUCCEEDED(hr), "create efb encode compute shader");
+	D3D::SetDebugObjectName(m_dynamicShader, "efb encoder compute shader");
 
 	// Use D3DReflect
 
@@ -1405,7 +1385,7 @@ bool PSTextureEncoder::SetDynamicShader(unsigned int dstFormat,
 	if (m_generatorSlot != UINT(-1))
 		m_linkageArray[m_generatorSlot] = m_generatorClass[generatorNum];
 
-	D3D::stateman->SetPixelShaderDynamic(m_dynamicShader,
+	D3D::context->CSSetShader(m_dynamicShader,
 		m_linkageArray.empty() ? nullptr : &m_linkageArray[0],
 		(UINT)m_linkageArray.size());
 

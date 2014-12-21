@@ -51,6 +51,7 @@ void Present();
 unsigned int GetBackBufferWidth();
 unsigned int GetBackBufferHeight();
 D3DTexture2D* &GetBackBuffer();
+const char* ComputeShaderVersionString();
 const char* PixelShaderVersionString();
 const char* GeometryShaderVersionString();
 const char* VertexShaderVersionString();
