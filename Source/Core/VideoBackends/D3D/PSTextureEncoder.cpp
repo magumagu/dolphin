@@ -1056,10 +1056,9 @@ size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 		params.TexBottom = float(targetRect.bottom) / g_renderer->GetTargetHeight();
 		D3D::context->UpdateSubresource(m_encodeParams, 0, nullptr, &params, 0, 0);
 
-		D3D::context->OMSetRenderTargets(1, &m_outRTV, nullptr);
 		D3D::context->CSSetConstantBuffers(0, 1, &m_encodeParams);
 
-		D3D::context->CSSetUnorderedAccessViews(0, 1, &m_outUav);
+		D3D::context->CSSetUnorderedAccessViews(0, 1, &m_outUav, nullptr);
 
 		ID3D11ShaderResourceView* pEFB = (srcFormat == PEControl::Z24) ?
 			FramebufferManager::GetEFBDepthTexture()->GetSRV() :
@@ -1086,7 +1085,7 @@ size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 
 		IUnknown* nullDummy = nullptr;
 
-		D3D::context->CSSetUnorderedAccessViews(0, 1, (ID3D11UnorderedAccessView**)&nullDummy);
+		D3D::context->CSSetUnorderedAccessViews(0, 1, (ID3D11UnorderedAccessView**)&nullDummy, nullptr);
 		D3D::context->CSSetShaderResources(0, 1, (ID3D11ShaderResourceView**)&nullDummy);
 
 		// Transfer staging buffer to GameCube/Wii RAM
