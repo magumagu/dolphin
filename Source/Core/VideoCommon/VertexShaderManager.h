@@ -34,6 +34,8 @@ public:
 	static void RotateView(float x, float y);
 	static void ResetView();
 
+	static bool ViewportNonStandard();
+
 	static VertexShaderConstants constants;
 	static bool dirty;
 };

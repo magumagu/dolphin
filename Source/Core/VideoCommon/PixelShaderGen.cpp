@@ -165,6 +165,8 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 	}
 #endif
 
+	bool useFastDepth = ApiType == API_D3D ? true : g_ActiveConfig.bFastDepthCalc;
+
 	if (is_writing_shadercode)
 		text[sizeof(text) - 1] = 0x7C;  // canary
 
@@ -239,8 +241,10 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 		"\tint4 " I_PMATERIALS"[4];\n"
 		"};\n");
 
-	const bool forced_early_z = g_ActiveConfig.backend_info.bSupportsEarlyZ && bpmem.UseEarlyDepthTest() && (g_ActiveConfig.bFastDepthCalc || bpmem.alpha_test.TestResult() == AlphaTest::UNDETERMINED);
-	const bool per_pixel_depth = (bpmem.ztex2.op != ZTEXTURE_DISABLE && bpmem.UseLateDepthTest()) || (!g_ActiveConfig.bFastDepthCalc && bpmem.zmode.testenable && !forced_early_z);
+	const bool forced_early_z = g_ActiveConfig.backend_info.bSupportsEarlyZ && bpmem.UseEarlyDepthTest() 
+	                          && (useFastDepth || bpmem.alpha_test.TestResult() == AlphaTest::UNDETERMINED);
+	const bool per_pixel_depth = (bpmem.ztex2.op != ZTEXTURE_DISABLE && bpmem.UseLateDepthTest()) 
+	                             || (!useFastDepth && bpmem.zmode.testenable && !forced_early_z);
 
 	if (forced_early_z)
 	{
@@ -264,7 +268,7 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 			out.Write("[earlydepthstencil]\n");
 		}
 	}
-	else if (bpmem.UseEarlyDepthTest() && (g_ActiveConfig.bFastDepthCalc || bpmem.alpha_test.TestResult() == AlphaTest::UNDETERMINED) && is_writing_shadercode)
+	else if (bpmem.UseEarlyDepthTest() && (useFastDepth || bpmem.alpha_test.TestResult() == AlphaTest::UNDETERMINED) && is_writing_shadercode)
 	{
 		static bool warn_once = true;
 		if (warn_once)
@@ -419,14 +423,16 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 
 	// Uid fields for BuildSwapModeTable are set in WriteStage
 	char swapModeTable[4][5];
-	const char* swapColors = "rgba";
-	for (int i = 0; i < 4; i++)
-	{
-		swapModeTable[i][0] = swapColors[bpmem.tevksel[i*2].swap1];
-		swapModeTable[i][1] = swapColors[bpmem.tevksel[i*2].swap2];
-		swapModeTable[i][2] = swapColors[bpmem.tevksel[i*2+1].swap1];
-		swapModeTable[i][3] = swapColors[bpmem.tevksel[i*2+1].swap2];
-		swapModeTable[i][4] = '\0';
+	if (is_writing_shadercode) {
+		const char* swapColors = "rgba";
+		for (int i = 0; i < 4; i++)
+		{
+			swapModeTable[i][0] = swapColors[bpmem.tevksel[i*2].swap1];
+			swapModeTable[i][1] = swapColors[bpmem.tevksel[i*2].swap2];
+			swapModeTable[i][2] = swapColors[bpmem.tevksel[i*2+1].swap1];
+			swapModeTable[i][3] = swapColors[bpmem.tevksel[i*2+1].swap2];
+			swapModeTable[i][4] = '\0';
+		}
 	}
 
 	for (unsigned int i = 0; i < numStages; i++)
@@ -465,13 +471,20 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 	// For disabled FastDepth we just calculate the depth value again.
 	// The performance impact of this additional calculation doesn't matter, but it prevents
 	// the host GPU driver from performing any early depth test optimizations.
-	if (g_ActiveConfig.bFastDepthCalc)
-		out.Write("\tint zCoord = iround(rawpos.z * float(0xFFFFFF));\n");
+	if (useFastDepth) {
+		out.Write("\tint zCoord = %s iround(rawpos.z * float(0xFFFFFF));\n", ApiType == API_D3D ? "0xFFFFFF-" : "" );
+		out.Write("zCoord = clamp(zCoord,0,0xFFFFFF);\n");
+	}
 	else
 	{
 		out.SetConstantsUsed(C_ZBIAS+1, C_ZBIAS+1);
 		// the screen space depth value = far z + (clip z / clip w) * z range
 		out.Write("\tint zCoord = " I_ZBIAS"[1].x + iround((clipPos.z / clipPos.w) * float(" I_ZBIAS"[1].y));\n");
+
+		// Because zfar and zrange are often (1<<25) instead of (1<<25)-1, we are in the pixel shader because the clippos was
+		// valid so clamping is not a problem and fix meshes that extend beyond the far plane, should probably apply to GL
+		if (ApiType == API_D3D)
+			out.Write("zCoord = clamp(zCoord,0,0xFFFFFF);\n");
 	}
 
 	// depth texture can safely be ignored if the result won't be written to the depth buffer (early_ztest) and isn't used for fog either
@@ -480,13 +493,13 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 	uid_data.ztex_op = bpmem.ztex2.op;
 	uid_data.per_pixel_depth = per_pixel_depth;
 	uid_data.forced_early_z = forced_early_z;
-	uid_data.fast_depth_calc = g_ActiveConfig.bFastDepthCalc;
+	uid_data.fast_depth_calc = useFastDepth;
 	uid_data.early_ztest = bpmem.UseEarlyDepthTest();
 	uid_data.fog_fsel = bpmem.fog.c_proj_fsel.fsel;
 
 	// Note: z-textures are not written to depth buffer if early depth test is used
 	if (per_pixel_depth && bpmem.UseEarlyDepthTest())
-		out.Write("\tdepth = float(zCoord) / float(0xFFFFFF);\n");
+		out.Write("\tdepth = float(%szCoord) / float(0xFFFFFF);\n", ApiType == API_D3D ? "0xFFFFFF-" : "" );
 
 	// Note: depth texture output is only written to depth buffer if late depth test is used
 	// theoretical final depth value is used for fog calculation, though, so we have to emulate ztextures anyway
@@ -500,7 +513,7 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 	}
 
 	if (per_pixel_depth && bpmem.UseLateDepthTest())
-		out.Write("\tdepth = float(zCoord) / float(0xFFFFFF);\n");
+		out.Write("\tdepth = float(%szCoord) / float(0xFFFFFF);\n", ApiType == API_D3D ? "0xFFFFFF-" : "" );
 
 	if (dstAlphaMode == DSTALPHA_ALPHA_PASS)
 	{
@@ -523,9 +536,8 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 		out.Write("\tocol1 = float4(prev) / 255.0;\n");
 		out.Write("\tocol0.a = float(" I_ALPHA".a) / 255.0;\n");
 	}
-
+	
 	out.Write("}\n");
-
 	if (is_writing_shadercode)
 	{
 		if (text[sizeof(text) - 1] != 0x7C)
@@ -662,8 +674,8 @@ static inline void WriteStage(T& out, pixel_shader_uid_data& uid_data, int n, AP
 		out.Write("\ttevcoord.xy = (tevcoord.xy << 8) >> 8;\n");
 	}
 
-	TevStageCombiner::ColorCombiner &cc = bpmem.combiners[n].colorC;
-	TevStageCombiner::AlphaCombiner &ac = bpmem.combiners[n].alphaC;
+	TevStageCombiner::ColorCombiner cc = bpmem.combiners[n].colorC;
+	TevStageCombiner::AlphaCombiner ac = bpmem.combiners[n].alphaC;
 
 	uid_data.stagehash[n].cc = cc.hex & 0xFFFFFF;
 	uid_data.stagehash[n].ac = ac.hex & 0xFFFFF0; // Storing rswap and tswap later

@@ -54,8 +54,6 @@
 #define C_DEPTHPARAMS           (C_POSTTRANSFORMMATRICES + 64)
 #define C_VENVCONST_END         (C_DEPTHPARAMS + 1)
 
-#pragma pack(1)
-
 struct vertex_shader_uid_data
 {
 	u32 NumValues() const { return sizeof(vertex_shader_uid_data); }
@@ -68,23 +66,31 @@ struct vertex_shader_uid_data
 	u32 pad0                 : 1;
 
 	u32 texMtxInfo_n_projection : 16; // Stored separately to guarantee that the texMtxInfo struct is 8 bits wide
+	u32 nearViewportNonStandard : 1;
+	u32 farViewportNonStandard  : 1;
+
+	u32 zFreezeHackFarPlane     : 1;
+	u32 pad2                    : 13;
 	struct {
-		u32 inputform         : 2;
-		u32 texgentype        : 3;
-		u32 sourcerow         : 5;
-		u32 embosssourceshift : 3;
-		u32 embosslightshift  : 3;
+		u16 inputform         : 2;
+		u16 texgentype        : 3;
+		u16 sourcerow         : 5;
+		u16 embosssourceshift : 3;
+		u16 embosslightshift  : 3;
 	} texMtxInfo[8];
 
-	struct {
-		u32 index     : 6;
-		u32 normalize : 1;
-		u32 pad       : 1;
-	} postMtxInfo[8];
+	struct PostMtxInfo {
+		u8  index     : 6;
+		u8  normalize : 1;
+		u8  pad       : 1;
+	};
+	
+	PostMtxInfo postMtxInfo[8];
 
 	LightingUidData lighting;
 };
-#pragma pack()
+//static_assert(sizeof(vertex_shader_uid_data)==20*4,"pay attention to vertex_shader_uid_data layout");
+static_assert(sizeof(vertex_shader_uid_data)==40,"pay attention to vertex_shader_uid_data layout");
 
 typedef ShaderUid<vertex_shader_uid_data> VertexShaderUid;
 typedef ShaderCode VertexShaderCode; // TODO: Obsolete..

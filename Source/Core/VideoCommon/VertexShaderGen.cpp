@@ -16,6 +16,8 @@
 #include "VideoCommon/VertexShaderGen.h"
 #include "VideoCommon/VideoConfig.h"
 
+#include "VideoCommon/VertexShaderManager.h"
+
 static char text[16768];
 
 template<class T>
@@ -40,7 +42,7 @@ template<class T>
 static inline void GenerateVSOutputStruct(T& object, API_TYPE api_type)
 {
 	object.Write("struct VS_OUTPUT {\n");
-	DefineVSOutputStructMember(object, api_type, "float4", "pos", -1, "POSITION");
+	DefineVSOutputStructMember(object, api_type, "float4", "pos", -1, api_type == API_OPENGL ? "POSITION" : "SV_Position");
 	DefineVSOutputStructMember(object, api_type, "float4", "colors_", 0, "COLOR", 0);
 	DefineVSOutputStructMember(object, api_type, "float4", "colors_", 1, "COLOR", 1);
 
@@ -51,6 +53,13 @@ static inline void GenerateVSOutputStruct(T& object, API_TYPE api_type)
 
 	if (g_ActiveConfig.bEnablePixelLighting)
 		DefineVSOutputStructMember(object, api_type, "float4", "Normal", -1, "TEXCOORD", xfmem.numTexGen.numTexGens + 1);
+
+	if ( api_type == API_D3D ) {
+		if (VertexShaderManager::ViewportNonStandard()||1) {
+			DefineVSOutputStructMember(object, api_type, "float", "clip_near", -1, "SV_ClipDistance0");
+			DefineVSOutputStructMember(object, api_type, "float", "clip_far", -1, "SV_ClipDistance1");
+		}
+	}
 
 	object.Write("};\n");
 }
@@ -75,6 +84,8 @@ static inline void GenerateVertexShader(T& out, u32 components, API_TYPE api_typ
 	}
 #endif
 
+	uid_data.nearViewportNonStandard = VertexShaderManager::ViewportNonStandard();
+	uid_data.zFreezeHackFarPlane = bpmem.genMode.zfreeze != 0;
 	if (is_writing_shadercode)
 		text[sizeof(text) - 1] = 0x7C;  // canary
 
@@ -132,13 +143,13 @@ static inline void GenerateVertexShader(T& out, u32 components, API_TYPE api_typ
 		// Let's set up attributes
 		for (size_t i = 0; i < 8; ++i)
 		{
-			if (i < xfmem.numTexGen.numTexGens)
+			if (i < uid_data.numTexGens)
 			{
 				out.Write("centroid out  float3 uv%d;\n", i);
 			}
 		}
 		out.Write("centroid out   float4 clipPos;\n");
-		if (g_ActiveConfig.bEnablePixelLighting)
+		if (uid_data.pixel_lighting)
 			out.Write("centroid out   float4 Normal;\n");
 
 		out.Write("centroid out   float4 colors_02;\n");
@@ -221,7 +232,7 @@ static inline void GenerateVertexShader(T& out, u32 components, API_TYPE api_typ
 			"float dist, dist2, attn;\n");
 
 	uid_data.numColorChans = xfmem.numChan.numColorChans;
-	if (xfmem.numChan.numColorChans == 0)
+	if (uid_data.numColorChans == 0)
 	{
 		if (components & VB_HAS_COL0)
 			out.Write("o.colors_0 = color0;\n");
@@ -231,7 +242,7 @@ static inline void GenerateVertexShader(T& out, u32 components, API_TYPE api_typ
 
 	GenerateLightingShader<T>(out, uid_data.lighting, components, I_MATERIALS, I_LIGHT_COLORS, I_LIGHTS, "color", "o.colors_");
 
-	if (xfmem.numChan.numColorChans < 2)
+	if (uid_data.numColorChans < 2)
 	{
 		if (components & VB_HAS_COL1)
 			out.Write("o.colors_1 = color1;\n");
@@ -249,14 +260,14 @@ static inline void GenerateVertexShader(T& out, u32 components, API_TYPE api_typ
 
 	// transform texcoords
 	out.Write("float4 coord = float4(0.0, 0.0, 1.0, 1.0);\n");
-	for (unsigned int i = 0; i < xfmem.numTexGen.numTexGens; ++i)
+	for (unsigned int i = 0; i < uid_data.numTexGens; ++i)
 	{
 		TexMtxInfo& texinfo = xfmem.texMtxInfo[i];
 
 		out.Write("{\n");
 		out.Write("coord = float4(0.0, 0.0, 1.0, 1.0);\n");
-		uid_data.texMtxInfo[i].sourcerow = xfmem.texMtxInfo[i].sourcerow;
-		switch (texinfo.sourcerow)
+		auto srcrow = uid_data.texMtxInfo[i].sourcerow = xfmem.texMtxInfo[i].sourcerow;
+		switch (srcrow)
 		{
 		case XF_SRCGEOM_INROW:
 			_assert_( texinfo.inputform == XF_TEXINPUT_ABC1 );
@@ -288,14 +299,14 @@ static inline void GenerateVertexShader(T& out, u32 components, API_TYPE api_typ
 			break;
 		default:
 			_assert_(texinfo.sourcerow <= XF_SRCTEX7_INROW);
-			if (components & (VB_HAS_UV0<<(texinfo.sourcerow - XF_SRCTEX0_INROW)) )
-				out.Write("coord = float4(tex%d.x, tex%d.y, 1.0, 1.0);\n", texinfo.sourcerow - XF_SRCTEX0_INROW, texinfo.sourcerow - XF_SRCTEX0_INROW);
+			if (components & (VB_HAS_UV0<<(srcrow - XF_SRCTEX0_INROW)) )
+				out.Write("coord = float4(tex%d.x, tex%d.y, 1.0, 1.0);\n", srcrow - XF_SRCTEX0_INROW, srcrow - XF_SRCTEX0_INROW);
 			break;
 		}
 
 		// first transformation
-		uid_data.texMtxInfo[i].texgentype = xfmem.texMtxInfo[i].texgentype;
-		switch (texinfo.texgentype)
+		auto texgentype = uid_data.texMtxInfo[i].texgentype = xfmem.texMtxInfo[i].texgentype;
+		switch (texgentype)
 		{
 			case XF_TEXGEN_EMBOSS_MAP: // calculate tex coords into bump map
 
@@ -398,7 +409,22 @@ static inline void GenerateVertexShader(T& out, u32 components, API_TYPE api_typ
 	//if not early z culling will improve speed
 	if (api_type == API_D3D)
 	{
-		out.Write("o.pos.z = " I_DEPTHPARAMS".x * o.pos.w + o.pos.z * " I_DEPTHPARAMS".y;\n");
+		
+		//out.Write("o.clip_near = 1;\n");
+		//out.Write("o.clip_far = 1;\n");
+		out.Write("o.clip_near = o.pos.w+o.pos.z;\n");
+		out.Write("o.clip_far = - o.pos.z;\n");
+		if (uid_data.nearViewportNonStandard) {
+			
+			//out.Write("o.clip_near = 1;\n");
+			//out.Write("o.clip_far = 1;\n");
+			out.Write("o.pos.z = " I_DEPTHPARAMS".x * o.pos.w + o.pos.z * " I_DEPTHPARAMS".y;\n"); // dp.x is vp.near and // dp.y is (vp.far-vp.near)
+		}
+		out.Write("o.pos.z *= -1;\n");
+
+		if(uid_data.zFreezeHackFarPlane)  {
+			//out.Write("o.pos.z = 0;\n");
+		}
 	}
 	else // OGL
 	{
@@ -423,7 +449,7 @@ static inline void GenerateVertexShader(T& out, u32 components, API_TYPE api_typ
 	// which in turn can be critical if it happens for clear quads.
 	// Hence, we compensate for this pixel center difference so that primitives
 	// get rasterized correctly.
-	out.Write("o.pos.xy = o.pos.xy - " I_DEPTHPARAMS".zw;\n");
+	out.Write("o.pos.xy = o.pos.xy - o.pos.ww * " I_DEPTHPARAMS".zw;\n");
 
 	if (api_type == API_OPENGL)
 	{
