@@ -47,7 +47,7 @@ namespace BootManager
 // Apply fire liberally
 struct ConfigCache
 {
-	bool valid, bCPUThread, bSkipIdle, bFPRF, bBAT, bMMU, bDCBZOFF, m_EnableJIT, bDSPThread,
+	bool valid, bCPUThread, bSkipIdle, bFPRF, bBAT, bDCBZOFF, m_EnableJIT, bDSPThread,
 	     bVBeamSpeedHack, bSyncGPU, bFastDiscSpeed, bMergeBlocks, bDSPHLE, bHLE_BS2, bProgressive;
 	int iCPUCore, Volume;
 	int iWiimoteSource[MAX_BBMOTES];
@@ -115,7 +115,6 @@ bool BootCore(const std::string& _rFilename)
 		config_cache.iCPUCore = StartUp.iCPUCore;
 		config_cache.bFPRF = StartUp.bFPRF;
 		config_cache.bBAT = StartUp.bBAT;
-		config_cache.bMMU = StartUp.bMMU;
 		config_cache.bDCBZOFF = StartUp.bDCBZOFF;
 		config_cache.bVBeamSpeedHack = StartUp.bVBeamSpeedHack;
 		config_cache.bSyncGPU = StartUp.bSyncGPU;
@@ -157,7 +156,6 @@ bool BootCore(const std::string& _rFilename)
 		core_section->Get("SkipIdle",         &StartUp.bSkipIdle, StartUp.bSkipIdle);
 		core_section->Get("FPRF",             &StartUp.bFPRF, StartUp.bFPRF);
 		core_section->Get("BAT",              &StartUp.bBAT, StartUp.bBAT);
-		core_section->Get("MMU",              &StartUp.bMMU, StartUp.bMMU);
 		core_section->Get("DCBZ",             &StartUp.bDCBZOFF, StartUp.bDCBZOFF);
 		core_section->Get("VBeam",            &StartUp.bVBeamSpeedHack, StartUp.bVBeamSpeedHack);
 		core_section->Get("SyncGPU",          &StartUp.bSyncGPU, StartUp.bSyncGPU);
@@ -284,7 +282,6 @@ void Stop()
 		StartUp.iCPUCore = config_cache.iCPUCore;
 		StartUp.bFPRF = config_cache.bFPRF;
 		StartUp.bBAT = config_cache.bBAT;
-		StartUp.bMMU = config_cache.bMMU;
 		StartUp.bDCBZOFF = config_cache.bDCBZOFF;
 		StartUp.bVBeamSpeedHack = config_cache.bVBeamSpeedHack;
 		StartUp.bSyncGPU = config_cache.bSyncGPU;

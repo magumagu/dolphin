@@ -646,7 +646,7 @@ u32 PPCAnalyzer::Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 
 		return address;
 	}
 
-	bool virtualAddr = SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU && (address & JIT_ICACHE_VMEM_BIT);
+	bool virtualAddr = !!(address & JIT_ICACHE_VMEM_BIT);
 	if (virtualAddr)
 	{
 		if (!Memory::TranslateAddress<Memory::FLAG_NO_EXCEPTION>(address))

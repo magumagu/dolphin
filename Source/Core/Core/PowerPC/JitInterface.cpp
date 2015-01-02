@@ -36,9 +36,6 @@
 #include "Core/PowerPC/JitArm64/JitArm64_Tables.h"
 #endif
 
-static bool bFakeVMEM = false;
-bool bMMU = false;
-
 namespace JitInterface
 {
 	void DoState(PointerWrap &p)
@@ -48,9 +45,6 @@ namespace JitInterface
 	}
 	CPUCoreBase *InitJitCore(int core)
 	{
-		bMMU = SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU;
-		bFakeVMEM = !bMMU;
-
 		CPUCoreBase *ptr = nullptr;
 		switch (core)
 		{
@@ -209,7 +203,7 @@ namespace JitInterface
 
 	u32 ReadOpcodeJIT(u32 _Address)
 	{
-		if (bMMU && !bFakeVMEM && (_Address & Memory::ADDR_MASK_MEM1))
+		if ((_Address & Memory::ADDR_MASK_MEM1))
 		{
 			_Address = Memory::TranslateAddress<Memory::FLAG_OPCODE>(_Address);
 			if (_Address == 0)

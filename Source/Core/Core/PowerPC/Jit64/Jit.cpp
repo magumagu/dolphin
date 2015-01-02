@@ -177,7 +177,7 @@ void Jit64::Init()
 
 	jo.optimizeGatherPipe = true;
 	jo.accurateSinglePrecision = true;
-	js.memcheck = SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU;
+	js.memcheck = true;
 	js.fastmemLoadStore = NULL;
 
 	gpr.SetEmitter(this);

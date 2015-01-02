@@ -122,12 +122,6 @@ __forceinline T ReadFromHardware(const u32 em_address)
 		}
 	}
 
-	if (bFakeVMEM && (segment == 0x7 || segment == 0x4))
-	{
-		// fake VMEM
-		return bswap((*(const T*)&m_pFakeVMEM[em_address & FAKEVMEM_MASK]));
-	}
-
 	// MMU: Do page table translation
 	u32 tlb_addr = TranslateAddress<flag>(em_address);
 	if (tlb_addr == 0)
@@ -232,13 +226,6 @@ __forceinline void WriteToHardware(u32 em_address, const T data)
 		}
 	}
 
-	if (bFakeVMEM && (segment == 0x7 || segment == 0x4))
-	{
-		// fake VMEM
-		*(T*)&m_pFakeVMEM[em_address & FAKEVMEM_MASK] = bswap(data);
-		return;
-	}
-
 	// MMU: Do page table translation
 	u32 tlb_addr = TranslateAddress<flag>(em_address);
 	if (tlb_addr == 0)
@@ -293,8 +280,7 @@ u32 Read_Opcode(u32 address)
 		return 0x00000000;
 	}
 
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU &&
-		(address & ADDR_MASK_MEM1))
+	if (address & ADDR_MASK_MEM1)
 	{
 		// TODO: Check for MSR instruction address translation flag before translating
 		u32 tlb_addr = TranslateAddress<FLAG_OPCODE>(address);
@@ -555,13 +541,6 @@ union UPTE2
 
 static void GenerateDSIException(u32 effectiveAddress, bool write)
 {
-	// DSI exceptions are only supported in MMU mode.
-	if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU)
-	{
-		PanicAlertT("Invalid %s to 0x%08x, PC = 0x%08x ", write ? "Write to" : "Read from", effectiveAddress, PC);
-		return;
-	}
-
 	if (effectiveAddress)
 		PowerPC::ppcState.spr[SPR_DSISR] = PPC_EXC_DSISR_PAGE | PPC_EXC_DSISR_STORE;
 	else
