@@ -838,7 +838,8 @@ void TextureCache::CopyRenderTargetToTexture(u32 dstAddr, unsigned int dstFormat
 			break;
 
 		case 12: // GB8
-			colmat[1] = colmat[5] = colmat[9] = colmat[14] = 1.0f;
+			//colmat[1] = colmat[5] = colmat[9] = colmat[14] = 1.0f;
+			colmat[1] = colmat[5] = colmat[9] = colmat[13] = 1.0f;
 			cbufid = 25;
 			break;
 
