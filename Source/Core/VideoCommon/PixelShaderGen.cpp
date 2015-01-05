@@ -757,7 +757,7 @@ static inline void WriteStage(T& out, pixel_shader_uid_data* uid_data, int n, AP
 		{
 			// calc tevcord
 			if (bHasTexCoord)
-				out.Write("\ttevcoord.xy = fixpoint_uv%d;\n", texcoord);
+				out.Write("\ttevcoord.xy = fixpoint_uv%d;tevcoord.xy -= int2(1,1);\n", texcoord);
 			else
 				out.Write("\ttevcoord.xy = int2(0, 0);\n");
 		}
