@@ -132,7 +132,7 @@ u8* MemArena::Find4GBBase()
 #if _ARCH_64
 #ifdef _WIN32
 	// 64 bit
-	u8* base = (u8*)VirtualAlloc(0, 0xE1000000, MEM_RESERVE, PAGE_READWRITE);
+	u8* base = (u8*)VirtualAlloc(0, 0x400000000, MEM_RESERVE, PAGE_READWRITE);
 	VirtualFree(base, 0, MEM_RELEASE);
 	return base;
 #else

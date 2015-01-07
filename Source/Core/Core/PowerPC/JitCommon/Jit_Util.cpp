@@ -652,7 +652,8 @@ void EmuCodeBlock::WriteToConstRamAddress(int accessSize, OpArg arg, u32 address
 	if (arg.IsImm())
 	{
 		arg = SwapImmediate(accessSize, arg);
-		MOV(accessSize, MDisp(RMEM, address & 0x3FFFFFFF), arg);
+		MOV(32, R(RSCRATCH), Imm32(address));
+		MOV(accessSize, MRegSum(RMEM, RSCRATCH), arg);
 		return;
 	}
 
@@ -666,10 +667,11 @@ void EmuCodeBlock::WriteToConstRamAddress(int accessSize, OpArg arg, u32 address
 		reg = arg.GetSimpleReg();
 	}
 
+	MOV(32, R(RSCRATCH2), Imm32(address));
 	if (swap)
-		SwapAndStore(accessSize, MDisp(RMEM, address & 0x3FFFFFFF), reg);
+		SwapAndStore(accessSize, MRegSum(RMEM, RSCRATCH2), reg);
 	else
-		MOV(accessSize, MDisp(RMEM, address & 0x3FFFFFFF), R(reg));
+		MOV(accessSize, MRegSum(RMEM, RSCRATCH2), R(reg));
 }
 
 void EmuCodeBlock::ForceSinglePrecisionS(X64Reg output, X64Reg input)
