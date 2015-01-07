@@ -334,7 +334,7 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 			//    access the RAM buffer and load from there).
 			// 2. If the address is in the MMIO range, find the appropriate
 			//    MMIO handler and generate the code to load using the handler.
-			// 3. Otherwise, just generate a call to Memory::Read_* with the
+			// 3. Otherwise, just generate a call to Memory::CPU_Read_* with the
 			//    address hardcoded.
 			if (Memory::CPU_IsRAMAddress(address))
 			{

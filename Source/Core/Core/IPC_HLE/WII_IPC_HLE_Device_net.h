@@ -488,12 +488,12 @@ public:
 
 		case IOCTL_NW24_SET_UNIVERSAL_TIME:
 			SetAdjustedUTC(Memory::Device_Read_U64(BufferIn));
-			//update_misc = Memory::Read_U32(BufferIn + 8);
+			//update_misc = Memory::Device_Read_U32(BufferIn + 8);
 			break;
 
 		case IOCTL_NW24_SET_RTC_COUNTER:
 			rtc = Memory::Device_Read_U32(BufferIn);
-			//update_misc = Memory::Read_U32(BufferIn + 4);
+			//update_misc = Memory::Device_Read_U32(BufferIn + 4);
 			break;
 
 		case IOCTL_NW24_GET_TIME_DIFF:

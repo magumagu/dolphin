@@ -232,7 +232,7 @@ IPCCommandResult CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 
 IPCCommandResult CWII_IPC_HLE_Device_fs::IOCtl(u32 _CommandAddress)
 {
-	//u32 DeviceID = Memory::Read_U32(_CommandAddress + 8);
+	//u32 DeviceID = Memory::Device_Read_U32(_CommandAddress + 8);
 	//LOG(WII_IPC_FILEIO, "FS: IOCtl (Device=%s, DeviceID=%08x)", GetDeviceName().c_str(), DeviceID);
 
 	u32 Parameter =  Memory::Device_Read_U32(_CommandAddress + 0xC);

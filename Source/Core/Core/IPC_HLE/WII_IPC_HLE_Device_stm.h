@@ -82,7 +82,7 @@ public:
 			INFO_LOG(WII_IPC_STM, "%s - IOCtl:", GetDeviceName().c_str());
 			INFO_LOG(WII_IPC_STM, "    IOCTL_STM_VIDIMMING");
 			//DumpCommands(BufferIn, BufferInSize / 4, LogTypes::WII_IPC_STM);
-			//Memory::Write_U32(1, BufferOut);
+			//Memory::Device_Write_U32(1, BufferOut);
 			//ReturnValue = 1;
 			break;
 

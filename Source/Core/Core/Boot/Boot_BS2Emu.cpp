@@ -80,7 +80,7 @@ bool CBoot::EmulatedBS2_GC()
 
 	Memory::Debug_Write_U64((u64)CEXIIPL::GetGCTime() * (u64)40500000, 0x800030D8); // Preset time base ticks
 	// HIO checks this
-	//Memory::Write_U16(0x8200,     0x000030e6); // Console type
+	//Memory::Debug_Write_U16(0x8200,     0x000030e6); // Console type
 
 	HLE::Patch(0x81300000, "OSReport"); // HLE OSReport for Apploader
 

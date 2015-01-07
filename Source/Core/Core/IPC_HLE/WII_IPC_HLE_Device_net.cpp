@@ -371,7 +371,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ncd_manage::IOCtlV(u32 _CommandAddress)
 		break;
 
 	case IOCTLV_NCD_UNLOCKWIRELESSDRIVER:
-		//Memory::Read_U32(CommandBuffer.InBuffer.at(0).m_Address);
+		//Memory::Device_Read_U32(CommandBuffer.InBuffer.at(0).m_Address);
 		break;
 
 	case IOCTLV_NCD_GETCONFIG:
@@ -941,9 +941,9 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 
 	case IOCTL_SO_INETNTOP:
 	{
-		//u32 af = Memory::Read_U32(BufferIn);
-		//u32 validAddress = Memory::Read_U32(BufferIn + 4);
-		//u32 src = Memory::Read_U32(BufferIn + 8);
+		//u32 af = Memory::Device_Read_U32(BufferIn);
+		//u32 validAddress = Memory::Device_Read_U32(BufferIn + 4);
+		//u32 src = Memory::Device_Read_U32(BufferIn + 8);
 		char ip_s[16];
 		sprintf(ip_s, "%i.%i.%i.%i",
 			Memory::Device_Read_U8(BufferIn + 8),
