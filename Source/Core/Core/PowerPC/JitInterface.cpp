@@ -212,14 +212,7 @@ namespace JitInterface
 			}
 		}
 
-		u32 inst;
-		// Bypass the icache for the external interrupt exception handler
-		// -- this is stupid, should respect HID0
-		if ( (_Address & 0x0FFFFF00) == 0x00000500 )
-			inst = Memory::ReadUnchecked_U32(_Address);
-		else
-			inst = PowerPC::ppcState.iCache.ReadInstruction(_Address);
-		return inst;
+		return PowerPC::ppcState.iCache.ReadInstruction(_Address);
 	}
 
 	void CompileExceptionCheck(ExceptionType type)
@@ -238,7 +231,8 @@ namespace JitInterface
 
 		if (PC != 0 && (exception_addresses->find(PC)) == (exception_addresses->end()))
 		{
-			int optype = GetOpInfo(Memory::CPU_Weird_Read_U32(PC))->type;
+			// TODO: We shouldn't use a debug read here.  What is this trying to do?
+			int optype = GetOpInfo(Memory::Debug_Read_U32(PC))->type;
 			if (optype == OPTYPE_STORE || optype == OPTYPE_STOREFP || (optype == OPTYPE_STOREPS))
 			{
 				exception_addresses->insert(PC);

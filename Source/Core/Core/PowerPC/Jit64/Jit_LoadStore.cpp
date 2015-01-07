@@ -111,13 +111,15 @@ void Jit64::lXXx(UGeckoInstruction inst)
 	// (mb2): I agree,
 	// IMHO those Idles should always be skipped and replaced by a more controllable "native" Idle methode
 	// ... maybe the throttle one already do that :p
+	// TODO: We shouldn't use a debug read here.  It should be possible to get
+	// the following instructions out of the JIT state.
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bSkipIdle &&
 	    PowerPC::GetState() != PowerPC::CPU_STEPPING &&
 	    inst.OPCD == 32 &&
 	    (inst.hex & 0xFFFF0000) == 0x800D0000 &&
-	    (Memory::ReadUnchecked_U32(js.compilerPC + 4) == 0x28000000 ||
-	    (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && Memory::ReadUnchecked_U32(js.compilerPC + 4) == 0x2C000000)) &&
-	    Memory::ReadUnchecked_U32(js.compilerPC + 8) == 0x4182fff8)
+	    (Memory::Debug_Read_U32(js.compilerPC + 4) == 0x28000000 ||
+		(SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && Memory::Debug_Read_U32(js.compilerPC + 4) == 0x2C000000)) &&
+		Memory::Debug_Read_U32(js.compilerPC + 8) == 0x4182fff8)
 	{
 		// TODO(LinesPrower):
 		// - Rewrite this!
@@ -296,7 +298,9 @@ void Jit64::dcbst(UGeckoInstruction inst)
 	// memory location.  Do not invalidate the JIT cache in this case as the memory
 	// will be the same.
 	// dcbt = 0x7c00022c
-	FALLBACK_IF((Memory::ReadUnchecked_U32(js.compilerPC - 4) & 0x7c00022c) != 0x7c00022c);
+	// TODO: We shouldn't use a debug read here.  It should be possible to get
+	// the previous instruction out of the JIT state.
+	FALLBACK_IF((Memory::Debug_Read_U32(js.compilerPC - 4) & 0x7c00022c) != 0x7c00022c);
 }
 
 // Zero cache line.

@@ -82,6 +82,8 @@ void Debug_Write_U8(const u8 var, const u32 address);
 void Debug_Write_U16(const u16 var, const u32 address);
 void Debug_Write_U32(const u32 var, const u32 address);
 
+// Returns whether a read or write to the given address will resolve to a RAM
+// access given the current CPU state.
 bool Debug_IsRAMAddress(const u32 address);
 
 std::string Debug_GetString(u32 em_address, size_t size = 0);
@@ -123,6 +125,11 @@ void CPU_ClearCacheLine(const u32 address); // Zeroes 32 bytes; address should b
 // TLB functions
 void CPU_SDRUpdated();
 void CPU_InvalidateTLBEntry(u32 address);
+
+// Result changes based on the BAT registers and MSR.DR.  Returns whether
+// it's safe to optimize a read or write to this address to an unguarded
+// memory access.  Does not consider page tables.
+bool CPU_IsRAMAddress(const u32 address);
 
 // Routines to access physically addressed memory, designed for use by
 // emulated hardware outside the CPU. Use "Device_" prefix.
