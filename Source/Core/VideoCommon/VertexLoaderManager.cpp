@@ -237,7 +237,7 @@ void LoadCPReg(u32 sub_cmd, u32 value, bool is_preprocess)
 	case 0xA0:
 		state->array_bases[sub_cmd & 0xF] = value;
 		if (update_global_state)
-			cached_arraybases[sub_cmd & 0xF] = Memory::Device_GetPointer(value);
+			cached_arraybases[sub_cmd & 0xF] = Memory::GetPointer(value);
 		break;
 
 	case 0xB0:
@@ -271,6 +271,6 @@ void RecomputeCachedArraybases()
 {
 	for (int i = 0; i < 16; i++)
 	{
-		cached_arraybases[i] = Memory::Device_GetPointer(g_main_cp_state.array_bases[i]);
+		cached_arraybases[i] = Memory::GetPointer(g_main_cp_state.array_bases[i]);
 	}
 }

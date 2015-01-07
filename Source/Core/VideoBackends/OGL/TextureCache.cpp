@@ -288,7 +288,7 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 			scaleByHalf,
 			srcRect);
 
-		u8* dst = Memory::Device_GetPointer(addr);
+		u8* dst = Memory::GetPointer(addr);
 		u64 const new_hash = GetHash64(dst,encoded_size,g_ActiveConfig.iSafeTextureCache_ColorSamples);
 
 		size_in_bytes = (u32)encoded_size;

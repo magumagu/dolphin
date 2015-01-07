@@ -28,7 +28,7 @@ CWII_IPC_HLE_Device_di::~CWII_IPC_HLE_Device_di()
 
 IPCCommandResult CWII_IPC_HLE_Device_di::Open(u32 _CommandAddress, u32 _Mode)
 {
-	Memory::Device_Write_U32(GetDeviceID(), _CommandAddress + 4);
+	Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
 	m_Active = true;
 	return IPC_DEFAULT_REPLY;
 }
@@ -36,21 +36,21 @@ IPCCommandResult CWII_IPC_HLE_Device_di::Open(u32 _CommandAddress, u32 _Mode)
 IPCCommandResult CWII_IPC_HLE_Device_di::Close(u32 _CommandAddress, bool _bForce)
 {
 	if (!_bForce)
-		Memory::Device_Write_U32(0, _CommandAddress + 4);
+		Memory::Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return IPC_DEFAULT_REPLY;
 }
 
 IPCCommandResult CWII_IPC_HLE_Device_di::IOCtl(u32 _CommandAddress)
 {
-	u32 BufferIn = Memory::Device_Read_U32(_CommandAddress + 0x10);
-	u32 BufferInSize = Memory::Device_Read_U32(_CommandAddress + 0x14);
-	u32 BufferOut = Memory::Device_Read_U32(_CommandAddress + 0x18);
-	u32 BufferOutSize = Memory::Device_Read_U32(_CommandAddress + 0x1C);
+	u32 BufferIn = Memory::Read_U32(_CommandAddress + 0x10);
+	u32 BufferInSize = Memory::Read_U32(_CommandAddress + 0x14);
+	u32 BufferOut = Memory::Read_U32(_CommandAddress + 0x18);
+	u32 BufferOutSize = Memory::Read_U32(_CommandAddress + 0x1C);
 
-	u32 command_0 = Memory::Device_Read_U32(BufferIn);
-	u32 command_1 = Memory::Device_Read_U32(BufferIn + 4);
-	u32 command_2 = Memory::Device_Read_U32(BufferIn + 8);
+	u32 command_0 = Memory::Read_U32(BufferIn);
+	u32 command_1 = Memory::Read_U32(BufferIn + 4);
+	u32 command_2 = Memory::Read_U32(BufferIn + 8);
 
 	DEBUG_LOG(WII_IPC_DVD, "IOCtl Command(0x%08x) BufferIn(0x%08x, 0x%x) BufferOut(0x%08x, 0x%x)",
 		command_0, BufferIn, BufferInSize, BufferOut, BufferOutSize);
@@ -60,12 +60,12 @@ IPCCommandResult CWII_IPC_HLE_Device_di::IOCtl(u32 _CommandAddress)
 	{
 		// Set out buffer to zeroes as a safety precaution
 		// to avoid answering nonsense values
-		Memory::Device_Memset(BufferOut, 0, BufferOutSize);
+		Memory::Memset(BufferOut, 0, BufferOutSize);
 	}
 
 	DVDCommandResult result = ExecuteCommand(command_0, command_1, command_2,
 	                                         BufferOut, BufferOutSize, false);
-	Memory::Device_Write_U32(result.interrupt_type, _CommandAddress + 0x4);
+	Memory::Write_U32(result.interrupt_type, _CommandAddress + 0x4);
 
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bFastDiscSpeed)
 		result.ticks_until_completion = 0;	// An optional hack to speed up loading times
@@ -81,7 +81,7 @@ IPCCommandResult CWII_IPC_HLE_Device_di::IOCtlV(u32 _CommandAddress)
 	// to avoid returning bad values
 	for (u32 i = 0; i < CommandBuffer.NumberPayloadBuffer; i++)
 	{
-		Memory::Device_Memset(CommandBuffer.PayloadBuffer[i].m_Address, 0,
+		Memory::Memset(CommandBuffer.PayloadBuffer[i].m_Address, 0,
 			CommandBuffer.PayloadBuffer[i].m_Size);
 	}
 
@@ -93,7 +93,7 @@ IPCCommandResult CWII_IPC_HLE_Device_di::IOCtlV(u32 _CommandAddress)
 			_dbg_assert_msg_(WII_IPC_DVD, CommandBuffer.InBuffer[1].m_Address == 0, "DVDLowOpenPartition with ticket");
 			_dbg_assert_msg_(WII_IPC_DVD, CommandBuffer.InBuffer[2].m_Address == 0, "DVDLowOpenPartition with cert chain");
 
-			u64 const partition_offset = ((u64)Memory::Device_Read_U32(CommandBuffer.InBuffer[0].m_Address + 4) << 2);
+			u64 const partition_offset = ((u64)Memory::Read_U32(CommandBuffer.InBuffer[0].m_Address + 4) << 2);
 			VolumeHandler::GetVolume()->ChangePartition(partition_offset);
 
 			INFO_LOG(WII_IPC_DVD, "DVDLowOpenPartition: partition_offset 0x%016" PRIx64, partition_offset);
@@ -101,7 +101,7 @@ IPCCommandResult CWII_IPC_HLE_Device_di::IOCtlV(u32 _CommandAddress)
 			// Read TMD to the buffer
 			u32 tmd_size;
 			std::unique_ptr<u8[]> tmd_buf = VolumeHandler::GetVolume()->GetTMD(&tmd_size);
-			Memory::Device_CopyToEmu(CommandBuffer.PayloadBuffer[0].m_Address, tmd_buf.get(), tmd_size);
+			Memory::CopyToEmu(CommandBuffer.PayloadBuffer[0].m_Address, tmd_buf.get(), tmd_size);
 			WII_IPC_HLE_Interface::ES_DIVerify(tmd_buf.get(), tmd_size);
 
 			ReturnValue = 1;
@@ -114,6 +114,6 @@ IPCCommandResult CWII_IPC_HLE_Device_di::IOCtlV(u32 _CommandAddress)
 		break;
 	}
 
-	Memory::Device_Write_U32(ReturnValue, _CommandAddress + 4);
+	Memory::Write_U32(ReturnValue, _CommandAddress + 4);
 	return IPC_DEFAULT_REPLY;
 }

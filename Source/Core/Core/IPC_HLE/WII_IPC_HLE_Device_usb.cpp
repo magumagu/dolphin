@@ -20,9 +20,9 @@ void CWII_IPC_HLE_Device_usb_oh1_57e_305::EnqueueReply(u32 CommandAddress)
 {
 	// IOS seems to write back the command that was responded to in the FD field, this
 	// class does not overwrite the command so it is safe to read back.
-	Memory::Device_Write_U32(Memory::Device_Read_U32(CommandAddress), CommandAddress + 8);
+	Memory::Write_U32(Memory::Read_U32(CommandAddress), CommandAddress + 8);
 	// The original hardware overwrites the command type with the async reply type.
-	Memory::Device_Write_U32(IPC_REP_ASYNC, CommandAddress);
+	Memory::Write_U32(IPC_REP_ASYNC, CommandAddress);
 
 	WII_IPC_HLE_Interface::EnqueueReply(CommandAddress);
 }
@@ -139,7 +139,7 @@ IPCCommandResult CWII_IPC_HLE_Device_usb_oh1_57e_305::Open(u32 _CommandAddress, 
 	m_HCIEndpoint.m_address = 0;
 	m_ACLEndpoint.m_address = 0;
 
-	Memory::Device_Write_U32(GetDeviceID(), _CommandAddress + 4);
+	Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
 	m_Active = true;
 	return IPC_DEFAULT_REPLY;
 }
@@ -155,7 +155,7 @@ IPCCommandResult CWII_IPC_HLE_Device_usb_oh1_57e_305::Close(u32 _CommandAddress,
 	m_ACLEndpoint.m_address = 0;
 
 	if (!_bForce)
-		Memory::Device_Write_U32(0, _CommandAddress + 4);
+		Memory::Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return IPC_DEFAULT_REPLY;
 }
@@ -169,16 +169,16 @@ IPCCommandResult CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtl(u32 _CommandAddress)
 IPCCommandResult CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtlV(u32 _CommandAddress)
 {
 /*
-	Memory::Device_Write_U8(255, 0x80149950);  // BTM LOG  // 3 logs L2Cap  // 4 logs l2_csm$
-	Memory::Device_Write_U8(255, 0x80149949);  // Security Manager
-	Memory::Device_Write_U8(255, 0x80149048);  // HID
-	Memory::Device_Write_U8(3, 0x80152058);    // low ??   // >= 4 and you will get a lot of event messages of the same type
-	Memory::Device_Write_U8(1, 0x80152018);    // WUD
-	Memory::Device_Write_U8(1, 0x80151FC8);    // DEBUGPrint
-	Memory::Device_Write_U8(1, 0x80151488);    // WPAD_LOG
-	Memory::Device_Write_U8(1, 0x801514A8);    // USB_LOG
-	Memory::Device_Write_U8(1, 0x801514D8);    // WUD_DEBUGPrint
-	Memory::Device_Write_U8(1, 0x80148E09);    // HID LOG
+	Memory::Write_U8(255, 0x80149950);  // BTM LOG  // 3 logs L2Cap  // 4 logs l2_csm$
+	Memory::Write_U8(255, 0x80149949);  // Security Manager
+	Memory::Write_U8(255, 0x80149048);  // HID
+	Memory::Write_U8(3, 0x80152058);    // low ??   // >= 4 and you will get a lot of event messages of the same type
+	Memory::Write_U8(1, 0x80152018);    // WUD
+	Memory::Write_U8(1, 0x80151FC8);    // DEBUGPrint
+	Memory::Write_U8(1, 0x80151488);    // WPAD_LOG
+	Memory::Write_U8(1, 0x801514A8);    // USB_LOG
+	Memory::Write_U8(1, 0x801514D8);    // WUD_DEBUGPrint
+	Memory::Write_U8(1, 0x80148E09);    // HID LOG
 */
 
 	bool _SendReply = false;
@@ -190,17 +190,17 @@ IPCCommandResult CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtlV(u32 _CommandAddress
 	case USBV0_IOCTL_CTRLMSG: // HCI command is received from the stack
 		{
 			// This is the HCI datapath from CPU to Wiimote, the USB stuff is little endian..
-			m_CtrlSetup.bRequestType  = *( u8*)Memory::Device_GetPointer(CommandBuffer.InBuffer[0].m_Address);
-			m_CtrlSetup.bRequest      = *( u8*)Memory::Device_GetPointer(CommandBuffer.InBuffer[1].m_Address);
-			m_CtrlSetup.wValue        = *(u16*)Memory::Device_GetPointer(CommandBuffer.InBuffer[2].m_Address);
-			m_CtrlSetup.wIndex        = *(u16*)Memory::Device_GetPointer(CommandBuffer.InBuffer[3].m_Address);
-			m_CtrlSetup.wLength       = *(u16*)Memory::Device_GetPointer(CommandBuffer.InBuffer[4].m_Address);
+			m_CtrlSetup.bRequestType  = *( u8*)Memory::GetPointer(CommandBuffer.InBuffer[0].m_Address);
+			m_CtrlSetup.bRequest      = *( u8*)Memory::GetPointer(CommandBuffer.InBuffer[1].m_Address);
+			m_CtrlSetup.wValue        = *(u16*)Memory::GetPointer(CommandBuffer.InBuffer[2].m_Address);
+			m_CtrlSetup.wIndex        = *(u16*)Memory::GetPointer(CommandBuffer.InBuffer[3].m_Address);
+			m_CtrlSetup.wLength       = *(u16*)Memory::GetPointer(CommandBuffer.InBuffer[4].m_Address);
 			m_CtrlSetup.m_PayLoadAddr = CommandBuffer.PayloadBuffer[0].m_Address;
 			m_CtrlSetup.m_PayLoadSize = CommandBuffer.PayloadBuffer[0].m_Size;
 			m_CtrlSetup.m_Address     = CommandBuffer.m_Address;
 
 			// check termination
-			_dbg_assert_msg_(WII_IPC_WIIMOTE, *(u8*)Memory::Device_GetPointer(CommandBuffer.InBuffer[5].m_Address) == 0,
+			_dbg_assert_msg_(WII_IPC_WIIMOTE, *(u8*)Memory::GetPointer(CommandBuffer.InBuffer[5].m_Address) == 0,
 				"WIIMOTE: Termination != 0");
 
 			#if 0 // this log can get really annoying
@@ -221,7 +221,7 @@ IPCCommandResult CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtlV(u32 _CommandAddress
 
 	case USBV0_IOCTL_BLKMSG:
 		{
-			u8 Command = Memory::Device_Read_U8(CommandBuffer.InBuffer[0].m_Address);
+			u8 Command = Memory::Read_U8(CommandBuffer.InBuffer[0].m_Address);
 			switch (Command)
 			{
 			case ACL_DATA_OUT: // ACL data is received from the stack
@@ -235,13 +235,13 @@ IPCCommandResult CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtlV(u32 _CommandAddress
 					#endif
 
 					CtrlBuffer BulkBuffer(_CommandAddress);
-					hci_acldata_hdr_t* pACLHeader = (hci_acldata_hdr_t*)Memory::Device_GetPointer(BulkBuffer.m_buffer);
+					hci_acldata_hdr_t* pACLHeader = (hci_acldata_hdr_t*)Memory::GetPointer(BulkBuffer.m_buffer);
 
 					_dbg_assert_(WII_IPC_WIIMOTE, HCI_BC_FLAG(pACLHeader->con_handle) == HCI_POINT2POINT);
 					_dbg_assert_(WII_IPC_WIIMOTE, HCI_PB_FLAG(pACLHeader->con_handle) == HCI_PACKET_START);
 
 					SendToDevice(HCI_CON_HANDLE(pACLHeader->con_handle),
-						Memory::Device_GetPointer(BulkBuffer.m_buffer + sizeof(hci_acldata_hdr_t)),
+						Memory::GetPointer(BulkBuffer.m_buffer + sizeof(hci_acldata_hdr_t)),
 						pACLHeader->length);
 
 					_SendReply = true;
@@ -269,7 +269,7 @@ IPCCommandResult CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtlV(u32 _CommandAddress
 
 	case USBV0_IOCTL_INTRMSG:
 		{
-			u8 Command = Memory::Device_Read_U8(CommandBuffer.InBuffer[0].m_Address);
+			u8 Command = Memory::Read_U8(CommandBuffer.InBuffer[0].m_Address);
 			if (Command == HCI_EVENT) // We are given a HCI buffer to fill
 			{
 				CtrlBuffer temp(_CommandAddress);
@@ -303,7 +303,7 @@ IPCCommandResult CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtlV(u32 _CommandAddress
 	}
 
 	// write return value
-	Memory::Device_Write_U32(0, _CommandAddress + 4);
+	Memory::Write_U32(0, _CommandAddress + 4);
 	return { _SendReply, IPC_DEFAULT_DELAY };
 }
 
@@ -345,7 +345,7 @@ void CWII_IPC_HLE_Device_usb_oh1_57e_305::SendACLPacket(u16 _ConnectionHandle, u
 	{
 		DEBUG_LOG(WII_IPC_WIIMOTE, "ACL endpoint valid, sending packet to %08x", m_ACLEndpoint.m_address);
 
-		hci_acldata_hdr_t* pHeader = (hci_acldata_hdr_t*)Memory::Device_GetPointer(m_ACLEndpoint.m_buffer);
+		hci_acldata_hdr_t* pHeader = (hci_acldata_hdr_t*)Memory::GetPointer(m_ACLEndpoint.m_buffer);
 		pHeader->con_handle = HCI_MK_CON_HANDLE(_ConnectionHandle, HCI_PACKET_START, HCI_POINT2POINT);
 		pHeader->length     = _Size;
 
@@ -519,7 +519,7 @@ void CWII_IPC_HLE_Device_usb_oh1_57e_305::ACLPool::WriteToEndpoint(CtrlBuffer& e
 	DEBUG_LOG(WII_IPC_WIIMOTE, "ACL packet being written from "
 		"queue to %08x", endpoint.m_address);
 
-	hci_acldata_hdr_t* pHeader = (hci_acldata_hdr_t*)Memory::Device_GetPointer(endpoint.m_buffer);
+	hci_acldata_hdr_t* pHeader = (hci_acldata_hdr_t*)Memory::GetPointer(endpoint.m_buffer);
 	pHeader->con_handle = HCI_MK_CON_HANDLE(conn_handle, HCI_PACKET_START, HCI_POINT2POINT);
 	pHeader->length = size;
 
@@ -1051,8 +1051,8 @@ bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventConPacketTypeChange(u16 _conn
 // This is called from the USBV0_IOCTL_CTRLMSG Ioctlv
 void CWII_IPC_HLE_Device_usb_oh1_57e_305::ExecuteHCICommandMessage(const SHCICommandMessage& _rHCICommandMessage)
 {
-	u8* pInput = Memory::Device_GetPointer(_rHCICommandMessage.m_PayLoadAddr + 3);
-	SCommandMessage* pMsg = (SCommandMessage*)Memory::Device_GetPointer(_rHCICommandMessage.m_PayLoadAddr);
+	u8* pInput = Memory::GetPointer(_rHCICommandMessage.m_PayLoadAddr + 3);
+	SCommandMessage* pMsg = (SCommandMessage*)Memory::GetPointer(_rHCICommandMessage.m_PayLoadAddr);
 
 	u16 ocf = HCI_OCF(pMsg->Opcode);
 	u16 ogf = HCI_OGF(pMsg->Opcode);

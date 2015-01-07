@@ -531,7 +531,7 @@ IEXIDevice* CEXIMemoryCard::FindDevice(TEXIDevices device_type, int customIndex)
 // read all at once instead of single byte at a time as done by IEXIDevice::DMARead
 void CEXIMemoryCard::DMARead(u32 _uAddr, u32 _uSize)
 {
-	memorycard->Read(address, _uSize, Memory::Device_GetPointer(_uAddr));
+	memorycard->Read(address, _uSize, Memory::GetPointer(_uAddr));
 
 	if ((address + _uSize) % BLOCK_SIZE == 0)
 	{
@@ -549,7 +549,7 @@ void CEXIMemoryCard::DMARead(u32 _uAddr, u32 _uSize)
 // write all at once instead of single byte at a time as done by IEXIDevice::DMAWrite
 void CEXIMemoryCard::DMAWrite(u32 _uAddr, u32 _uSize)
 {
-	memorycard->Write(address, _uSize, Memory::Device_GetPointer(_uAddr));
+	memorycard->Write(address, _uSize, Memory::GetPointer(_uAddr));
 
 	if (((address + _uSize) % BLOCK_SIZE) == 0)
 	{

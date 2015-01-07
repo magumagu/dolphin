@@ -96,7 +96,7 @@ static void ExecuteDisplayList(u32 addr, u32 count)
 {
 	u8 *videoDataSave = g_video_buffer_read_ptr;
 
-	u8 *dlStart = Memory::Device_GetPointer(addr);
+	u8 *dlStart = Memory::GetPointer(addr);
 
 	g_video_buffer_read_ptr = dlStart;
 

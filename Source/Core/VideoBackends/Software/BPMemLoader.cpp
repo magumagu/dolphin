@@ -97,7 +97,7 @@ void SWBPWritten(int address, int newvalue)
 			if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
 				addr = addr & 0x01FFFFFF;
 
-			Memory::Device_CopyFromEmu(texMem + tlutTMemAddr, addr, tlutXferCount);
+			Memory::CopyFromEmu(texMem + tlutTMemAddr, addr, tlutXferCount);
 
 			break;
 		}
@@ -118,11 +118,11 @@ void SWBPWritten(int address, int newvalue)
 				if (tmem_addr_even + size > TMEM_SIZE)
 					size = TMEM_SIZE - tmem_addr_even;
 
-				Memory::Device_CopyFromEmu(texMem + tmem_addr_even, src_addr, size);
+				Memory::CopyFromEmu(texMem + tmem_addr_even, src_addr, size);
 			}
 			else // RGBA8 tiles (and CI14, but that might just be stupid libogc!)
 			{
-				u8* src_ptr = Memory::Device_GetPointer(src_addr);
+				u8* src_ptr = Memory::GetPointer(src_addr);
 
 				// AR and GB tiles are stored in separate TMEM banks => can't use a single memcpy for everything
 				u32 tmem_addr_odd = tmem_cfg.preload_tmem_odd * TMEM_LINE_SIZE;

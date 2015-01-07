@@ -229,7 +229,7 @@ bool CBoot::SetupWiiMemory(IVolume::ECountry country)
 			return false;
 		}
 		// Write the 256 byte setting.txt to memory.
-		Memory::Device_CopyToEmu(0x3800, gen.GetData(), SettingsHandler::SETTINGS_SIZE);
+		Memory::CopyToEmu(0x3800, gen.GetData(), SettingsHandler::SETTINGS_SIZE);
 	}
 
 	INFO_LOG(BOOT, "Setup Wii Memory...");
@@ -245,57 +245,57 @@ bool CBoot::SetupWiiMemory(IVolume::ECountry country)
 	*/
 
 	DVDInterface::DVDRead(0x00000000, 0x00000000, 0x20, false);        // Game Code
-	Memory::Device_Write_U32(0x0D15EA5E, 0x00000020);                  // Another magic word
-	Memory::Device_Write_U32(0x00000001, 0x00000024);                  // Unknown
-	Memory::Device_Write_U32(Memory::REALRAM_SIZE, 0x00000028);        // MEM1 size 24MB
-	Memory::Device_Write_U32(0x00000023, 0x0000002c);                  // Production Board Model
-	Memory::Device_Write_U32(0x00000000, 0x00000030);                  // Init
-	Memory::Device_Write_U32(0x817FEC60, 0x00000034);                  // Init
+	Memory::Write_U32(0x0D15EA5E, 0x00000020);                  // Another magic word
+	Memory::Write_U32(0x00000001, 0x00000024);                  // Unknown
+	Memory::Write_U32(Memory::REALRAM_SIZE, 0x00000028);        // MEM1 size 24MB
+	Memory::Write_U32(0x00000023, 0x0000002c);                  // Production Board Model
+	Memory::Write_U32(0x00000000, 0x00000030);                  // Init
+	Memory::Write_U32(0x817FEC60, 0x00000034);                  // Init
 	// 38, 3C should get start, size of FST through apploader
-	Memory::Device_Write_U32(0x38a00040, 0x00000060);                  // Exception init
-	Memory::Device_Write_U32(0x8008f7b8, 0x000000e4);                  // Thread Init
-	Memory::Device_Write_U32(Memory::REALRAM_SIZE, 0x000000f0);        // "Simulated memory size" (debug mode?)
-	Memory::Device_Write_U32(0x8179b500, 0x000000f4);                  // __start
-	Memory::Device_Write_U32(0x0e7be2c0, 0x000000f8);                  // Bus speed
-	Memory::Device_Write_U32(0x2B73A840, 0x000000fc);                  // CPU speed
-	Memory::Device_Write_U16(0x0000, 0x000030e6);                      // Console type
-	Memory::Device_Write_U32(0x00000000, 0x000030c0);                  // EXI
-	Memory::Device_Write_U32(0x00000000, 0x000030c4);                  // EXI
-	Memory::Device_Write_U32(0x00000000, 0x000030dc);                  // Time
-	Memory::Device_Write_U32(0x00000000, 0x000030d8);                  // Time
-	Memory::Device_Write_U16(0x8201, 0x000030e6);                      // Dev console / debug capable
-	Memory::Device_Write_U32(0x00000000, 0x000030f0);                  // Apploader
-	Memory::Device_Write_U32(0x01800000, 0x00003100);                  // BAT
-	Memory::Device_Write_U32(0x01800000, 0x00003104);                  // BAT
-	Memory::Device_Write_U32(0x00000000, 0x0000310c);                  // Init
-	Memory::Device_Write_U32(0x8179d500, 0x00003110);                  // Init
-	Memory::Device_Write_U32(0x04000000, 0x00003118);                  // Unknown
-	Memory::Device_Write_U32(0x04000000, 0x0000311c);                  // BAT
-	Memory::Device_Write_U32(0x93400000, 0x00003120);                  // BAT
-	Memory::Device_Write_U32(0x90000800, 0x00003124);                  // Init - MEM2 low
-	Memory::Device_Write_U32(0x93ae0000, 0x00003128);                  // Init - MEM2 high
-	Memory::Device_Write_U32(0x93ae0000, 0x00003130);                  // IOS MEM2 low
-	Memory::Device_Write_U32(0x93b00000, 0x00003134);                  // IOS MEM2 high
-	Memory::Device_Write_U32(0x00000012, 0x00003138);                  // Console type
+	Memory::Write_U32(0x38a00040, 0x00000060);                  // Exception init
+	Memory::Write_U32(0x8008f7b8, 0x000000e4);                  // Thread Init
+	Memory::Write_U32(Memory::REALRAM_SIZE, 0x000000f0);        // "Simulated memory size" (debug mode?)
+	Memory::Write_U32(0x8179b500, 0x000000f4);                  // __start
+	Memory::Write_U32(0x0e7be2c0, 0x000000f8);                  // Bus speed
+	Memory::Write_U32(0x2B73A840, 0x000000fc);                  // CPU speed
+	Memory::Write_U16(0x0000, 0x000030e6);                      // Console type
+	Memory::Write_U32(0x00000000, 0x000030c0);                  // EXI
+	Memory::Write_U32(0x00000000, 0x000030c4);                  // EXI
+	Memory::Write_U32(0x00000000, 0x000030dc);                  // Time
+	Memory::Write_U32(0x00000000, 0x000030d8);                  // Time
+	Memory::Write_U16(0x8201, 0x000030e6);                      // Dev console / debug capable
+	Memory::Write_U32(0x00000000, 0x000030f0);                  // Apploader
+	Memory::Write_U32(0x01800000, 0x00003100);                  // BAT
+	Memory::Write_U32(0x01800000, 0x00003104);                  // BAT
+	Memory::Write_U32(0x00000000, 0x0000310c);                  // Init
+	Memory::Write_U32(0x8179d500, 0x00003110);                  // Init
+	Memory::Write_U32(0x04000000, 0x00003118);                  // Unknown
+	Memory::Write_U32(0x04000000, 0x0000311c);                  // BAT
+	Memory::Write_U32(0x93400000, 0x00003120);                  // BAT
+	Memory::Write_U32(0x90000800, 0x00003124);                  // Init - MEM2 low
+	Memory::Write_U32(0x93ae0000, 0x00003128);                  // Init - MEM2 high
+	Memory::Write_U32(0x93ae0000, 0x00003130);                  // IOS MEM2 low
+	Memory::Write_U32(0x93b00000, 0x00003134);                  // IOS MEM2 high
+	Memory::Write_U32(0x00000012, 0x00003138);                  // Console type
 	// 40 is copied from 88 after running apploader
-	Memory::Device_Write_U32(0x00090204, 0x00003140);                  // IOS revision (IOS9, v2.4)
-	Memory::Device_Write_U32(0x00062507, 0x00003144);                  // IOS date in USA format (June 25, 2007)
-	Memory::Device_Write_U16(0x0113, 0x0000315e);                      // Apploader
-	Memory::Device_Write_U32(0x0000FF16, 0x00003158);                  // DDR ram vendor code
-	Memory::Device_Write_U32(0x00000000, 0x00003160);                  // Init semaphore (sysmenu waits for this to clear)
-	Memory::Device_Write_U32(0x00090204, 0x00003188);                  // Expected IOS revision
+	Memory::Write_U32(0x00090204, 0x00003140);                  // IOS revision (IOS9, v2.4)
+	Memory::Write_U32(0x00062507, 0x00003144);                  // IOS date in USA format (June 25, 2007)
+	Memory::Write_U16(0x0113, 0x0000315e);                      // Apploader
+	Memory::Write_U32(0x0000FF16, 0x00003158);                  // DDR ram vendor code
+	Memory::Write_U32(0x00000000, 0x00003160);                  // Init semaphore (sysmenu waits for this to clear)
+	Memory::Write_U32(0x00090204, 0x00003188);                  // Expected IOS revision
 
-	Memory::Device_Write_U8(0x80, 0x0000315c);                         // OSInit
-	Memory::Device_Write_U16(0x0000, 0x000030e0);                      // PADInit
-	Memory::Device_Write_U32(0x80000000, 0x00003184);                  // GameID Address
+	Memory::Write_U8(0x80, 0x0000315c);                         // OSInit
+	Memory::Write_U16(0x0000, 0x000030e0);                      // PADInit
+	Memory::Write_U32(0x80000000, 0x00003184);                  // GameID Address
 
 	// Fake the VI Init of the IPL
-	Memory::Device_Write_U32(SConfig::GetInstance().m_LocalCoreStartupParameter.bNTSC ? 0 : 1, 0x000000CC);
+	Memory::Write_U32(SConfig::GetInstance().m_LocalCoreStartupParameter.bNTSC ? 0 : 1, 0x000000CC);
 
 	// Clear exception handler. Why? Don't we begin with only zeros?
 	for (int i = 0x3000; i <= 0x3038; i += 4)
 	{
-		Memory::Device_Write_U32(0x00000000, i);
+		Memory::Write_U32(0x00000000, i);
 	}
 	return true;
 }
@@ -344,9 +344,9 @@ bool CBoot::EmulatedBS2_Wii()
 		PowerPC::ppcState.spr[SPR_DBAT5U] = 0xd0001fff;
 		PowerPC::ppcState.spr[SPR_DBAT5L] = 0x1000002a;
 
-		Memory::Device_Write_U32(0x4c000064, 0x00000300); // Write default DSI Handler:     rfi
-		Memory::Device_Write_U32(0x4c000064, 0x00000800); // Write default FPU Handler:     rfi
-		Memory::Device_Write_U32(0x4c000064, 0x00000C00); // Write default Syscall Handler: rfi
+		Memory::Write_U32(0x4c000064, 0x00000300); // Write default DSI Handler:     rfi
+		Memory::Write_U32(0x4c000064, 0x00000800); // Write default FPU Handler:     rfi
+		Memory::Write_U32(0x4c000064, 0x00000C00); // Write default Syscall Handler: rfi
 
 		HLE::Patch(0x81300000, "OSReport"); // HLE OSReport for Apploader
 

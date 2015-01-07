@@ -77,7 +77,7 @@ ZeldaUCode::~ZeldaUCode()
 u8 *ZeldaUCode::GetARAMPointer(u32 address)
 {
 	if (IsDMAVersion())
-		return Memory::Device_GetPointer(m_dma_base_addr) + address;
+		return Memory::GetPointer(m_dma_base_addr) + address;
 	else
 		return DSP::GetARAMPtr() + address;
 }
@@ -411,12 +411,12 @@ void ZeldaUCode::ExecuteList()
 			m_reverb_pbs_addr = Read32() & 0x7FFFFFFF;  // WARNING: reverb PBs are very different from voice PBs!
 
 			// Read the other table
-			u16 *tmp_ptr = (u16*)Memory::Device_GetPointer(m_unk_table_addr);
+			u16 *tmp_ptr = (u16*)Memory::GetPointer(m_unk_table_addr);
 			for (int i = 0; i < 0x280; i++)
 				m_misc_table[i] = (s16)Common::swap16(tmp_ptr[i]);
 
 			// Read AFC coef table
-			tmp_ptr = (u16*)Memory::Device_GetPointer(m_afc_coef_table_addr);
+			tmp_ptr = (u16*)Memory::GetPointer(m_afc_coef_table_addr);
 			for (int i = 0; i < 32; i++)
 				m_afc_coef_table[i] = (s16)Common::swap16(tmp_ptr[i]);
 

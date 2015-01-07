@@ -351,8 +351,8 @@ void ExecuteCommand(u32 _Address)
 {
 	IPCCommandResult result = IPC_NO_REPLY;
 
-	IPCCommandType Command = static_cast<IPCCommandType>(Memory::Device_Read_U32(_Address));
-	volatile s32 DeviceID = Memory::Device_Read_U32(_Address + 8);
+	IPCCommandType Command = static_cast<IPCCommandType>(Memory::Read_U32(_Address));
+	volatile s32 DeviceID = Memory::Read_U32(_Address + 8);
 
 	IWII_IPC_HLE_Device* pDevice = (DeviceID >= 0 && DeviceID < IPC_MAX_FDS) ? g_FdMap[DeviceID] : nullptr;
 
@@ -362,10 +362,10 @@ void ExecuteCommand(u32 _Address)
 	{
 	case IPC_CMD_OPEN:
 	{
-		u32 Mode = Memory::Device_Read_U32(_Address + 0x10);
+		u32 Mode = Memory::Read_U32(_Address + 0x10);
 		DeviceID = getFreeDeviceId();
 
-		std::string DeviceName = Memory::Device_GetString(Memory::Device_Read_U32(_Address + 0xC));
+		std::string DeviceName = Memory::GetString(Memory::Read_U32(_Address + 0xC));
 
 		WARN_LOG(WII_IPC_HLE, "Trying to open %s as %d", DeviceName.c_str(), DeviceID);
 		if (DeviceID >= 0)
@@ -380,14 +380,14 @@ void ExecuteCommand(u32 _Address)
 						es_inuse[j] = true;
 						g_FdMap[DeviceID] = es_handles[j];
 						result = es_handles[j]->Open(_Address, Mode);
-						Memory::Device_Write_U32(DeviceID, _Address + 4);
+						Memory::Write_U32(DeviceID, _Address + 4);
 						break;
 					}
 				}
 
 				if (j == ES_MAX_COUNT)
 				{
-					Memory::Device_Write_U32(FS_EESEXHAUSTED, _Address + 4);
+					Memory::Write_U32(FS_EESEXHAUSTED, _Address + 4);
 					result = IPC_DEFAULT_REPLY;
 				}
 			}
@@ -400,12 +400,12 @@ void ExecuteCommand(u32 _Address)
 					result = pDevice->Open(_Address, Mode);
 					INFO_LOG(WII_IPC_FILEIO, "IOP: ReOpen (Device=%s, DeviceID=%08x, Mode=%i)",
 						pDevice->GetDeviceName().c_str(), DeviceID, Mode);
-					Memory::Device_Write_U32(DeviceID, _Address + 4);
+					Memory::Write_U32(DeviceID, _Address + 4);
 				}
 				else
 				{
 					WARN_LOG(WII_IPC_HLE, "Unimplemented device: %s", DeviceName.c_str());
-					Memory::Device_Write_U32(FS_ENOENT, _Address + 4);
+					Memory::Write_U32(FS_ENOENT, _Address + 4);
 					result = IPC_DEFAULT_REPLY;
 				}
 			}
@@ -416,7 +416,7 @@ void ExecuteCommand(u32 _Address)
 
 				INFO_LOG(WII_IPC_FILEIO, "IOP: Open File (Device=%s, ID=%08x, Mode=%i)",
 						pDevice->GetDeviceName().c_str(), DeviceID, Mode);
-				if (Memory::Device_Read_U32(_Address + 4) == (u32)DeviceID)
+				if (Memory::Read_U32(_Address + 4) == (u32)DeviceID)
 				{
 					g_FdMap[DeviceID] = pDevice;
 				}
@@ -429,7 +429,7 @@ void ExecuteCommand(u32 _Address)
 		}
 		else
 		{
-			Memory::Device_Write_U32(FS_EFDEXHAUSTED, _Address + 4);
+			Memory::Write_U32(FS_EFDEXHAUSTED, _Address + 4);
 			result = IPC_DEFAULT_REPLY;
 		}
 		break;
@@ -459,7 +459,7 @@ void ExecuteCommand(u32 _Address)
 		}
 		else
 		{
-			Memory::Device_Write_U32(FS_EINVAL, _Address + 4);
+			Memory::Write_U32(FS_EINVAL, _Address + 4);
 			result = IPC_DEFAULT_REPLY;
 		}
 		break;
@@ -472,7 +472,7 @@ void ExecuteCommand(u32 _Address)
 		}
 		else
 		{
-			Memory::Device_Write_U32(FS_EINVAL, _Address + 4);
+			Memory::Write_U32(FS_EINVAL, _Address + 4);
 			result = IPC_DEFAULT_REPLY;
 		}
 		break;
@@ -485,7 +485,7 @@ void ExecuteCommand(u32 _Address)
 		}
 		else
 		{
-			Memory::Device_Write_U32(FS_EINVAL, _Address + 4);
+			Memory::Write_U32(FS_EINVAL, _Address + 4);
 			result = IPC_DEFAULT_REPLY;
 		}
 		break;
@@ -498,7 +498,7 @@ void ExecuteCommand(u32 _Address)
 		}
 		else
 		{
-			Memory::Device_Write_U32(FS_EINVAL, _Address + 4);
+			Memory::Write_U32(FS_EINVAL, _Address + 4);
 			result = IPC_DEFAULT_REPLY;
 		}
 		break;
@@ -535,9 +535,9 @@ void ExecuteCommand(u32 _Address)
 	if (result.send_reply)
 	{
 		// The original hardware overwrites the command type with the async reply type.
-		Memory::Device_Write_U32(IPC_REP_ASYNC, _Address);
+		Memory::Write_U32(IPC_REP_ASYNC, _Address);
 		// IOS also seems to write back the command that was responded to in the FD field.
-		Memory::Device_Write_U32(Command, _Address + 8);
+		Memory::Write_U32(Command, _Address + 8);
 		// Generate a reply to the IPC command
 		EnqueueReply(_Address, (int)result.reply_delay_ticks);
 	}

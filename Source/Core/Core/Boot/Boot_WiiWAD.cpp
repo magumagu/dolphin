@@ -115,9 +115,9 @@ bool CBoot::Boot_WiiWAD(const std::string& _pFilename)
 	// Currently we just write 0xFFFF for the revision, copy manually and it works fine :p
 
 	// TODO : figure it correctly : where should we read the IOS rev that the wad "needs" ?
-	Memory::Device_Write_U16(ContentLoader.GetIosVersion(), 0x00003140);
-	Memory::Device_Write_U16(0xFFFF, 0x00003142);
-	Memory::Device_Write_U32(Memory::Device_Read_U32(0x00003140), 0x00003188);
+	Memory::Write_U16(ContentLoader.GetIosVersion(), 0x00003140);
+	Memory::Write_U16(0xFFFF, 0x00003142);
+	Memory::Write_U32(Memory::Read_U32(0x00003140), 0x00003188);
 
 	// Load patches and run startup patches
 	const DiscIO::IVolume* pVolume = DiscIO::CreateVolumeFromFilename(_pFilename);
