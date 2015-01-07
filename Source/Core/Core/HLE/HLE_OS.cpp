@@ -32,7 +32,7 @@ void HLE_OSPanic()
 void HLE_GeneralDebugPrint()
 {
 	std::string ReportMessage;
-	if (Memory::Read_U32(GPR(3)) > 0x80000000)
+	if (Memory::Debug_Read_U32(GPR(3)) > 0x80000000)
 	{
 		GetStringVA(ReportMessage, 4);
 	}
@@ -63,7 +63,7 @@ void GetStringVA(std::string& _rOutBuffer, u32 strReg)
 	std::string ArgumentBuffer = "";
 	u32 ParameterCounter = strReg+1;
 	u32 FloatingParameterCounter = 1;
-	std::string string = Memory::GetString(GPR(strReg));
+	std::string string = Memory::Debug_GetString(GPR(strReg));
 
 	for(u32 i = 0; i < string.size(); i++)
 	{
@@ -84,7 +84,7 @@ void GetStringVA(std::string& _rOutBuffer, u32 strReg)
 			u64 Parameter;
 			if (ParameterCounter > 10)
 			{
-				Parameter = Memory::Read_U32(GPR(1) + 0x8 + ((ParameterCounter - 11) * 4));
+				Parameter = Memory::Debug_Read_U32(GPR(1) + 0x8 + ((ParameterCounter - 11) * 4));
 			}
 			else
 			{
@@ -101,7 +101,7 @@ void GetStringVA(std::string& _rOutBuffer, u32 strReg)
 			switch (string[i])
 			{
 			case 's':
-				_rOutBuffer += StringFromFormat(ArgumentBuffer.c_str(), Memory::GetString((u32)Parameter).c_str());
+				_rOutBuffer += StringFromFormat(ArgumentBuffer.c_str(), Memory::Debug_GetString((u32)Parameter).c_str());
 				break;
 
 			case 'd':

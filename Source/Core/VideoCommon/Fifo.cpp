@@ -225,7 +225,7 @@ static void ReadDataFromFifo(u32 readPtr)
 		s_video_buffer_read_ptr = s_video_buffer;
 	}
 	// Copy new video instructions to s_video_buffer for future use in rendering the new picture
-	Memory::CopyFromEmu(s_video_buffer_write_ptr, readPtr, len);
+	Memory::Device_CopyFromEmu(s_video_buffer_write_ptr, readPtr, len);
 	s_video_buffer_write_ptr += len;
 }
 
@@ -252,7 +252,7 @@ static void ReadDataFromFifoOnCPU(u32 readPtr)
 			return;
 		}
 	}
-	Memory::CopyFromEmu(s_video_buffer_write_ptr, readPtr, len);
+	Memory::Device_CopyFromEmu(s_video_buffer_write_ptr, readPtr, len);
 	s_video_buffer_pp_read_ptr = OpcodeDecoder_Run<true>(DataReader(s_video_buffer_pp_read_ptr, write_ptr + len), nullptr, false);
 	// This would have to be locked if the GPU thread didn't spin.
 	s_video_buffer_write_ptr = write_ptr + len;

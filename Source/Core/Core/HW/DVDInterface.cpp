@@ -469,7 +469,7 @@ void SetLidOpen(bool _bOpen)
 
 bool DVDRead(u64 _iDVDOffset, u32 _iRamAddress, u32 _iLength, bool decrypt)
 {
-		return VolumeHandler::ReadToPtr(Memory::GetPointer(_iRamAddress), _iDVDOffset, _iLength, decrypt);
+	return VolumeHandler::ReadToPtr(Memory::Device_GetPointer(_iRamAddress), _iDVDOffset, _iLength, decrypt);
 }
 
 void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
@@ -608,7 +608,7 @@ void WriteImmediate(u32 value, u32 output_address, bool write_to_DIIMMBUF)
 	if (write_to_DIIMMBUF)
 		m_DIIMMBUF.Hex = value;
 	else
-		Memory::Write_U32(value, output_address);
+		Memory::Device_Write_U32(value, output_address);
 }
 
 DVDCommandResult ExecuteReadCommand(u64 DVD_offset, u32 output_address,
@@ -673,11 +673,11 @@ DVDCommandResult ExecuteCommand(u32 command_0, u32 command_1, u32 command_2,
 		else
 		{
 			// (shuffle2) Taken from my Wii
-			Memory::Write_U32(0x00000002, output_address);
-			Memory::Write_U32(0x20060526, output_address + 4);
+			Memory::Device_Write_U32(0x00000002, output_address);
+			Memory::Device_Write_U32(0x20060526, output_address + 4);
 			// This was in the oubuf even though this cmd is only supposed to reply with 64bits
 			// However, this and other tests strongly suggest that the buffer is static, and it's never - or rarely cleared.
-			Memory::Write_U32(0x41000000, output_address + 8);
+			Memory::Device_Write_U32(0x41000000, output_address + 8);
 
 			INFO_LOG(DVDINTERFACE, "DVDLowInquiry (Buffer 0x%08x, 0x%x)",
 			         output_address, output_length);
@@ -827,29 +827,29 @@ DVDCommandResult ExecuteCommand(u32 command_0, u32 command_1, u32 command_2,
 						case 0x80000000:
 							ERROR_LOG(DVDINTERFACE, "GC-AM: READ MEDIA BOARD STATUS (80000000)");
 							for (u32 i = 0; i < output_length; i += 4)
-								Memory::Write_U32(0, output_address + i);
+								Memory::Device_Write_U32(0, output_address + i);
 							break;
 						case 0x80000040:
 							ERROR_LOG(DVDINTERFACE, "GC-AM: READ MEDIA BOARD STATUS (2) (80000040)");
 							for (u32 i = 0; i < output_length; i += 4)
-								Memory::Write_U32(~0, output_address + i);
-							Memory::Write_U32(0x00000020, output_address); // DIMM SIZE, LE
-							Memory::Write_U32(0x4743414D, output_address + 4); // GCAM signature
+								Memory::Device_Write_U32(~0, output_address + i);
+							Memory::Device_Write_U32(0x00000020, output_address); // DIMM SIZE, LE
+							Memory::Device_Write_U32(0x4743414D, output_address + 4); // GCAM signature
 							break;
 						case 0x80000120:
 							ERROR_LOG(DVDINTERFACE, "GC-AM: READ FIRMWARE STATUS (80000120)");
 							for (u32 i = 0; i < output_length; i += 4)
-								Memory::Write_U32(0x01010101, output_address + i);
+								Memory::Device_Write_U32(0x01010101, output_address + i);
 							break;
 						case 0x80000140:
 							ERROR_LOG(DVDINTERFACE, "GC-AM: READ FIRMWARE STATUS (80000140)");
 							for (u32 i = 0; i < output_length; i += 4)
-								Memory::Write_U32(0x01010101, output_address + i);
+								Memory::Device_Write_U32(0x01010101, output_address + i);
 							break;
 						case 0x84000020:
 							ERROR_LOG(DVDINTERFACE, "GC-AM: READ MEDIA BOARD STATUS (1) (84000020)");
 							for (u32 i = 0; i < output_length; i += 4)
-								Memory::Write_U32(0x00000000, output_address + i);
+								Memory::Device_Write_U32(0x00000000, output_address + i);
 							break;
 						default:
 							ERROR_LOG(DVDINTERFACE, "GC-AM: UNKNOWN MEDIA BOARD LOCATION %" PRIx64, iDVDOffset);
@@ -861,9 +861,9 @@ DVDCommandResult ExecuteCommand(u32 command_0, u32 command_1, u32 command_2,
 					{
 						ERROR_LOG(DVDINTERFACE, "GC-AM: READ MEDIA BOARD COMM AREA (1f900020)");
 						u8* source = media_buffer + iDVDOffset - 0x1f900000;
-						Memory::CopyToEmu(output_address, source, output_length);
+						Memory::Device_CopyToEmu(output_address, source, output_length);
 						for (u32 i = 0; i < output_length; i += 4)
-							ERROR_LOG(DVDINTERFACE, "GC-AM: %08x", Memory::Read_U32(output_address + i));
+							ERROR_LOG(DVDINTERFACE, "GC-AM: %08x", Memory::Device_Read_U32(output_address + i));
 						break;
 					}
 				}
@@ -873,7 +873,7 @@ DVDCommandResult ExecuteCommand(u32 command_0, u32 command_1, u32 command_2,
 			break;
 
 		case 0x40: // Read DiscID
-			INFO_LOG(DVDINTERFACE, "Read DiscID %08x", Memory::Read_U32(output_address));
+			INFO_LOG(DVDINTERFACE, "Read DiscID %08x", Memory::Device_Read_U32(output_address));
 			result = ExecuteReadCommand(0, output_address, 0x20, output_length, false);
 			break;
 
@@ -911,7 +911,7 @@ DVDCommandResult ExecuteCommand(u32 command_0, u32 command_1, u32 command_2,
 
 				while (len >= 4)
 				{
-					ERROR_LOG(DVDINTERFACE, "GC-AM Media Board WRITE (0xAA): %08" PRIx64 ": %08x", iDVDOffset, Memory::Read_U32(addr));
+					ERROR_LOG(DVDINTERFACE, "GC-AM Media Board WRITE (0xAA): %08" PRIx64 ": %08x", iDVDOffset, Memory::Device_Read_U32(addr));
 					addr += 4;
 					len -= 4;
 					iDVDOffset += 4;
@@ -920,10 +920,10 @@ DVDCommandResult ExecuteCommand(u32 command_0, u32 command_1, u32 command_2,
 			else
 			{
 				u32 addr = m_DIMAR.Address;
-				Memory::CopyFromEmu(media_buffer + offset, addr, len);
+				Memory::Device_CopyFromEmu(media_buffer + offset, addr, len);
 				while (len >= 4)
 				{
-					ERROR_LOG(DVDINTERFACE, "GC-AM Media Board WRITE (0xAA): %08" PRIx64 ": %08x", iDVDOffset, Memory::Read_U32(addr));
+					ERROR_LOG(DVDINTERFACE, "GC-AM Media Board WRITE (0xAA): %08" PRIx64 ": %08x", iDVDOffset, Memory::Device_Read_U32(addr));
 					addr += 4;
 					len -= 4;
 					iDVDOffset += 4;
@@ -1033,7 +1033,7 @@ DVDCommandResult ExecuteCommand(u32 command_0, u32 command_1, u32 command_2,
 	// Probably only used by Wii
 	case DVDLowReadDiskBca:
 		WARN_LOG(DVDINTERFACE, "DVDLowReadDiskBca");
-		Memory::Write_U32(1, output_address + 0x30);
+		Memory::Device_Write_U32(1, output_address + 0x30);
 		break;
 	// Probably only used by Wii
 	case DVDLowRequestDiscStatus:

@@ -134,7 +134,7 @@ void Television::Submit(u32 xfbAddr, u32 stride, u32 width, u32 height)
 	m_curHeight = height;
 
 	// Load data from GameCube RAM to YUYV texture
-	u8* yuyvSrc = Memory::GetPointer(xfbAddr);
+	u8* yuyvSrc = Memory::Device_GetPointer(xfbAddr);
 	D3D11_BOX box = CD3D11_BOX(0, 0, 0, stride, height, 1);
 	D3D::context->UpdateSubresource(m_yuyvTexture, 0, &box, yuyvSrc, 2*stride, 2*stride*height);
 }

@@ -230,7 +230,7 @@ public:
 		auto socket_entry = WiiSockets.find(sock);
 		if (socket_entry == WiiSockets.end())
 		{
-			IPCCommandType ct = static_cast<IPCCommandType>(Memory::Read_U32(CommandAddress));
+			IPCCommandType ct = static_cast<IPCCommandType>(Memory::Device_Read_U32(CommandAddress));
 			ERROR_LOG(WII_IPC_NET,
 				"DoSock: Error, fd not found (%08x, %08X, %08X)",
 				sock, CommandAddress, type);

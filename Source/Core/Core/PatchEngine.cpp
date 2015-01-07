@@ -188,13 +188,13 @@ static void ApplyPatches(const std::vector<Patch> &patches)
 				switch (entry.type)
 				{
 				case PATCH_8BIT:
-					Memory::Write_U8((u8)value, addr);
+					Memory::Debug_Write_U8((u8)value, addr);
 					break;
 				case PATCH_16BIT:
-					Memory::Write_U16((u16)value, addr);
+					Memory::Debug_Write_U16((u16)value, addr);
 					break;
 				case PATCH_32BIT:
-					Memory::Write_U32(value, addr);
+					Memory::Debug_Write_U32(value, addr);
 					break;
 				default:
 					//unknown patchtype

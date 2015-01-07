@@ -299,7 +299,7 @@ int EncodeToRamFromTexture(u32 address,GLuint source_texture, bool bFromZBuffer,
 
 	SHADER& texconv_shader = GetOrCreateEncodingShader(format);
 
-	u8 *dest_ptr = Memory::GetPointer(address);
+	u8 *dest_ptr = Memory::Device_GetPointer(address);
 
 	int width = (source.right - source.left) >> bScaleByHalf;
 	int height = (source.bottom - source.top) >> bScaleByHalf;
@@ -355,7 +355,7 @@ void EncodeToRamYUYV(GLuint srcTexture, const TargetRectangle& sourceRc, u8* des
 // Should be scale free.
 void DecodeToTexture(u32 xfbAddr, int srcWidth, int srcHeight, GLuint destTexture)
 {
-	u8* srcAddr = Memory::GetPointer(xfbAddr);
+	u8* srcAddr = Memory::Device_GetPointer(xfbAddr);
 	if (!srcAddr)
 	{
 		WARN_LOG(VIDEO, "Tried to decode from invalid memory address");

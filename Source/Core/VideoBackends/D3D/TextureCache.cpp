@@ -170,7 +170,7 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 
 	if (!g_ActiveConfig.bCopyEFBToTexture)
 	{
-		u8* dst = Memory::GetPointer(dstAddr);
+		u8* dst = Memory::Device_GetPointer(dstAddr);
 		size_t encoded_size = g_encoder->Encode(dst, dstFormat, srcFormat, srcRect, isIntensity, scaleByHalf);
 
 		u64 hash = GetHash64(dst, (int)encoded_size, g_ActiveConfig.iSafeTextureCache_ColorSamples);
