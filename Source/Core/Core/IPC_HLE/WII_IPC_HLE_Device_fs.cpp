@@ -39,7 +39,7 @@ IPCCommandResult CWII_IPC_HLE_Device_fs::Open(u32 _CommandAddress, u32 _Mode)
 		File::CreateDir(Path);
 	}
 
-	Memory::Device_Write_U32(GetDeviceID(), _CommandAddress + 4);
+	Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
 	m_Active = true;
 	return IPC_FS_REPLY;
 }
@@ -48,7 +48,7 @@ IPCCommandResult CWII_IPC_HLE_Device_fs::Close(u32 _CommandAddress, bool _bForce
 {
 	INFO_LOG(WII_IPC_FILEIO, "Close");
 	if (!_bForce)
-		Memory::Device_Write_U32(0, _CommandAddress + 4);
+		Memory::Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return IPC_FS_REPLY;
 }
@@ -77,7 +77,7 @@ IPCCommandResult CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 	// to avoid returning bad values
 	for (u32 i = 0; i < CommandBuffer.NumberPayloadBuffer; i++)
 	{
-		Memory::Device_Memset(CommandBuffer.PayloadBuffer[i].m_Address, 0,
+		Memory::Memset(CommandBuffer.PayloadBuffer[i].m_Address, 0,
 			CommandBuffer.PayloadBuffer[i].m_Size);
 	}
 
@@ -86,7 +86,7 @@ IPCCommandResult CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 	case IOCTLV_READ_DIR:
 		{
 			// the Wii uses this function to define the type (dir or file)
-			std::string DirName(HLE_IPC_BuildFilename(Memory::Device_GetString(
+			std::string DirName(HLE_IPC_BuildFilename(Memory::GetString(
 				CommandBuffer.InBuffer[0].m_Address, CommandBuffer.InBuffer[0].m_Size)));
 
 			INFO_LOG(WII_IPC_FILEIO, "FS: IOCTL_READ_DIR %s", DirName.c_str());
@@ -122,16 +122,16 @@ IPCCommandResult CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 				size_t numFile = FileSearch.GetFileNames().size();
 				INFO_LOG(WII_IPC_FILEIO, "\t%lu files found", (unsigned long)numFile);
 
-				Memory::Device_Write_U32((u32)numFile, CommandBuffer.PayloadBuffer[0].m_Address);
+				Memory::Write_U32((u32)numFile, CommandBuffer.PayloadBuffer[0].m_Address);
 			}
 			else
 			{
-				u32 MaxEntries = Memory::Device_Read_U32(CommandBuffer.InBuffer[0].m_Address);
+				u32 MaxEntries = Memory::Read_U32(CommandBuffer.InBuffer[0].m_Address);
 
-				memset(Memory::Device_GetPointer(CommandBuffer.PayloadBuffer[0].m_Address), 0, CommandBuffer.PayloadBuffer[0].m_Size);
+				memset(Memory::GetPointer(CommandBuffer.PayloadBuffer[0].m_Address), 0, CommandBuffer.PayloadBuffer[0].m_Size);
 
 				size_t numFiles = 0;
-				char* pFilename = (char*)Memory::Device_GetPointer((u32)(CommandBuffer.PayloadBuffer[0].m_Address));
+				char* pFilename = (char*)Memory::GetPointer((u32)(CommandBuffer.PayloadBuffer[0].m_Address));
 
 				for (size_t i=0; i<FileSearch.GetFileNames().size(); i++)
 				{
@@ -158,7 +158,7 @@ IPCCommandResult CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 					INFO_LOG(WII_IPC_FILEIO, "\tFound: %s", FileName.c_str());
 				}
 
-				Memory::Device_Write_U32((u32)numFiles, CommandBuffer.PayloadBuffer[1].m_Address);
+				Memory::Write_U32((u32)numFiles, CommandBuffer.PayloadBuffer[1].m_Address);
 			}
 
 			ReturnValue = FS_RESULT_OK;
@@ -174,7 +174,7 @@ IPCCommandResult CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 			// this command sucks because it asks of the number of used
 			// fsBlocks and inodes
 			// It should be correct, but don't count on it...
-			std::string relativepath = Memory::Device_GetString(CommandBuffer.InBuffer[0].m_Address, CommandBuffer.InBuffer[0].m_Size);
+			std::string relativepath = Memory::GetString(CommandBuffer.InBuffer[0].m_Address, CommandBuffer.InBuffer[0].m_Size);
 			std::string path(HLE_IPC_BuildFilename(relativepath));
 			u32 fsBlocks = 0;
 			u32 iNodes = 0;
@@ -214,8 +214,8 @@ IPCCommandResult CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 				WARN_LOG(WII_IPC_FILEIO, "FS: fsBlock failed, cannot find directory: %s", path.c_str());
 			}
 
-			Memory::Device_Write_U32(fsBlocks, CommandBuffer.PayloadBuffer[0].m_Address);
-			Memory::Device_Write_U32(iNodes, CommandBuffer.PayloadBuffer[1].m_Address);
+			Memory::Write_U32(fsBlocks, CommandBuffer.PayloadBuffer[0].m_Address);
+			Memory::Write_U32(iNodes, CommandBuffer.PayloadBuffer[1].m_Address);
 		}
 		break;
 
@@ -225,29 +225,29 @@ IPCCommandResult CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 		break;
 	}
 
-	Memory::Device_Write_U32(ReturnValue, _CommandAddress + 4);
+	Memory::Write_U32(ReturnValue, _CommandAddress + 4);
 
 	return IPC_FS_REPLY;
 }
 
 IPCCommandResult CWII_IPC_HLE_Device_fs::IOCtl(u32 _CommandAddress)
 {
-	//u32 DeviceID = Memory::Device_Read_U32(_CommandAddress + 8);
+	//u32 DeviceID = Memory::Read_U32(_CommandAddress + 8);
 	//LOG(WII_IPC_FILEIO, "FS: IOCtl (Device=%s, DeviceID=%08x)", GetDeviceName().c_str(), DeviceID);
 
-	u32 Parameter =  Memory::Device_Read_U32(_CommandAddress + 0xC);
-	u32 BufferIn =  Memory::Device_Read_U32(_CommandAddress + 0x10);
-	u32 BufferInSize =  Memory::Device_Read_U32(_CommandAddress + 0x14);
-	u32 BufferOut = Memory::Device_Read_U32(_CommandAddress + 0x18);
-	u32 BufferOutSize = Memory::Device_Read_U32(_CommandAddress + 0x1C);
+	u32 Parameter =  Memory::Read_U32(_CommandAddress + 0xC);
+	u32 BufferIn =  Memory::Read_U32(_CommandAddress + 0x10);
+	u32 BufferInSize =  Memory::Read_U32(_CommandAddress + 0x14);
+	u32 BufferOut = Memory::Read_U32(_CommandAddress + 0x18);
+	u32 BufferOutSize = Memory::Read_U32(_CommandAddress + 0x1C);
 
 	/* Prepare the out buffer(s) with zeroes as a safety precaution
 	   to avoid returning bad values. */
 	//LOG(WII_IPC_FILEIO, "Cleared %u bytes of the out buffer", _BufferOutSize);
-	Memory::Device_Memset(BufferOut, 0, BufferOutSize);
+	Memory::Memset(BufferOut, 0, BufferOutSize);
 
 	u32 ReturnValue = ExecuteCommand(Parameter, BufferIn, BufferInSize, BufferOut, BufferOutSize);
-	Memory::Device_Write_U32(ReturnValue, _CommandAddress + 4);
+	Memory::Write_U32(ReturnValue, _CommandAddress + 4);
 
 	return IPC_FS_REPLY;
 }
@@ -274,7 +274,7 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 			fs.Free_INodes    = 0x146B;
 			fs.Used_Inodes    = 0x0394;
 
-			*(NANDStat*)Memory::Device_GetPointer(_BufferOut) = fs;
+			*(NANDStat*)Memory::GetPointer(_BufferOut) = fs;
 
 			return FS_RESULT_OK;
 		}
@@ -285,11 +285,11 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 			_dbg_assert_(WII_IPC_FILEIO, _BufferOutSize == 0);
 			u32 Addr = _BufferIn;
 
-			u32 OwnerID = Memory::Device_Read_U32(Addr); Addr += 4;
-			u16 GroupID = Memory::Device_Read_U16(Addr); Addr += 2;
-			std::string DirName(HLE_IPC_BuildFilename(Memory::Device_GetString(Addr, 64))); Addr += 64;
+			u32 OwnerID = Memory::Read_U32(Addr); Addr += 4;
+			u16 GroupID = Memory::Read_U16(Addr); Addr += 2;
+			std::string DirName(HLE_IPC_BuildFilename(Memory::GetString(Addr, 64))); Addr += 64;
 			Addr += 9; // owner attribs, permission
-			u8 Attribs = Memory::Device_Read_U8(Addr);
+			u8 Attribs = Memory::Read_U8(Addr);
 
 			INFO_LOG(WII_IPC_FILEIO, "FS: CREATE_DIR %s, OwnerID %#x, GroupID %#x, Attributes %#x", DirName.c_str(), OwnerID, GroupID, Attribs);
 
@@ -305,13 +305,13 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 		{
 			u32 Addr = _BufferIn;
 
-			u32 OwnerID = Memory::Device_Read_U32(Addr); Addr += 4;
-			u16 GroupID = Memory::Device_Read_U16(Addr); Addr += 2;
-			std::string Filename = HLE_IPC_BuildFilename(Memory::Device_GetString(_BufferIn, 64)); Addr += 64;
-			u8 OwnerPerm = Memory::Device_Read_U8(Addr); Addr += 1;
-			u8 GroupPerm = Memory::Device_Read_U8(Addr); Addr += 1;
-			u8 OtherPerm = Memory::Device_Read_U8(Addr); Addr += 1;
-			u8 Attributes = Memory::Device_Read_U8(Addr); Addr += 1;
+			u32 OwnerID = Memory::Read_U32(Addr); Addr += 4;
+			u16 GroupID = Memory::Read_U16(Addr); Addr += 2;
+			std::string Filename = HLE_IPC_BuildFilename(Memory::GetString(_BufferIn, 64)); Addr += 64;
+			u8 OwnerPerm = Memory::Read_U8(Addr); Addr += 1;
+			u8 GroupPerm = Memory::Read_U8(Addr); Addr += 1;
+			u8 OtherPerm = Memory::Read_U8(Addr); Addr += 1;
+			u8 Attributes = Memory::Read_U8(Addr); Addr += 1;
 
 			INFO_LOG(WII_IPC_FILEIO, "FS: SetAttrib %s", Filename.c_str());
 			DEBUG_LOG(WII_IPC_FILEIO, "    OwnerID: 0x%08x", OwnerID);
@@ -333,7 +333,7 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 
 			u32 OwnerID = 0;
 			u16 GroupID = 0x3031; // this is also known as makercd, 01 (0x3031) for nintendo and 08 (0x3038) for MH3 etc
-			std::string Filename = HLE_IPC_BuildFilename(Memory::Device_GetString(_BufferIn, 64));
+			std::string Filename = HLE_IPC_BuildFilename(Memory::GetString(_BufferIn, 64));
 			u8 OwnerPerm = 0x3;   // read/write
 			u8 GroupPerm = 0x3;   // read/write
 			u8 OtherPerm = 0x3;   // read/write
@@ -359,13 +359,13 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 			if (_BufferOutSize == 76)
 			{
 				u32 Addr = _BufferOut;
-				Memory::Device_Write_U32(OwnerID, Addr);                                    Addr += 4;
-				Memory::Device_Write_U16(GroupID, Addr);                                    Addr += 2;
-				memcpy(Memory::Device_GetPointer(Addr), Memory::Device_GetPointer(_BufferIn), 64); Addr += 64;
-				Memory::Device_Write_U8(OwnerPerm, Addr);                                   Addr += 1;
-				Memory::Device_Write_U8(GroupPerm, Addr);                                   Addr += 1;
-				Memory::Device_Write_U8(OtherPerm, Addr);                                   Addr += 1;
-				Memory::Device_Write_U8(Attributes, Addr);                                  Addr += 1;
+				Memory::Write_U32(OwnerID, Addr);                                    Addr += 4;
+				Memory::Write_U16(GroupID, Addr);                                    Addr += 2;
+				memcpy(Memory::GetPointer(Addr), Memory::GetPointer(_BufferIn), 64); Addr += 64;
+				Memory::Write_U8(OwnerPerm, Addr);                                   Addr += 1;
+				Memory::Write_U8(GroupPerm, Addr);                                   Addr += 1;
+				Memory::Write_U8(OtherPerm, Addr);                                   Addr += 1;
+				Memory::Write_U8(Attributes, Addr);                                  Addr += 1;
 			}
 
 			return FS_RESULT_OK;
@@ -378,7 +378,7 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 			_dbg_assert_(WII_IPC_FILEIO, _BufferOutSize == 0);
 			int Offset = 0;
 
-			std::string Filename = HLE_IPC_BuildFilename(Memory::Device_GetString(_BufferIn + Offset, 64));
+			std::string Filename = HLE_IPC_BuildFilename(Memory::GetString(_BufferIn + Offset, 64));
 			Offset += 64;
 			if (File::Delete(Filename))
 			{
@@ -402,10 +402,10 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 			_dbg_assert_(WII_IPC_FILEIO, _BufferOutSize == 0);
 			int Offset = 0;
 
-			std::string Filename = HLE_IPC_BuildFilename(Memory::Device_GetString(_BufferIn + Offset, 64));
+			std::string Filename = HLE_IPC_BuildFilename(Memory::GetString(_BufferIn + Offset, 64));
 			Offset += 64;
 
-			std::string FilenameRename = HLE_IPC_BuildFilename(Memory::Device_GetString(_BufferIn + Offset, 64));
+			std::string FilenameRename = HLE_IPC_BuildFilename(Memory::GetString(_BufferIn + Offset, 64));
 			Offset += 64;
 
 			// try to make the basis directory
@@ -437,13 +437,13 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 			_dbg_assert_(WII_IPC_FILEIO, _BufferOutSize == 0);
 
 			u32 Addr = _BufferIn;
-			u32 OwnerID = Memory::Device_Read_U32(Addr); Addr += 4;
-			u16 GroupID = Memory::Device_Read_U16(Addr); Addr += 2;
-			std::string Filename(HLE_IPC_BuildFilename(Memory::Device_GetString(Addr, 64))); Addr += 64;
-			u8 OwnerPerm = Memory::Device_Read_U8(Addr); Addr++;
-			u8 GroupPerm = Memory::Device_Read_U8(Addr); Addr++;
-			u8 OtherPerm = Memory::Device_Read_U8(Addr); Addr++;
-			u8 Attributes = Memory::Device_Read_U8(Addr); Addr++;
+			u32 OwnerID = Memory::Read_U32(Addr); Addr += 4;
+			u16 GroupID = Memory::Read_U16(Addr); Addr += 2;
+			std::string Filename(HLE_IPC_BuildFilename(Memory::GetString(Addr, 64))); Addr += 64;
+			u8 OwnerPerm = Memory::Read_U8(Addr); Addr++;
+			u8 GroupPerm = Memory::Read_U8(Addr); Addr++;
+			u8 OtherPerm = Memory::Read_U8(Addr); Addr++;
+			u8 Attributes = Memory::Read_U8(Addr); Addr++;
 
 			INFO_LOG(WII_IPC_FILEIO, "FS: CreateFile %s", Filename.c_str());
 			DEBUG_LOG(WII_IPC_FILEIO, "    OwnerID: 0x%08x", OwnerID);

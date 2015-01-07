@@ -60,7 +60,7 @@ void CheckGatherPipe()
 	if (m_gatherPipeCount >= GATHER_PIPE_SIZE)
 	{
 		u32 cnt;
-		u8* curMem = Memory::Device_GetPointer(ProcessorInterface::Fifo_CPUWritePointer);
+		u8* curMem = Memory::GetPointer(ProcessorInterface::Fifo_CPUWritePointer);
 		for (cnt = 0; m_gatherPipeCount >= GATHER_PIPE_SIZE; cnt += GATHER_PIPE_SIZE)
 		{
 			// copy the GatherPipe
@@ -71,7 +71,7 @@ void CheckGatherPipe()
 			if (ProcessorInterface::Fifo_CPUWritePointer == ProcessorInterface::Fifo_CPUEnd)
 			{
 				ProcessorInterface::Fifo_CPUWritePointer = ProcessorInterface::Fifo_CPUBase;
-				curMem = Memory::Device_GetPointer(ProcessorInterface::Fifo_CPUWritePointer);
+				curMem = Memory::GetPointer(ProcessorInterface::Fifo_CPUWritePointer);
 			}
 			else
 			{

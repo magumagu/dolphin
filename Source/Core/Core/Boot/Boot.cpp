@@ -42,7 +42,7 @@ void CBoot::Load_FST(bool _bIsWii)
 	DVDInterface::DVDRead(/*offset*/0, /*address*/0, /*length*/0x20, false);
 
 	// copy of game id
-	Memory::Device_Write_U32(Memory::Device_Read_U32(0x0000), 0x3180);
+	Memory::Write_U32(Memory::Read_U32(0x0000), 0x3180);
 
 	u32 shift = 0;
 	if (_bIsWii)
@@ -53,12 +53,12 @@ void CBoot::Load_FST(bool _bIsWii)
 	u32 maxFstSize = VolumeHandler::Read32(0x042c, _bIsWii) << shift;
 
 	u32 arenaHigh = ROUND_DOWN(0x017FFFFF - maxFstSize, 0x20);
-	Memory::Device_Write_U32(arenaHigh, 0x00000034);
+	Memory::Write_U32(arenaHigh, 0x00000034);
 
 	// load FST
 	DVDInterface::DVDRead(fstOffset, arenaHigh, fstSize, _bIsWii);
-	Memory::Device_Write_U32(arenaHigh, 0x00000038);
-	Memory::Device_Write_U32(maxFstSize, 0x0000003c);
+	Memory::Write_U32(arenaHigh, 0x00000038);
+	Memory::Write_U32(maxFstSize, 0x0000003c);
 }
 
 void CBoot::UpdateDebugger_MapLoaded()
@@ -188,8 +188,8 @@ bool CBoot::Load_BS2(const std::string& _rBootROMFilename)
 	// Run the descrambler over the encrypted section containing BS1/BS2
 	CEXIIPL::Descrambler((u8*)data.data()+0x100, 0x1AFE00);
 
-	Memory::Device_CopyToEmu(0x01200000, data.data() + 0x100, 0x700);
-	Memory::Device_CopyToEmu(0x01300000, data.data() + 0x820, 0x1AFE00);
+	Memory::CopyToEmu(0x01200000, data.data() + 0x100, 0x700);
+	Memory::CopyToEmu(0x01300000, data.data() + 0x820, 0x1AFE00);
 	PC = 0x81200000;
 	return true;
 }
@@ -430,7 +430,7 @@ bool CBoot::BootUp()
 	if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableCheats)
 	{
 		HLE::Patch(0x80001800, "HBReload");
-		Memory::Device_CopyToEmu(0x00001804, "STUBHAXX", 8);
+		Memory::CopyToEmu(0x00001804, "STUBHAXX", 8);
 	}
 
 	// Not part of the binary itself, but either we or Gecko OS might insert

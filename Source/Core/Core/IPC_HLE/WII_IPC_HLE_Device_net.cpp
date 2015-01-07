@@ -63,7 +63,7 @@ CWII_IPC_HLE_Device_net_kd_request::~CWII_IPC_HLE_Device_net_kd_request()
 IPCCommandResult CWII_IPC_HLE_Device_net_kd_request::Open(u32 _CommandAddress, u32 _Mode)
 {
 	INFO_LOG(WII_IPC_WC24, "NET_KD_REQ: Open");
-	Memory::Device_Write_U32(GetDeviceID(), _CommandAddress + 4);
+	Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
 	m_Active = true;
 	return IPC_DEFAULT_REPLY;
 }
@@ -72,18 +72,18 @@ IPCCommandResult CWII_IPC_HLE_Device_net_kd_request::Close(u32 _CommandAddress, 
 {
 	INFO_LOG(WII_IPC_WC24, "NET_KD_REQ: Close");
 	if (!_bForce)
-		Memory::Device_Write_U32(0, _CommandAddress + 4);
+		Memory::Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return IPC_DEFAULT_REPLY;
 }
 
 IPCCommandResult CWII_IPC_HLE_Device_net_kd_request::IOCtl(u32 _CommandAddress)
 {
-	u32 Parameter     = Memory::Device_Read_U32(_CommandAddress + 0xC);
-	u32 BufferIn      = Memory::Device_Read_U32(_CommandAddress + 0x10);
-	u32 BufferInSize  = Memory::Device_Read_U32(_CommandAddress + 0x14);
-	u32 BufferOut     = Memory::Device_Read_U32(_CommandAddress + 0x18);
-	u32 BufferOutSize = Memory::Device_Read_U32(_CommandAddress + 0x1C);
+	u32 Parameter     = Memory::Read_U32(_CommandAddress + 0xC);
+	u32 BufferIn      = Memory::Read_U32(_CommandAddress + 0x10);
+	u32 BufferInSize  = Memory::Read_U32(_CommandAddress + 0x14);
+	u32 BufferOut     = Memory::Read_U32(_CommandAddress + 0x18);
+	u32 BufferOutSize = Memory::Read_U32(_CommandAddress + 0x1C);
 
 	u32 ReturnValue = 0;
 	switch (Parameter)
@@ -91,7 +91,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_kd_request::IOCtl(u32 _CommandAddress)
 	case IOCTL_NWC24_SUSPEND_SCHEDULAR:
 		// NWC24iResumeForCloseLib  from NWC24SuspendScheduler (Input: none, Output: 32 bytes)
 		INFO_LOG(WII_IPC_WC24, "NET_KD_REQ: IOCTL_NWC24_SUSPEND_SCHEDULAR - NI");
-		Memory::Device_Write_U32(0, BufferOut); // no error
+		Memory::Write_U32(0, BufferOut); // no error
 		break;
 
 	case IOCTL_NWC24_EXEC_TRY_SUSPEND_SCHEDULAR: // NWC24iResumeForCloseLib
@@ -100,18 +100,18 @@ IPCCommandResult CWII_IPC_HLE_Device_net_kd_request::IOCtl(u32 _CommandAddress)
 
 	case IOCTL_NWC24_EXEC_RESUME_SCHEDULAR : // NWC24iResumeForCloseLib
 		INFO_LOG(WII_IPC_WC24, "NET_KD_REQ: IOCTL_NWC24_EXEC_RESUME_SCHEDULAR - NI");
-		Memory::Device_Write_U32(0, BufferOut); // no error
+		Memory::Write_U32(0, BufferOut); // no error
 		break;
 
 	case IOCTL_NWC24_STARTUP_SOCKET: // NWC24iStartupSocket
-		Memory::Device_Write_U32(0, BufferOut);
-		Memory::Device_Write_U32(0, BufferOut + 4);
+		Memory::Write_U32(0, BufferOut);
+		Memory::Write_U32(0, BufferOut + 4);
 		ReturnValue = 0;
 		INFO_LOG(WII_IPC_WC24, "NET_KD_REQ: IOCTL_NWC24_STARTUP_SOCKET - NI");
 		break;
 
 	case IOCTL_NWC24_CLEANUP_SOCKET:
-		Memory::Device_Memset(BufferOut, 0, BufferOutSize);
+		Memory::Memset(BufferOut, 0, BufferOutSize);
 		INFO_LOG(WII_IPC_WC24, "NET_KD_REQ: IOCTL_NWC24_CLEANUP_SOCKET - NI");
 		break;
 
@@ -125,8 +125,8 @@ IPCCommandResult CWII_IPC_HLE_Device_net_kd_request::IOCtl(u32 _CommandAddress)
 
 	case IOCTL_NWC24_REQUEST_REGISTER_USER_ID:
 		INFO_LOG(WII_IPC_WC24, "NET_KD_REQ: IOCTL_NWC24_REQUEST_REGISTER_USER_ID");
-		Memory::Device_Write_U32(0, BufferOut);
-		Memory::Device_Write_U32(0, BufferOut + 4);
+		Memory::Write_U32(0, BufferOut);
+		Memory::Write_U32(0, BufferOut + 4);
 		break;
 
 	case IOCTL_NWC24_REQUEST_GENERATED_USER_ID: // (Input: none, Output: 32 bytes)
@@ -165,24 +165,24 @@ IPCCommandResult CWII_IPC_HLE_Device_net_kd_request::IOCtl(u32 _CommandAddress)
 				config.SetCreationStage(nwc24_config_t::NWC24_IDCS_GENERATED);
 				config.WriteConfig();
 
-				Memory::Device_Write_U32(ret, BufferOut);
+				Memory::Write_U32(ret, BufferOut);
 			}
 			else
 			{
-				Memory::Device_Write_U32(WC24_ERR_FATAL, BufferOut);
+				Memory::Write_U32(WC24_ERR_FATAL, BufferOut);
 			}
 
 		}
 		else if (config.CreationStage() == nwc24_config_t::NWC24_IDCS_GENERATED)
 		{
-			Memory::Device_Write_U32(WC24_ERR_ID_GENERATED, BufferOut);
+			Memory::Write_U32(WC24_ERR_ID_GENERATED, BufferOut);
 		}
 		else if (config.CreationStage() == nwc24_config_t::NWC24_IDCS_REGISTERED)
 		{
-			Memory::Device_Write_U32(WC24_ERR_ID_REGISTERED, BufferOut);
+			Memory::Write_U32(WC24_ERR_ID_REGISTERED, BufferOut);
 		}
-		Memory::Device_Write_U64(config.Id(), BufferOut + 4);
-		Memory::Device_Write_U32(config.CreationStage(), BufferOut + 0xC);
+		Memory::Write_U64(config.Id(), BufferOut + 4);
+		Memory::Write_U32(config.CreationStage(), BufferOut + 0xC);
 		break;
 
 	case IOCTL_NWC24_GET_SCHEDULAR_STAT:
@@ -204,7 +204,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_kd_request::IOCtl(u32 _CommandAddress)
 		break;
 	}
 
-	Memory::Device_Write_U32(ReturnValue, _CommandAddress + 4);
+	Memory::Write_U32(ReturnValue, _CommandAddress + 4);
 	return IPC_DEFAULT_REPLY;
 }
 
@@ -343,7 +343,7 @@ CWII_IPC_HLE_Device_net_ncd_manage::~CWII_IPC_HLE_Device_net_ncd_manage()
 IPCCommandResult CWII_IPC_HLE_Device_net_ncd_manage::Open(u32 _CommandAddress, u32 _Mode)
 {
 	INFO_LOG(WII_IPC_NET, "NET_NCD_MANAGE: Open");
-	Memory::Device_Write_U32(GetDeviceID(), _CommandAddress + 4);
+	Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
 	m_Active = true;
 	return IPC_DEFAULT_REPLY;
 }
@@ -352,7 +352,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ncd_manage::Close(u32 _CommandAddress, 
 {
 	INFO_LOG(WII_IPC_NET, "NET_NCD_MANAGE: Close");
 	if (!_bForce)
-		Memory::Device_Write_U32(0, _CommandAddress + 4);
+		Memory::Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return IPC_DEFAULT_REPLY;
 }
@@ -371,7 +371,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ncd_manage::IOCtlV(u32 _CommandAddress)
 		break;
 
 	case IOCTLV_NCD_UNLOCKWIRELESSDRIVER:
-		//Memory::Device_Read_U32(CommandBuffer.InBuffer.at(0).m_Address);
+		//Memory::Read_U32(CommandBuffer.InBuffer.at(0).m_Address);
 		break;
 
 	case IOCTLV_NCD_GETCONFIG:
@@ -401,7 +401,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ncd_manage::IOCtlV(u32 _CommandAddress)
 	case IOCTLV_NCD_GETLINKSTATUS:
 		INFO_LOG(WII_IPC_NET, "NET_NCD_MANAGE: IOCTLV_NCD_GETLINKSTATUS");
 		// Always connected
-		Memory::Device_Write_U32(netcfg_connection_t::LINK_WIRED, CommandBuffer.PayloadBuffer.at(0).m_Address + 4);
+		Memory::Write_U32(netcfg_connection_t::LINK_WIRED, CommandBuffer.PayloadBuffer.at(0).m_Address + 4);
 		break;
 
 	case IOCTLV_NCD_GETWIRELESSMACADDRESS:
@@ -409,7 +409,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ncd_manage::IOCtlV(u32 _CommandAddress)
 
 		u8 address[MAC_ADDRESS_SIZE];
 		GetMacAddress(address);
-		Memory::Device_CopyToEmu(CommandBuffer.PayloadBuffer.at(1).m_Address, address, sizeof(address));
+		Memory::CopyToEmu(CommandBuffer.PayloadBuffer.at(1).m_Address, address, sizeof(address));
 		break;
 
 	default:
@@ -417,12 +417,12 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ncd_manage::IOCtlV(u32 _CommandAddress)
 		break;
 	}
 
-	Memory::Device_Write_U32(common_result, CommandBuffer.PayloadBuffer.at(common_vector).m_Address);
+	Memory::Write_U32(common_result, CommandBuffer.PayloadBuffer.at(common_vector).m_Address);
 	if (common_vector == 1)
 	{
-		Memory::Device_Write_U32(common_result, CommandBuffer.PayloadBuffer.at(common_vector).m_Address + 4);
+		Memory::Write_U32(common_result, CommandBuffer.PayloadBuffer.at(common_vector).m_Address + 4);
 	}
-	Memory::Device_Write_U32(return_value, _CommandAddress + 4);
+	Memory::Write_U32(return_value, _CommandAddress + 4);
 	return IPC_DEFAULT_REPLY;
 }
 
@@ -440,7 +440,7 @@ CWII_IPC_HLE_Device_net_wd_command::~CWII_IPC_HLE_Device_net_wd_command()
 IPCCommandResult CWII_IPC_HLE_Device_net_wd_command::Open(u32 CommandAddress, u32 Mode)
 {
 	INFO_LOG(WII_IPC_NET, "NET_WD_COMMAND: Open");
-	Memory::Device_Write_U32(GetDeviceID(), CommandAddress + 4);
+	Memory::Write_U32(GetDeviceID(), CommandAddress + 4);
 	m_Active = true;
 	return IPC_DEFAULT_REPLY;
 }
@@ -449,7 +449,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_wd_command::Close(u32 CommandAddress, b
 {
 	INFO_LOG(WII_IPC_NET, "NET_WD_COMMAND: Close");
 	if (!Force)
-		Memory::Device_Write_U32(0, CommandAddress + 4);
+		Memory::Write_U32(0, CommandAddress + 4);
 	m_Active = false;
 	return IPC_DEFAULT_REPLY;
 }
@@ -471,7 +471,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_wd_command::IOCtlV(u32 CommandAddress)
 		// XXX - unused
 		// ScanInfo *scan = (ScanInfo *)Memory::GetPointer(CommandBuffer.InBuffer.at(0).m_Address);
 
-		u16* results = (u16*)Memory::Device_GetPointer(CommandBuffer.PayloadBuffer.at(0).m_Address);
+		u16* results = (u16*)Memory::GetPointer(CommandBuffer.PayloadBuffer.at(0).m_Address);
 		// first u16 indicates number of BSSInfo following
 		results[0] = Common::swap16(1);
 
@@ -494,7 +494,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_wd_command::IOCtlV(u32 CommandAddress)
 
 	case IOCTLV_WD_GET_INFO:
 		{
-		Info* info = (Info*)Memory::Device_GetPointer(CommandBuffer.PayloadBuffer.at(0).m_Address);
+		Info* info = (Info*)Memory::GetPointer(CommandBuffer.PayloadBuffer.at(0).m_Address);
 		memset(info, 0, sizeof(Info));
 		// Probably used to disallow certain channels?
 		memcpy(info->country, "US", 2);
@@ -531,7 +531,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_wd_command::IOCtlV(u32 CommandAddress)
 				CommandBuffer.InBuffer.at(i).m_Address, CommandBuffer.InBuffer.at(i).m_Size);
 			INFO_LOG(WII_IPC_NET, "%s",
 				ArrayToString(
-					Memory::Device_GetPointer(CommandBuffer.InBuffer.at(i).m_Address),
+					Memory::GetPointer(CommandBuffer.InBuffer.at(i).m_Address),
 					CommandBuffer.InBuffer.at(i).m_Size).c_str()
 				);
 		}
@@ -543,7 +543,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_wd_command::IOCtlV(u32 CommandAddress)
 		break;
 	}
 
-	Memory::Device_Write_U32(return_value, CommandAddress + 4);
+	Memory::Write_U32(return_value, CommandAddress + 4);
 	return IPC_DEFAULT_REPLY;
 }
 
@@ -568,7 +568,7 @@ CWII_IPC_HLE_Device_net_ip_top::~CWII_IPC_HLE_Device_net_ip_top()
 IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::Open(u32 _CommandAddress, u32 _Mode)
 {
 	INFO_LOG(WII_IPC_NET, "NET_IP_TOP: Open");
-	Memory::Device_Write_U32(GetDeviceID(), _CommandAddress + 4);
+	Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
 	m_Active = true;
 	return IPC_DEFAULT_REPLY;
 }
@@ -577,7 +577,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::Close(u32 _CommandAddress, bool
 {
 	INFO_LOG(WII_IPC_NET, "NET_IP_TOP: Close");
 	if (!_bForce)
-		Memory::Device_Write_U32(0, _CommandAddress + 4);
+		Memory::Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return IPC_DEFAULT_REPLY;
 }
@@ -640,11 +640,11 @@ static unsigned int opt_name_mapping[][2] = {
 
 IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 {
-	u32 Command       = Memory::Device_Read_U32(_CommandAddress + 0x0C);
-	u32 BufferIn      = Memory::Device_Read_U32(_CommandAddress + 0x10);
-	u32 BufferInSize  = Memory::Device_Read_U32(_CommandAddress + 0x14);
-	u32 BufferOut     = Memory::Device_Read_U32(_CommandAddress + 0x18);
-	u32 BufferOutSize = Memory::Device_Read_U32(_CommandAddress + 0x1C);
+	u32 Command       = Memory::Read_U32(_CommandAddress + 0x0C);
+	u32 BufferIn      = Memory::Read_U32(_CommandAddress + 0x10);
+	u32 BufferInSize  = Memory::Read_U32(_CommandAddress + 0x14);
+	u32 BufferOut     = Memory::Read_U32(_CommandAddress + 0x18);
+	u32 BufferOutSize = Memory::Read_U32(_CommandAddress + 0x1C);
 
 	u32 ReturnValue = 0;
 	switch (Command)
@@ -658,9 +658,9 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 	}
 	case IOCTL_SO_SOCKET:
 	{
-		u32 af   = Memory::Device_Read_U32(BufferIn);
-		u32 type = Memory::Device_Read_U32(BufferIn + 0x04);
-		u32 prot = Memory::Device_Read_U32(BufferIn + 0x08);
+		u32 af   = Memory::Read_U32(BufferIn);
+		u32 type = Memory::Read_U32(BufferIn + 0x04);
+		u32 prot = Memory::Read_U32(BufferIn + 0x08);
 
 		WiiSockMan &sm = WiiSockMan::GetInstance();
 		ReturnValue = sm.NewSocket(af, type, prot);
@@ -671,7 +671,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 	}
 	case IOCTL_SO_ICMPSOCKET:
 	{
-		u32 pf = Memory::Device_Read_U32(BufferIn);
+		u32 pf = Memory::Read_U32(BufferIn);
 
 		WiiSockMan &sm = WiiSockMan::GetInstance();
 		ReturnValue = sm.NewSocket(pf, SOCK_RAW, IPPROTO_ICMP);
@@ -681,7 +681,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 	case IOCTL_SO_CLOSE:
 	case IOCTL_SO_ICMPCLOSE:
 	{
-		u32 fd = Memory::Device_Read_U32(BufferIn);
+		u32 fd = Memory::Read_U32(BufferIn);
 		WiiSockMan &sm = WiiSockMan::GetInstance();
 		ReturnValue = sm.DeleteSocket(fd);
 		DEBUG_LOG(WII_IPC_NET, "%s(%x) %x",
@@ -694,7 +694,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 	case IOCTL_SO_CONNECT:
 	case IOCTL_SO_FCNTL:
 	{
-		u32 fd = Memory::Device_Read_U32(BufferIn);
+		u32 fd = Memory::Read_U32(BufferIn);
 		WiiSockMan &sm = WiiSockMan::GetInstance();
 		sm.DoSock(fd, _CommandAddress, (NET_IOCTL)Command);
 		return IPC_NO_REPLY;
@@ -708,8 +708,8 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 			"BufferIn: (%08x, %i), BufferOut: (%08x, %i)",
 			BufferIn, BufferInSize, BufferOut, BufferOutSize);
 
-		u32 fd = Memory::Device_Read_U32(BufferIn);
-		u32 how = Memory::Device_Read_U32(BufferIn + 4);
+		u32 fd = Memory::Read_U32(BufferIn);
+		u32 how = Memory::Read_U32(BufferIn + 4);
 		int ret = shutdown(fd, how);
 		ReturnValue = WiiSockMan::GetNetErrorCode(ret, "SO_SHUTDOWN", false);
 		break;
@@ -717,8 +717,8 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 	case IOCTL_SO_LISTEN:
 	{
 
-		u32 fd = Memory::Device_Read_U32(BufferIn);
-		u32 BACKLOG = Memory::Device_Read_U32(BufferIn + 0x04);
+		u32 fd = Memory::Read_U32(BufferIn);
+		u32 BACKLOG = Memory::Read_U32(BufferIn + 0x04);
 		u32 ret = listen(fd, BACKLOG);
 		ReturnValue = WiiSockMan::GetNetErrorCode(ret, "SO_LISTEN", false);
 		INFO_LOG(WII_IPC_NET, "IOCTL_SO_LISTEN = %d "
@@ -728,9 +728,9 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 	}
 	case IOCTL_SO_GETSOCKOPT:
 	{
-		u32 fd = Memory::Device_Read_U32(BufferOut);
-		u32 level = Memory::Device_Read_U32(BufferOut + 4);
-		u32 optname = Memory::Device_Read_U32(BufferOut + 8);
+		u32 fd = Memory::Read_U32(BufferOut);
+		u32 level = Memory::Read_U32(BufferOut + 4);
+		u32 optname = Memory::Read_U32(BufferOut + 8);
 
 		INFO_LOG(WII_IPC_NET,"IOCTL_SO_GETSOCKOPT(%08x, %08x, %08x)"
 			"BufferIn: (%08x, %i), BufferOut: (%08x, %i)",
@@ -755,28 +755,28 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 		ReturnValue = WiiSockMan::GetNetErrorCode(ret, "SO_GETSOCKOPT", false);
 
 
-		Memory::Device_Write_U32(optlen, BufferOut + 0xC);
-		Memory::Device_CopyToEmu(BufferOut + 0x10, optval, optlen);
+		Memory::Write_U32(optlen, BufferOut + 0xC);
+		Memory::CopyToEmu(BufferOut + 0x10, optval, optlen);
 
 		if (optname == SO_ERROR)
 		{
 			s32 last_error = WiiSockMan::GetInstance().GetLastNetError();
 
-			Memory::Device_Write_U32(sizeof(s32), BufferOut + 0xC);
-			Memory::Device_Write_U32(last_error, BufferOut + 0x10);
+			Memory::Write_U32(sizeof(s32), BufferOut + 0xC);
+			Memory::Write_U32(last_error, BufferOut + 0x10);
 		}
 		break;
 	}
 
 	case IOCTL_SO_SETSOCKOPT:
 	{
-		u32 fd = Memory::Device_Read_U32(BufferIn);
-		u32 level = Memory::Device_Read_U32(BufferIn + 4);
-		u32 optname = Memory::Device_Read_U32(BufferIn + 8);
-		u32 optlen = Memory::Device_Read_U32(BufferIn + 0xc);
+		u32 fd = Memory::Read_U32(BufferIn);
+		u32 level = Memory::Read_U32(BufferIn + 4);
+		u32 optname = Memory::Read_U32(BufferIn + 8);
+		u32 optlen = Memory::Read_U32(BufferIn + 0xc);
 		u8 optval[20];
 		optlen = std::min(optlen, (u32)sizeof(optval));
-		Memory::Device_CopyFromEmu(optval, BufferIn + 0x10, optlen);
+		Memory::CopyFromEmu(optval, BufferIn + 0x10, optlen);
 
 		INFO_LOG(WII_IPC_NET, "IOCTL_SO_SETSOCKOPT(%08x, %08x, %08x, %08x) "
 			"BufferIn: (%08x, %i), BufferOut: (%08x, %i)"
@@ -818,7 +818,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 	}
 	case IOCTL_SO_GETSOCKNAME:
 	{
-		u32 fd = Memory::Device_Read_U32(BufferIn);
+		u32 fd = Memory::Read_U32(BufferIn);
 
 		INFO_LOG(WII_IPC_NET, "IOCTL_SO_GETSOCKNAME "
 			"Socket: %08X, BufferIn: (%08x, %i), BufferOut: (%08x, %i)",
@@ -829,15 +829,15 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 		sa_len = sizeof(sa);
 		int ret = getsockname(fd, &sa, &sa_len);
 
-		Memory::Device_Write_U8(BufferOutSize, BufferOut);
-		Memory::Device_Write_U8(sa.sa_family & 0xFF, BufferOut + 1);
-		Memory::Device_CopyToEmu(BufferOut + 2, &sa.sa_data, BufferOutSize - 2);
+		Memory::Write_U8(BufferOutSize, BufferOut);
+		Memory::Write_U8(sa.sa_family & 0xFF, BufferOut + 1);
+		Memory::CopyToEmu(BufferOut + 2, &sa.sa_data, BufferOutSize - 2);
 		ReturnValue = ret;
 		break;
 	}
 	case IOCTL_SO_GETPEERNAME:
 	{
-		u32 fd = Memory::Device_Read_U32(BufferIn);
+		u32 fd = Memory::Read_U32(BufferIn);
 
 		sockaddr sa;
 		socklen_t sa_len;
@@ -845,9 +845,9 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 
 		int ret = getpeername(fd, &sa, &sa_len);
 
-		Memory::Device_Write_U8(BufferOutSize, BufferOut);
-		Memory::Device_Write_U8(AF_INET, BufferOut + 1);
-		Memory::Device_CopyToEmu(BufferOut + 2, &sa.sa_data, BufferOutSize - 2);
+		Memory::Write_U8(BufferOutSize, BufferOut);
+		Memory::Write_U8(AF_INET, BufferOut + 1);
+		Memory::CopyToEmu(BufferOut + 2, &sa.sa_data, BufferOutSize - 2);
 
 		INFO_LOG(WII_IPC_NET, "IOCTL_SO_GETPEERNAME(%x)", fd);
 
@@ -919,10 +919,10 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 
 	case IOCTL_SO_INETATON:
 	{
-		std::string hostname = Memory::Device_GetString(BufferIn);
+		std::string hostname = Memory::GetString(BufferIn);
 		struct hostent* remoteHost = gethostbyname(hostname.c_str());
 
-		Memory::Device_Write_U32(Common::swap32(*(u32*)remoteHost->h_addr_list[0]), BufferOut);
+		Memory::Write_U32(Common::swap32(*(u32*)remoteHost->h_addr_list[0]), BufferOut);
 		INFO_LOG(WII_IPC_NET, "IOCTL_SO_INETATON = %d "
 			"%s, BufferIn: (%08x, %i), BufferOut: (%08x, %i), IP Found: %08X",remoteHost->h_addr_list[0] == nullptr ? -1 : 0,
 			hostname.c_str(), BufferIn, BufferInSize, BufferOut, BufferOutSize, Common::swap32(*(u32*)remoteHost->h_addr_list[0]));
@@ -932,28 +932,28 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 
 	case IOCTL_SO_INETPTON:
 	{
-		std::string address = Memory::Device_GetString(BufferIn);
+		std::string address = Memory::GetString(BufferIn);
 		INFO_LOG(WII_IPC_NET, "IOCTL_SO_INETPTON "
 			"(Translating: %s)", address.c_str());
-		ReturnValue = inet_pton(address.c_str(), Memory::Device_GetPointer(BufferOut + 4));
+		ReturnValue = inet_pton(address.c_str(), Memory::GetPointer(BufferOut + 4));
 		break;
 	}
 
 	case IOCTL_SO_INETNTOP:
 	{
-		//u32 af = Memory::Device_Read_U32(BufferIn);
-		//u32 validAddress = Memory::Device_Read_U32(BufferIn + 4);
-		//u32 src = Memory::Device_Read_U32(BufferIn + 8);
+		//u32 af = Memory::Read_U32(BufferIn);
+		//u32 validAddress = Memory::Read_U32(BufferIn + 4);
+		//u32 src = Memory::Read_U32(BufferIn + 8);
 		char ip_s[16];
 		sprintf(ip_s, "%i.%i.%i.%i",
-			Memory::Device_Read_U8(BufferIn + 8),
-			Memory::Device_Read_U8(BufferIn + 8 + 1),
-			Memory::Device_Read_U8(BufferIn + 8 + 2),
-			Memory::Device_Read_U8(BufferIn + 8 + 3)
+			Memory::Read_U8(BufferIn + 8),
+			Memory::Read_U8(BufferIn + 8 + 1),
+			Memory::Read_U8(BufferIn + 8 + 2),
+			Memory::Read_U8(BufferIn + 8 + 3)
 			);
 		INFO_LOG(WII_IPC_NET, "IOCTL_SO_INETNTOP %s", ip_s);
-		Memory::Device_Memset(BufferOut, 0, BufferOutSize);
-		Memory::Device_CopyToEmu(BufferOut, (u8*)ip_s, strlen(ip_s));
+		Memory::Memset(BufferOut, 0, BufferOutSize);
+		Memory::CopyToEmu(BufferOut, (u8*)ip_s, strlen(ip_s));
 		break;
 	}
 
@@ -966,8 +966,8 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 				{ POLLHUP, 0x0040 },
 			};
 
-			u32 unknown = Memory::Device_Read_U32(BufferIn);
-			u32 timeout = Memory::Device_Read_U32(BufferIn + 4);
+			u32 unknown = Memory::Read_U32(BufferIn);
+			u32 timeout = Memory::Read_U32(BufferIn + 4);
 
 			int nfds = BufferOutSize / 0xc;
 			if (nfds == 0)
@@ -982,9 +982,9 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 
 			for (int i = 0; i < nfds; ++i)
 			{
-				ufds[i].fd = Memory::Device_Read_U32(BufferOut + 0xc * i);          //fd
-				int events = Memory::Device_Read_U32(BufferOut + 0xc * i + 4);      //events
-				ufds[i].revents = Memory::Device_Read_U32(BufferOut + 0xc * i + 8); //revents
+				ufds[i].fd = Memory::Read_U32(BufferOut + 0xc * i);          //fd
+				int events = Memory::Read_U32(BufferOut + 0xc * i + 4);      //events
+				ufds[i].revents = Memory::Read_U32(BufferOut + 0xc * i + 8); //revents
 
 				// Translate Wii to native events
 				int unhandled_events = events;
@@ -1021,9 +1021,9 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 				}
 
 				// No need to change fd or events as they are input only.
-				//Memory::Device_Write_U32(ufds[i].fd, BufferOut + 0xc*i); //fd
-				//Memory::Device_Write_U32(events, BufferOut + 0xc*i + 4); //events
-				Memory::Device_Write_U32(revents, BufferOut + 0xc * i + 8);  //revents
+				//Memory::Write_U32(ufds[i].fd, BufferOut + 0xc*i); //fd
+				//Memory::Write_U32(events, BufferOut + 0xc*i + 4); //events
+				Memory::Write_U32(revents, BufferOut + 0xc * i + 8);  //revents
 
 				DEBUG_LOG(WII_IPC_NET, "IOCTL_SO_POLL socket %d revents %08X events %08X", i, revents, ufds[i].events);
 			}
@@ -1035,7 +1035,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 
 	case IOCTL_SO_GETHOSTBYNAME:
 		{
-			std::string hostname = Memory::Device_GetString(BufferIn);
+			std::string hostname = Memory::GetString(BufferIn);
 			hostent* remoteHost = gethostbyname(hostname.c_str());
 
 			INFO_LOG(WII_IPC_NET, "IOCTL_SO_GETHOSTBYNAME "
@@ -1056,45 +1056,45 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 					DEBUG_LOG(WII_IPC_NET, "addr%i:%s", i, ip_s.c_str());
 				}
 
-				Memory::Device_Memset(BufferOut, 0, BufferOutSize);
+				Memory::Memset(BufferOut, 0, BufferOutSize);
 				u32 wii_addr = BufferOut + 4 * 3 + 2 * 2;
 
 				u32 name_length = (u32)strlen(remoteHost->h_name) + 1;
-				Memory::Device_CopyToEmu(wii_addr, remoteHost->h_name, name_length);
-				Memory::Device_Write_U32(wii_addr, BufferOut);
+				Memory::CopyToEmu(wii_addr, remoteHost->h_name, name_length);
+				Memory::Write_U32(wii_addr, BufferOut);
 				wii_addr += (name_length + 4) & ~3;
 
 				// aliases - empty
-				Memory::Device_Write_U32(wii_addr, BufferOut + 4);
-				Memory::Device_Write_U32(wii_addr + sizeof(u32), wii_addr);
+				Memory::Write_U32(wii_addr, BufferOut + 4);
+				Memory::Write_U32(wii_addr + sizeof(u32), wii_addr);
 				wii_addr += sizeof(u32);
-				Memory::Device_Write_U32(0, wii_addr);
+				Memory::Write_U32(0, wii_addr);
 				wii_addr += sizeof(u32);
 
 				// hardcode to ipv4
 				_dbg_assert_msg_(WII_IPC_NET,
 					remoteHost->h_addrtype == AF_INET && remoteHost->h_length == sizeof(u32),
 					"returned host info is not IPv4");
-				Memory::Device_Write_U16(AF_INET, BufferOut + 8);
-				Memory::Device_Write_U16(sizeof(u32), BufferOut + 10);
+				Memory::Write_U16(AF_INET, BufferOut + 8);
+				Memory::Write_U16(sizeof(u32), BufferOut + 10);
 
 				// addrlist - probably only really need to return 1 anyways...
-				Memory::Device_Write_U32(wii_addr, BufferOut + 12);
+				Memory::Write_U32(wii_addr, BufferOut + 12);
 				u32 num_addr = 0;
 				while (remoteHost->h_addr_list[num_addr])
 					num_addr++;
 				for (u32 i = 0; i < num_addr; ++i)
 				{
-					Memory::Device_Write_U32(wii_addr + sizeof(u32) * (num_addr + 1), wii_addr);
+					Memory::Write_U32(wii_addr + sizeof(u32) * (num_addr + 1), wii_addr);
 					wii_addr += sizeof(u32);
 				}
 				// null-terminated list
-				Memory::Device_Write_U32(0, wii_addr);
+				Memory::Write_U32(0, wii_addr);
 				wii_addr += sizeof(u32);
 				// The actual IPs
 				for (int i = 0; remoteHost->h_addr_list[i]; ++i)
 				{
-					Memory::Device_Write_U32_Swap(*(u32*)(remoteHost->h_addr_list[i]), wii_addr);
+					Memory::Write_U32_Swap(*(u32*)(remoteHost->h_addr_list[i]), wii_addr);
 					wii_addr += sizeof(u32);
 				}
 
@@ -1122,7 +1122,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 		if (BufferInSize)
 		{
 			ERROR_LOG(WII_IPC_NET, "in addr %x size %x", BufferIn, BufferInSize);
-			ERROR_LOG(WII_IPC_NET, "\n%s", ArrayToString(Memory::Device_GetPointer(BufferIn), BufferInSize, 4).c_str());
+			ERROR_LOG(WII_IPC_NET, "\n%s", ArrayToString(Memory::GetPointer(BufferIn), BufferInSize, 4).c_str());
 		}
 
 		if (BufferOutSize)
@@ -1132,7 +1132,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 		break;
 	}
 
-	Memory::Device_Write_U32(ReturnValue, _CommandAddress + 0x4);
+	Memory::Write_U32(ReturnValue, _CommandAddress + 0x4);
 
 	return IPC_DEFAULT_REPLY;
 }
@@ -1183,13 +1183,13 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 	{
 	case IOCTLV_SO_GETINTERFACEOPT:
 	{
-		param = Memory::Device_Read_U32(_BufferIn);
-		param2 = Memory::Device_Read_U32(_BufferIn + 4);
-		param3 = Memory::Device_Read_U32(_BufferOut);
-		param4 = Memory::Device_Read_U32(_BufferOut2);
+		param = Memory::Read_U32(_BufferIn);
+		param2 = Memory::Read_U32(_BufferIn + 4);
+		param3 = Memory::Read_U32(_BufferOut);
+		param4 = Memory::Read_U32(_BufferOut2);
 		if (BufferOutSize >= 8)
 		{
-			param5 = Memory::Device_Read_U32(_BufferOut + 4);
+			param5 = Memory::Read_U32(_BufferOut + 4);
 		}
 
 		INFO_LOG(WII_IPC_NET,"IOCTLV_SO_GETINTERFACEOPT(%08X, %08X, %X, %X, %X) "
@@ -1267,33 +1267,33 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 			if (address == 0)
 				address = 0x08080808;
 
-			Memory::Device_Write_U32(address, _BufferOut);
-			Memory::Device_Write_U32(0x08080404, _BufferOut + 4);
+			Memory::Write_U32(address, _BufferOut);
+			Memory::Write_U32(0x08080404, _BufferOut + 4);
 			break;
 		}
 		case 0x1003: // error
-			Memory::Device_Write_U32(0, _BufferOut);
+			Memory::Write_U32(0, _BufferOut);
 			break;
 
 		case 0x1004: // mac address
 			u8 address[MAC_ADDRESS_SIZE];
 			GetMacAddress(address);
-			Memory::Device_CopyToEmu(_BufferOut, address, sizeof(address));
+			Memory::CopyToEmu(_BufferOut, address, sizeof(address));
 			break;
 
 		case 0x1005: // link state
-			Memory::Device_Write_U32(1, _BufferOut);
+			Memory::Write_U32(1, _BufferOut);
 			break;
 
 		case 0x4002: // ip addr number
-			Memory::Device_Write_U32(1, _BufferOut);
+			Memory::Write_U32(1, _BufferOut);
 			break;
 
 		case 0x4003: // ip addr table
-			Memory::Device_Write_U32(0xC, _BufferOut2);
-			Memory::Device_Write_U32(10 << 24 | 1 << 8 | 30, _BufferOut);
-			Memory::Device_Write_U32(255 << 24 | 255 << 16 | 255 << 8 | 0, _BufferOut + 4);
-			Memory::Device_Write_U32(10 << 24 | 0 << 16 | 255 << 8 | 255, _BufferOut + 8);
+			Memory::Write_U32(0xC, _BufferOut2);
+			Memory::Write_U32(10 << 24 | 1 << 8 | 30, _BufferOut);
+			Memory::Write_U32(255 << 24 | 255 << 16 | 255 << 8 | 0, _BufferOut + 4);
+			Memory::Write_U32(10 << 24 | 0 << 16 | 255 << 8 | 255, _BufferOut + 8);
 			break;
 
 		default:
@@ -1304,7 +1304,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 	}
 	case IOCTLV_SO_SENDTO:
 	{
-		u32 fd = Memory::Device_Read_U32(_BufferIn2);
+		u32 fd = Memory::Read_U32(_BufferIn2);
 		WiiSockMan &sm = WiiSockMan::GetInstance();
 		sm.DoSock(fd, CommandAddress, IOCTLV_SO_SENDTO);
 		return IPC_NO_REPLY;
@@ -1312,7 +1312,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 	}
 	case IOCTLV_SO_RECVFROM:
 	{
-		u32 fd = Memory::Device_Read_U32(_BufferIn);
+		u32 fd = Memory::Read_U32(_BufferIn);
 		WiiSockMan &sm = WiiSockMan::GetInstance();
 		sm.DoSock(fd, CommandAddress, IOCTLV_SO_RECVFROM);
 		return IPC_NO_REPLY;
@@ -1325,11 +1325,11 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 
 		if (BufferInSize3)
 		{
-			hints.ai_flags     = Memory::Device_Read_U32(_BufferIn3);
-			hints.ai_family    = Memory::Device_Read_U32(_BufferIn3 + 0x4);
-			hints.ai_socktype  = Memory::Device_Read_U32(_BufferIn3 + 0x8);
-			hints.ai_protocol  = Memory::Device_Read_U32(_BufferIn3 + 0xC);
-			hints.ai_addrlen   = Memory::Device_Read_U32(_BufferIn3 + 0x10);
+			hints.ai_flags     = Memory::Read_U32(_BufferIn3);
+			hints.ai_family    = Memory::Read_U32(_BufferIn3 + 0x4);
+			hints.ai_socktype  = Memory::Read_U32(_BufferIn3 + 0x8);
+			hints.ai_protocol  = Memory::Read_U32(_BufferIn3 + 0xC);
+			hints.ai_addrlen   = Memory::Read_U32(_BufferIn3 + 0x10);
 			hints.ai_canonname = nullptr;
 			hints.ai_addr      = nullptr;
 			hints.ai_next      = nullptr;
@@ -1341,7 +1341,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 		const char* pNodeName = nullptr;
 		if (BufferInSize > 0)
 		{
-			nodeNameStr = Memory::Device_GetString(_BufferIn, BufferInSize);
+			nodeNameStr = Memory::GetString(_BufferIn, BufferInSize);
 			pNodeName = nodeNameStr.c_str();
 		}
 
@@ -1349,7 +1349,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 		const char* pServiceName = nullptr;
 		if (BufferInSize2 > 0)
 		{
-			serviceNameStr = Memory::Device_GetString(_BufferIn2, BufferInSize2);
+			serviceNameStr = Memory::GetString(_BufferIn2, BufferInSize2);
 			pServiceName = serviceNameStr.c_str();
 		}
 
@@ -1360,33 +1360,33 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 		{
 			while (result != nullptr)
 			{
-				Memory::Device_Write_U32(result->ai_flags, addr);
-				Memory::Device_Write_U32(result->ai_family, addr + 0x04);
-				Memory::Device_Write_U32(result->ai_socktype, addr + 0x08);
-				Memory::Device_Write_U32(result->ai_protocol, addr + 0x0C);
-				Memory::Device_Write_U32((u32)result->ai_addrlen, addr + 0x10);
+				Memory::Write_U32(result->ai_flags, addr);
+				Memory::Write_U32(result->ai_family, addr + 0x04);
+				Memory::Write_U32(result->ai_socktype, addr + 0x08);
+				Memory::Write_U32(result->ai_protocol, addr + 0x0C);
+				Memory::Write_U32((u32)result->ai_addrlen, addr + 0x10);
 				// what to do? where to put? the buffer of 0x834 doesn't allow space for this
-				Memory::Device_Write_U32(/*result->ai_cannonname*/ 0, addr + 0x14);
+				Memory::Write_U32(/*result->ai_cannonname*/ 0, addr + 0x14);
 
 				if (result->ai_addr)
 				{
-					Memory::Device_Write_U32(sockoffset, addr + 0x18);
-					Memory::Device_Write_U16(((result->ai_addr->sa_family & 0xFF) << 8) | (result->ai_addrlen & 0xFF), sockoffset);
-					Memory::Device_CopyToEmu(sockoffset + 0x2, result->ai_addr->sa_data, sizeof(result->ai_addr->sa_data));
+					Memory::Write_U32(sockoffset, addr + 0x18);
+					Memory::Write_U16(((result->ai_addr->sa_family & 0xFF) << 8) | (result->ai_addrlen & 0xFF), sockoffset);
+					Memory::CopyToEmu(sockoffset + 0x2, result->ai_addr->sa_data, sizeof(result->ai_addr->sa_data));
 					sockoffset += 0x1C;
 				}
 				else
 				{
-					Memory::Device_Write_U32(0, addr + 0x18);
+					Memory::Write_U32(0, addr + 0x18);
 				}
 
 				if (result->ai_next)
 				{
-					Memory::Device_Write_U32(addr + sizeof(addrinfo), addr + 0x1C);
+					Memory::Write_U32(addr + sizeof(addrinfo), addr + 0x1C);
 				}
 				else
 				{
-					Memory::Device_Write_U32(0, addr + 0x1C);
+					Memory::Write_U32(0, addr + 0x1C);
 				}
 
 				addr += sizeof(addrinfo);
@@ -1402,7 +1402,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 		INFO_LOG(WII_IPC_NET, "IOCTLV_SO_GETADDRINFO "
 			"(BufferIn: (%08x, %i), BufferOut: (%08x, %i)",
 			_BufferIn, BufferInSize, _BufferOut, BufferOutSize);
-		INFO_LOG(WII_IPC_NET, "IOCTLV_SO_GETADDRINFO: %s", Memory::Device_GetString(_BufferIn).c_str());
+		INFO_LOG(WII_IPC_NET, "IOCTLV_SO_GETADDRINFO: %s", Memory::GetString(_BufferIn).c_str());
 		ReturnValue = ret;
 		break;
 	}
@@ -1416,19 +1416,19 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 			u32 ip;
 		} ip_info;
 
-		u32 fd = Memory::Device_Read_U32(_BufferIn);
-		u32 num_ip = Memory::Device_Read_U32(_BufferIn + 4);
-		u64 timeout = Memory::Device_Read_U64(_BufferIn + 8);
+		u32 fd = Memory::Read_U32(_BufferIn);
+		u32 num_ip = Memory::Read_U32(_BufferIn + 4);
+		u64 timeout = Memory::Read_U64(_BufferIn + 8);
 
 		if (num_ip != 1)
 		{
 			INFO_LOG(WII_IPC_NET, "IOCTLV_SO_ICMPPING %i IPs", num_ip);
 		}
 
-		ip_info.length      = Memory::Device_Read_U8(_BufferIn + 16);
-		ip_info.addr_family = Memory::Device_Read_U8(_BufferIn + 17);
-		ip_info.icmp_id     = Memory::Device_Read_U16(_BufferIn + 18);
-		ip_info.ip          = Memory::Device_Read_U32(_BufferIn + 20);
+		ip_info.length      = Memory::Read_U8(_BufferIn + 16);
+		ip_info.addr_family = Memory::Read_U8(_BufferIn + 17);
+		ip_info.icmp_id     = Memory::Read_U16(_BufferIn + 18);
+		ip_info.ip          = Memory::Read_U32(_BufferIn + 20);
 
 		if (ip_info.length != 8 || ip_info.addr_family != AF_INET)
 		{
@@ -1449,7 +1449,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 		s32 icmp_length = sizeof(data);
 
 		if (BufferInSize2 == sizeof(data))
-			Memory::Device_CopyFromEmu(data, _BufferIn2, BufferInSize2);
+			Memory::CopyFromEmu(data, _BufferIn2, BufferInSize2);
 		else
 		{
 			// TODO sequence number is incremented either statically, by
@@ -1478,7 +1478,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 				CommandBuffer.InBuffer.at(i).m_Address, CommandBuffer.InBuffer.at(i).m_Size);
 			ERROR_LOG(WII_IPC_NET, "\n%s",
 				ArrayToString(
-				Memory::Device_GetPointer(CommandBuffer.InBuffer.at(i).m_Address),
+				Memory::GetPointer(CommandBuffer.InBuffer.at(i).m_Address),
 				CommandBuffer.InBuffer.at(i).m_Size, 4).c_str()
 				);
 		}
@@ -1490,7 +1490,7 @@ IPCCommandResult CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 CommandAddress)
 		break;
 	}
 
-	Memory::Device_Write_U32(ReturnValue, CommandAddress + 4);
+	Memory::Write_U32(ReturnValue, CommandAddress + 4);
 	return IPC_DEFAULT_REPLY;
 }
 u32 CWII_IPC_HLE_Device_net_ip_top::Update()

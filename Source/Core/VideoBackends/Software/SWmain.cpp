@@ -223,7 +223,7 @@ void VideoSoftware::Video_EndField()
 	{
 		if (!g_SWVideoConfig.bBypassXFB)
 		{
-			EfbInterface::yuv422_packed *xfb = (EfbInterface::yuv422_packed *) Memory::Device_GetPointer(s_beginFieldArgs.xfbAddr);
+			EfbInterface::yuv422_packed *xfb = (EfbInterface::yuv422_packed *) Memory::GetPointer(s_beginFieldArgs.xfbAddr);
 
 			SWRenderer::UpdateColorTexture(xfb, s_beginFieldArgs.fbWidth, s_beginFieldArgs.fbHeight);
 		}

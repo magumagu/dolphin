@@ -100,7 +100,7 @@ namespace PowerPC
 	u32 InstructionCache::ReadInstruction(u32 addr)
 	{
 		if (!HID0.ICE) // instruction cache is disabled
-			return Memory::Device_Read_U32(addr);
+			return Memory::Read_U32(addr);
 		u32 set = (addr >> 5) & 0x7f;
 		u32 tag = addr >> 12;
 
@@ -121,14 +121,14 @@ namespace PowerPC
 		if (t == 0xff) // load to the cache
 		{
 			if (HID0.ILOCK) // instruction cache is locked
-				return Memory::Device_Read_U32(addr);
+				return Memory::Read_U32(addr);
 			// select a way
 			if (valid[set] != 0xff)
 				t = way_from_valid[valid[set]];
 			else
 				t = way_from_plru[plru[set]];
 			// load
-			Memory::Device_CopyFromEmu((u8*)data[set][t], (addr & ~0x1f), 32);
+			Memory::CopyFromEmu((u8*)data[set][t], (addr & ~0x1f), 32);
 			if (valid[set] & (1 << t))
 			{
 				if (tags[set][t] & (ICACHE_VMEM_BIT >> 12))

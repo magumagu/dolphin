@@ -114,21 +114,21 @@ private:
 		{
 			if (m_address)
 			{
-				u32 InBufferNum  = Memory::Device_Read_U32(m_address + 0x10);
-				u32 BufferVector = Memory::Device_Read_U32(m_address + 0x18);
-				m_buffer = Memory::Device_Read_U32(
+				u32 InBufferNum  = Memory::Read_U32(m_address + 0x10);
+				u32 BufferVector = Memory::Read_U32(m_address + 0x18);
+				m_buffer = Memory::Read_U32(
 					BufferVector + InBufferNum * sizeof(SIOCtlVBuffer::SBuffer));
 			}
 		}
 
 		inline void FillBuffer(const void* src, const size_t size) const
 		{
-			Memory::Device_CopyToEmu(m_buffer, (u8*)src, size);
+			Memory::CopyToEmu(m_buffer, (u8*)src, size);
 		}
 
 		inline void SetRetVal(const u32 retval) const
 		{
-			Memory::Device_Write_U32(retval, m_address + 4);
+			Memory::Write_U32(retval, m_address + 4);
 		}
 
 		inline bool IsValid() const
