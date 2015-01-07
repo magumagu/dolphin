@@ -198,7 +198,7 @@ void WiiSocket::Update(bool read, bool write, bool except)
 			}
 			case IOCTL_SO_BIND:
 			{
-				//u32 has_addr = Memory::Read_U32(BufferIn + 0x04);
+				//u32 has_addr = Memory::Device_Read_U32(BufferIn + 0x04);
 				sockaddr_in local_name;
 				WiiSockAddrIn* wii_name = (WiiSockAddrIn*)Memory::Device_GetPointer(BufferIn + 0x08);
 				WiiSockMan::Convert(*wii_name, local_name);
@@ -212,7 +212,7 @@ void WiiSocket::Update(bool read, bool write, bool except)
 			}
 			case IOCTL_SO_CONNECT:
 			{
-				//u32 has_addr = Memory::Read_U32(BufferIn + 0x04);
+				//u32 has_addr = Memory::Device_Read_U32(BufferIn + 0x04);
 				sockaddr_in local_name;
 				WiiSockAddrIn* wii_name = (WiiSockAddrIn*)Memory::Device_GetPointer(BufferIn + 0x08);
 				WiiSockMan::Convert(*wii_name, local_name);

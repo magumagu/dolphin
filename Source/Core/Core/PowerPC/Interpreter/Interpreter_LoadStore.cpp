@@ -318,8 +318,8 @@ void Interpreter::dcbf(UGeckoInstruction _inst)
 {
 	//This should tell GFX backend to throw out any cached data here
 	// !!! SPEEDUP HACK for OSProtectRange !!!
-/*	u32 tmp1 = Memory::Read_U32(PC+4);
-	u32 tmp2 = Memory::Read_U32(PC+8);
+/*	u32 tmp1 = Memory::Debug_Read_U32(PC+4);
+	u32 tmp2 = Memory::Debug_Read_U32(PC+8);
 
 	if ((tmp1 == 0x38630020) &&
 		(tmp2 == 0x4200fff8))

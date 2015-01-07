@@ -169,16 +169,16 @@ IPCCommandResult CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtl(u32 _CommandAddress)
 IPCCommandResult CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtlV(u32 _CommandAddress)
 {
 /*
-	Memory::Write_U8(255, 0x80149950);  // BTM LOG  // 3 logs L2Cap  // 4 logs l2_csm$
-	Memory::Write_U8(255, 0x80149949);  // Security Manager
-	Memory::Write_U8(255, 0x80149048);  // HID
-	Memory::Write_U8(3, 0x80152058);    // low ??   // >= 4 and you will get a lot of event messages of the same type
-	Memory::Write_U8(1, 0x80152018);    // WUD
-	Memory::Write_U8(1, 0x80151FC8);    // DEBUGPrint
-	Memory::Write_U8(1, 0x80151488);    // WPAD_LOG
-	Memory::Write_U8(1, 0x801514A8);    // USB_LOG
-	Memory::Write_U8(1, 0x801514D8);    // WUD_DEBUGPrint
-	Memory::Write_U8(1, 0x80148E09);    // HID LOG
+	Memory::Device_Write_U8(255, 0x80149950);  // BTM LOG  // 3 logs L2Cap  // 4 logs l2_csm$
+	Memory::Device_Write_U8(255, 0x80149949);  // Security Manager
+	Memory::Device_Write_U8(255, 0x80149048);  // HID
+	Memory::Device_Write_U8(3, 0x80152058);    // low ??   // >= 4 and you will get a lot of event messages of the same type
+	Memory::Device_Write_U8(1, 0x80152018);    // WUD
+	Memory::Device_Write_U8(1, 0x80151FC8);    // DEBUGPrint
+	Memory::Device_Write_U8(1, 0x80151488);    // WPAD_LOG
+	Memory::Device_Write_U8(1, 0x801514A8);    // USB_LOG
+	Memory::Device_Write_U8(1, 0x801514D8);    // WUD_DEBUGPrint
+	Memory::Device_Write_U8(1, 0x80148E09);    // HID LOG
 */
 
 	bool _SendReply = false;
