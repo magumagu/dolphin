@@ -357,12 +357,12 @@ public:
 
 	void WriteToMem(const u32 address)
 	{
-		Memory::CopyToEmu(address, &config, sizeof(config));
+		Memory::Device_CopyToEmu(address, &config, sizeof(config));
 	}
 
 	void ReadFromMem(const u32 address)
 	{
-		Memory::CopyFromEmu(&config, address, sizeof(config));
+		Memory::Device_CopyFromEmu(&config, address, sizeof(config));
 	}
 
 	void ReadConfig()
@@ -457,7 +457,7 @@ public:
 	virtual IPCCommandResult Open(u32 _CommandAddress, u32 _Mode) override
 	{
 		INFO_LOG(WII_IPC_NET, "NET_KD_TIME: Open");
-		Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
+		Memory::Device_Write_U32(GetDeviceID(), _CommandAddress + 4);
 		return IPC_DEFAULT_REPLY;
 	}
 
@@ -465,15 +465,15 @@ public:
 	{
 		INFO_LOG(WII_IPC_NET, "NET_KD_TIME: Close");
 		if (!_bForce)
-			Memory::Write_U32(0, _CommandAddress + 4);
+			Memory::Device_Write_U32(0, _CommandAddress + 4);
 		return IPC_DEFAULT_REPLY;
 	}
 
 	virtual IPCCommandResult IOCtl(u32 _CommandAddress) override
 	{
-		u32 Parameter = Memory::Read_U32(_CommandAddress + 0x0C);
-		u32 BufferIn  = Memory::Read_U32(_CommandAddress + 0x10);
-		u32 BufferOut = Memory::Read_U32(_CommandAddress + 0x18);
+		u32 Parameter = Memory::Device_Read_U32(_CommandAddress + 0x0C);
+		u32 BufferIn  = Memory::Device_Read_U32(_CommandAddress + 0x10);
+		u32 BufferOut = Memory::Device_Read_U32(_CommandAddress + 0x18);
 
 		u32 result = 0;
 		u32 common_result = 0;
@@ -483,21 +483,21 @@ public:
 		switch (Parameter)
 		{
 		case IOCTL_NW24_GET_UNIVERSAL_TIME:
-			Memory::Write_U64(GetAdjustedUTC(), BufferOut + 4);
+			Memory::Device_Write_U64(GetAdjustedUTC(), BufferOut + 4);
 			break;
 
 		case IOCTL_NW24_SET_UNIVERSAL_TIME:
-			SetAdjustedUTC(Memory::Read_U64(BufferIn));
+			SetAdjustedUTC(Memory::Device_Read_U64(BufferIn));
 			//update_misc = Memory::Read_U32(BufferIn + 8);
 			break;
 
 		case IOCTL_NW24_SET_RTC_COUNTER:
-			rtc = Memory::Read_U32(BufferIn);
+			rtc = Memory::Device_Read_U32(BufferIn);
 			//update_misc = Memory::Read_U32(BufferIn + 4);
 			break;
 
 		case IOCTL_NW24_GET_TIME_DIFF:
-			Memory::Write_U64(GetAdjustedUTC() - rtc, BufferOut + 4);
+			Memory::Device_Write_U64(GetAdjustedUTC() - rtc, BufferOut + 4);
 			break;
 
 		case IOCTL_NW24_UNIMPLEMENTED:
@@ -510,8 +510,8 @@ public:
 		}
 
 		// write return values
-		Memory::Write_U32(common_result, BufferOut);
-		Memory::Write_U32(result, _CommandAddress + 4);
+		Memory::Device_Write_U32(common_result, BufferOut);
+		Memory::Device_Write_U32(result, _CommandAddress + 4);
 		return IPC_DEFAULT_REPLY;
 	}
 

@@ -107,7 +107,7 @@ int Interpreter::SingleStepInner()
 		#endif
 
 		NPC = PC + sizeof(UGeckoInstruction);
-		instCode.hex = Memory::Read_Opcode(PC);
+		instCode.hex = Memory::CPU_Read_Opcode(PC);
 
 		// Uncomment to trace the interpreter
 		//if ((PC & 0xffffff)>=0x0ab54c && (PC & 0xffffff)<=0x0ab624)

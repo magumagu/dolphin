@@ -66,6 +66,14 @@ inline u32 bswap(u32 val) { return Common::swap32(val); }
 inline u64 bswap(u64 val) { return Common::swap64(val); }
 // =================
 
+enum XCheckTLBFlag
+{
+	FLAG_NO_EXCEPTION,
+	FLAG_READ,
+	FLAG_WRITE,
+	FLAG_OPCODE,
+};
+template <const XCheckTLBFlag flag> static u32 TranslateAddress(const u32 address);
 
 // Nasty but necessary. Super Mario Galaxy pointer relies on this stuff.
 static u32 EFB_Read(const u32 addr)
@@ -93,7 +101,7 @@ static u32 EFB_Read(const u32 addr)
 static void GenerateDSIException(u32 _EffectiveAddress, bool _bWrite);
 
 template <XCheckTLBFlag flag, typename T>
-__forceinline T ReadFromHardware(const u32 em_address)
+__forceinline static T ReadFromHardware(const u32 em_address)
 {
 	int segment = em_address >> 28;
 	bool performTranslation = flag == FLAG_OPCODE ? UReg_MSR(MSR).IR : UReg_MSR(MSR).DR;
@@ -180,7 +188,7 @@ __forceinline T ReadFromHardware(const u32 em_address)
 
 
 template <XCheckTLBFlag flag, typename T>
-__forceinline void WriteToHardware(u32 em_address, const T data)
+__forceinline static void WriteToHardware(u32 em_address, const T data)
 {
 	int segment = em_address >> 28;
 	// Quick check for an address that can't meet any of the following conditions,
@@ -305,7 +313,7 @@ __forceinline void WriteToHardware(u32 em_address, const T data)
 
 static void GenerateISIException(u32 effective_address);
 
-u32 Read_Opcode(u32 address)
+u32 CPU_Read_Opcode(u32 address)
 {
 	if (address == 0x00000000)
 	{
@@ -344,35 +352,35 @@ static __forceinline void Memcheck(u32 address, u32 var, bool write, int size)
 #endif
 }
 
-u8 Read_U8(const u32 address)
+u8 CPU_Read_U8(const u32 address)
 {
 	u8 var = ReadFromHardware<FLAG_READ, u8>(address);
 	Memcheck(address, var, false, 1);
 	return (u8)var;
 }
 
-u16 Read_U16(const u32 address)
+u16 CPU_Read_U16(const u32 address)
 {
 	u16 var = ReadFromHardware<FLAG_READ, u16>(address);
 	Memcheck(address, var, false, 2);
 	return (u16)var;
 }
 
-u32 Read_U32(const u32 address)
+u32 CPU_Read_U32(const u32 address)
 {
 	u32 var = ReadFromHardware<FLAG_READ, u32>(address);
 	Memcheck(address, var, false, 4);
 	return var;
 }
 
-u64 Read_U64(const u32 address)
+u64 CPU_Read_U64(const u32 address)
 {
 	u64 var = ReadFromHardware<FLAG_READ, u64>(address);
 	Memcheck(address, (u32)var, false, 8);
 	return var;
 }
 
-double Read_F64(const u32 address)
+double CPU_Read_F64(const u32 address)
 {
 	union
 	{
@@ -380,11 +388,11 @@ double Read_F64(const u32 address)
 		double d;
 	} cvt;
 
-	cvt.i = Read_U64(address);
+	cvt.i = CPU_Read_U64(address);
 	return cvt.d;
 }
 
-float Read_F32(const u32 address)
+float CPU_Read_F32(const u32 address)
 {
 	union
 	{
@@ -392,61 +400,61 @@ float Read_F32(const u32 address)
 		float d;
 	} cvt;
 
-	cvt.i = Read_U32(address);
+	cvt.i = CPU_Read_U32(address);
 	return cvt.d;
 }
 
-u32 Read_U8_ZX(const u32 address)
+u32 CPU_Read_U8_ZX(const u32 address)
 {
-	return (u32)Read_U8(address);
+	return (u32)CPU_Read_U8(address);
 }
 
-u32 Read_U16_ZX(const u32 address)
+u32 CPU_Read_U16_ZX(const u32 address)
 {
-	return (u32)Read_U16(address);
+	return (u32)CPU_Read_U16(address);
 }
 
-void Write_U8(const u8 var, const u32 address)
+void CPU_Write_U8(const u8 var, const u32 address)
 {
 	Memcheck(address, var, true, 1);
 	WriteToHardware<FLAG_WRITE, u8>(address, var);
 }
 
-void Write_U16(const u16 var, const u32 address)
+void CPU_Write_U16(const u16 var, const u32 address)
 {
 	Memcheck(address, var, true, 2);
 	WriteToHardware<FLAG_WRITE, u16>(address, var);
 }
-void Write_U16_Swap(const u16 var, const u32 address)
+void CPU_Write_U16_Swap(const u16 var, const u32 address)
 {
 	Memcheck(address, var, true, 2);
-	Write_U16(Common::swap16(var), address);
+	CPU_Write_U16(Common::swap16(var), address);
 }
 
 
-void Write_U32(const u32 var, const u32 address)
+void CPU_Write_U32(const u32 var, const u32 address)
 {
 	Memcheck(address, var, true, 4);
 	WriteToHardware<FLAG_WRITE, u32>(address, var);
 }
-void Write_U32_Swap(const u32 var, const u32 address)
+void CPU_Write_U32_Swap(const u32 var, const u32 address)
 {
 	Memcheck(address, var, true, 4);
-	Write_U32(Common::swap32(var), address);
+	CPU_Write_U32(Common::swap32(var), address);
 }
 
-void Write_U64(const u64 var, const u32 address)
+void CPU_Write_U64(const u64 var, const u32 address)
 {
 	Memcheck(address, (u32)var, true, 8);
 	WriteToHardware<FLAG_WRITE, u64>(address, var);
 }
-void Write_U64_Swap(const u64 var, const u32 address)
+void CPU_Write_U64_Swap(const u64 var, const u32 address)
 {
 	Memcheck(address, (u32)var, true, 8);
-	Write_U64(Common::swap64(var), address);
+	CPU_Write_U64(Common::swap64(var), address);
 }
 
-void Write_F64(const double var, const u32 address)
+void CPU_Write_F64(const double var, const u32 address)
 {
 	union
 	{
@@ -454,28 +462,28 @@ void Write_F64(const double var, const u32 address)
 		double d;
 	} cvt;
 	cvt.d = var;
-	Write_U64(cvt.i, address);
+	CPU_Write_U64(cvt.i, address);
 }
-u8 ReadUnchecked_U8(const u32 address)
+
+u8 Debug_Read_U8(const u32 address)
 {
 	u8 var = ReadFromHardware<FLAG_NO_EXCEPTION, u8>(address);
 	return var;
 }
 
-
-u32 ReadUnchecked_U32(const u32 address)
+u32 Debug_Read_U32(const u32 address)
 {
 	u32 var = ReadFromHardware<FLAG_NO_EXCEPTION, u32>(address);
 	return var;
 }
 
-void WriteUnchecked_U8(const u8 var, const u32 address)
+void Debug_Write_U8(const u8 var, const u32 address)
 {
 	WriteToHardware<FLAG_NO_EXCEPTION, u8>(address, var);
 }
 
 
-void WriteUnchecked_U32(const u32 var, const u32 address)
+void Debug_Write_U32(const u32 var, const u32 address)
 {
 	WriteToHardware<FLAG_NO_EXCEPTION, u32>(address, var);
 }
@@ -595,7 +603,7 @@ static void GenerateISIException(u32 _EffectiveAddress)
 }
 
 
-void SDRUpdated()
+void CPU_SDRUpdated()
 {
 	u32 htabmask = SDR1_HTABMASK(PowerPC::ppcState.spr[SPR_SDR]);
 	u32 x = 1;
@@ -692,7 +700,7 @@ static __forceinline void UpdateTLBEntry(const XCheckTLBFlag flag, UPTE2 PTE2, c
 	tlbe->tag[index] = tag;
 }
 
-void InvalidateTLBEntry(u32 address)
+void CPU_InvalidateTLBEntry(u32 address)
 {
 	PowerPC::tlb_entry *tlbe = &PowerPC::ppcState.tlb[0][(address >> HW_PAGE_INDEX_SHIFT) & HW_PAGE_INDEX_MASK];
 	tlbe->tag[0] = TLB_TAG_INVALID;
@@ -849,8 +857,4 @@ u32 TranslateAddress(const u32 address)
 	return TranslatePageAddress(address, flag);
 }
 
-template u32 TranslateAddress<Memory::FLAG_NO_EXCEPTION>(const u32 address);
-template u32 TranslateAddress<Memory::FLAG_READ>(const u32 address);
-template u32 TranslateAddress<Memory::FLAG_WRITE>(const u32 address);
-template u32 TranslateAddress<Memory::FLAG_OPCODE>(const u32 address);
 } // namespace

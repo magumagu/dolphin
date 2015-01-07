@@ -238,7 +238,7 @@ namespace JitInterface
 
 		if (PC != 0 && (exception_addresses->find(PC)) == (exception_addresses->end()))
 		{
-			int optype = GetOpInfo(Memory::ReadUnchecked_U32(PC))->type;
+			int optype = GetOpInfo(Memory::CPU_Weird_Read_U32(PC))->type;
 			if (optype == OPTYPE_STORE || optype == OPTYPE_STOREFP || (optype == OPTYPE_STOREPS))
 			{
 				exception_addresses->insert(PC);

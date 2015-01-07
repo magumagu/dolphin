@@ -70,70 +70,76 @@ void DoState(PointerWrap &p);
 void Clear();
 bool AreMemoryBreakpointsActivated();
 
-// ONLY for use by GUI
-u8 ReadUnchecked_U8(const u32 address);
-u32 ReadUnchecked_U32(const u32 address);
+// Routines for debugger UI, cheats, etc. to access emulated memory from the
+// perspective of the CPU.  Not for use by core emulation routines. 
+// Use "Debug_" prefix.
+u8 Debug_Read_U8(const u32 address);
+u16 Debug_Read_U16(const u32 address);
+u32 Debug_Read_U32(const u32 address);
+u32 Debug_Read_Instruction(const u32 address);
 
-void WriteUnchecked_U8(const u8 var, const u32 address);
-void WriteUnchecked_U32(const u32 var, const u32 address);
+void Debug_Write_U8(const u8 var, const u32 address);
+void Debug_Write_U16(const u16 var, const u32 address);
+void Debug_Write_U32(const u32 var, const u32 address);
 
-bool IsRAMAddress(const u32 address, bool allow_locked_cache = false, bool allow_fake_vmem = false);
+bool Debug_IsRAMAddress(const u32 address);
 
-// used by interpreter to read instructions, uses iCache
-u32 Read_Opcode(const u32 address);
-// this is used by Debugger a lot.
-// For now, just reads from memory!
-u32 Read_Instruction(const u32 address);
+std::string Debug_GetString(u32 em_address, size_t size = 0);
 
+// Routines for the CPU cores to access memory. Use "CPU_" prefix.
 
-// For use by emulator
+// Used by interpreter to read instructions, uses iCache
+u32 CPU_Read_Opcode(const u32 address);
 
-u8  Read_U8(const u32 address);
-u16 Read_U16(const u32 address);
-u32 Read_U32(const u32 address);
-u64 Read_U64(const u32 address);
+u8  CPU_Read_U8(const u32 address);
+u16 CPU_Read_U16(const u32 address);
+u32 CPU_Read_U32(const u32 address);
+u64 CPU_Read_U64(const u32 address);
 
 // Useful helper functions, used by ARM JIT
-float Read_F32(const u32 address);
-double Read_F64(const u32 address);
+float CPU_Read_F32(const u32 address);
+double CPU_Read_F64(const u32 address);
 
 // used by JIT. Return zero-extended 32bit values
-u32 Read_U8_ZX(const u32 address);
-u32 Read_U16_ZX(const u32 address);
+u32 CPU_Read_U8_ZX(const u32 address);
+u32 CPU_Read_U16_ZX(const u32 address);
 
-void Write_U8(const u8 var, const u32 address);
-void Write_U16(const u16 var, const u32 address);
-void Write_U32(const u32 var, const u32 address);
-void Write_U64(const u64 var, const u32 address);
+void CPU_Write_U8(const u8 var, const u32 address);
+void CPU_Write_U16(const u16 var, const u32 address);
+void CPU_Write_U32(const u32 var, const u32 address);
+void CPU_Write_U64(const u64 var, const u32 address);
 
-void Write_U16_Swap(const u16 var, const u32 address);
-void Write_U32_Swap(const u32 var, const u32 address);
-void Write_U64_Swap(const u64 var, const u32 address);
+void CPU_Write_U16_Swap(const u16 var, const u32 address);
+void CPU_Write_U32_Swap(const u32 var, const u32 address);
+void CPU_Write_U64_Swap(const u64 var, const u32 address);
 
 // Useful helper functions, used by ARM JIT
-void Write_F64(const double var, const u32 address);
+void CPU_Write_F64(const double var, const u32 address);
 
-std::string GetString(u32 em_address, size_t size = 0);
-
-u8* GetPointer(const u32 address);
-void DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlocks);
-void DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks);
-void CopyFromEmu(void* data, u32 address, size_t size);
-void CopyToEmu(u32 address, const void* data, size_t size);
-void Memset(const u32 address, const u8 var, const u32 length);
-void ClearCacheLine(const u32 address); // Zeroes 32 bytes; address should be 32-byte-aligned
+void CPU_DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlocks);
+void CPU_DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks);
+void CPU_ClearCacheLine(const u32 address); // Zeroes 32 bytes; address should be 32-byte-aligned
 
 // TLB functions
-void SDRUpdated();
-enum XCheckTLBFlag
-{
-	FLAG_NO_EXCEPTION,
-	FLAG_READ,
-	FLAG_WRITE,
-	FLAG_OPCODE,
-};
-template <const XCheckTLBFlag flag> u32 TranslateAddress(const u32 address);
-void InvalidateTLBEntry(u32 address);
-extern u32 pagetable_base;
-extern u32 pagetable_hashmask;
+void CPU_SDRUpdated();
+void CPU_InvalidateTLBEntry(u32 address);
+
+// Routines to access physically addressed memory, designed for use by
+// emulated hardware outside the CPU. Use "Device_" prefix.
+std::string Device_GetString(u32 em_address, size_t size = 0);
+u8* Device_GetPointer(const u32 address);
+void Device_CopyFromEmu(void* data, u32 address, size_t size);
+void Device_CopyToEmu(u32 address, const void* data, size_t size);
+void Device_Memset(const u32 address, const u8 var, const u32 length);
+u8  Device_Read_U8(const u32 address);
+u16 Device_Read_U16(const u32 address);
+u32 Device_Read_U32(const u32 address);
+u64 Device_Read_U64(const u32 address);
+void Device_Write_U8(const u8 var, const u32 address);
+void Device_Write_U16(const u16 var, const u32 address);
+void Device_Write_U32(const u32 var, const u32 address);
+void Device_Write_U64(const u64 var, const u32 address);
+void Device_Write_U32_Swap(const u32 var, const u32 address);
+void Device_Write_U64_Swap(const u64 var, const u32 address);
+
 }

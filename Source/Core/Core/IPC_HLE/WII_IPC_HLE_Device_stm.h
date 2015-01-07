@@ -39,7 +39,7 @@ public:
 	virtual IPCCommandResult Open(u32 _CommandAddress, u32 _Mode) override
 	{
 		INFO_LOG(WII_IPC_STM, "STM immediate: Open");
-		Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
+		Memory::Device_Write_U32(GetDeviceID(), _CommandAddress + 4);
 		m_Active = true;
 		return IPC_DEFAULT_REPLY;
 	}
@@ -48,22 +48,22 @@ public:
 	{
 		INFO_LOG(WII_IPC_STM, "STM immediate: Close");
 		if (!_bForce)
-			Memory::Write_U32(0, _CommandAddress+4);
+			Memory::Device_Write_U32(0, _CommandAddress + 4);
 		m_Active = false;
 		return IPC_DEFAULT_REPLY;
 	}
 
 	virtual IPCCommandResult IOCtl(u32 _CommandAddress) override
 	{
-		u32 Parameter     = Memory::Read_U32(_CommandAddress + 0x0C);
-		u32 BufferIn      = Memory::Read_U32(_CommandAddress + 0x10);
-		u32 BufferInSize  = Memory::Read_U32(_CommandAddress + 0x14);
-		u32 BufferOut     = Memory::Read_U32(_CommandAddress + 0x18);
-		u32 BufferOutSize = Memory::Read_U32(_CommandAddress + 0x1C);
+		u32 Parameter     = Memory::Device_Read_U32(_CommandAddress + 0x0C);
+		u32 BufferIn      = Memory::Device_Read_U32(_CommandAddress + 0x10);
+		u32 BufferInSize  = Memory::Device_Read_U32(_CommandAddress + 0x14);
+		u32 BufferOut     = Memory::Device_Read_U32(_CommandAddress + 0x18);
+		u32 BufferOutSize = Memory::Device_Read_U32(_CommandAddress + 0x1C);
 
 		// Prepare the out buffer(s) with zeroes as a safety precaution
 		// to avoid returning bad values
-		Memory::Memset(BufferOut, 0, BufferOutSize);
+		Memory::Device_Memset(BufferOut, 0, BufferOutSize);
 		u32 ReturnValue = 0;
 
 		switch (Parameter)
@@ -106,7 +106,7 @@ public:
 		}
 
 		// Write return value to the IPC call
-		Memory::Write_U32(ReturnValue, _CommandAddress + 0x4);
+		Memory::Device_Write_U32(ReturnValue, _CommandAddress + 0x4);
 		return IPC_DEFAULT_REPLY;
 	}
 };
@@ -127,7 +127,7 @@ public:
 
 	virtual IPCCommandResult Open(u32 _CommandAddress, u32 _Mode) override
 	{
-		Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
+		Memory::Device_Write_U32(GetDeviceID(), _CommandAddress + 4);
 		m_Active = true;
 		return IPC_DEFAULT_REPLY;
 	}
@@ -138,22 +138,22 @@ public:
 
 		INFO_LOG(WII_IPC_STM, "STM eventhook: Close");
 		if (!_bForce)
-			Memory::Write_U32(0, _CommandAddress+4);
+			Memory::Device_Write_U32(0, _CommandAddress + 4);
 		m_Active = false;
 		return IPC_DEFAULT_REPLY;
 	}
 
 	virtual IPCCommandResult IOCtl(u32 _CommandAddress) override
 	{
-		u32 Parameter     = Memory::Read_U32(_CommandAddress + 0x0C);
-		u32 BufferIn      = Memory::Read_U32(_CommandAddress + 0x10);
-		u32 BufferInSize  = Memory::Read_U32(_CommandAddress + 0x14);
-		u32 BufferOut     = Memory::Read_U32(_CommandAddress + 0x18);
-		u32 BufferOutSize = Memory::Read_U32(_CommandAddress + 0x1C);
+		u32 Parameter     = Memory::Device_Read_U32(_CommandAddress + 0x0C);
+		u32 BufferIn      = Memory::Device_Read_U32(_CommandAddress + 0x10);
+		u32 BufferInSize  = Memory::Device_Read_U32(_CommandAddress + 0x14);
+		u32 BufferOut     = Memory::Device_Read_U32(_CommandAddress + 0x18);
+		u32 BufferOutSize = Memory::Device_Read_U32(_CommandAddress + 0x1C);
 
 		// Prepare the out buffer(s) with zeros as a safety precaution
 		// to avoid returning bad values
-		Memory::Memset(BufferOut, 0, BufferOutSize);
+		Memory::Device_Memset(BufferOut, 0, BufferOutSize);
 		u32 ReturnValue = 0;
 
 		// write return value
@@ -181,7 +181,7 @@ public:
 		}
 
 		// Write return value to the IPC call, 0 means success
-		Memory::Write_U32(ReturnValue, _CommandAddress + 0x4);
+		Memory::Device_Write_U32(ReturnValue, _CommandAddress + 0x4);
 		return IPC_DEFAULT_REPLY;
 	}
 

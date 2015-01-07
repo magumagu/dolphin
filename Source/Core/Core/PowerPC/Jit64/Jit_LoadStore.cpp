@@ -329,7 +329,7 @@ void Jit64::dcbz(UGeckoInstruction inst)
 	MOV(32, M(&PC), Imm32(jit->js.compilerPC));
 	BitSet32 registersInUse = CallerSavedRegistersInUse();
 	ABI_PushRegistersAndAdjustStack(registersInUse, 0);
-	ABI_CallFunctionR((void *)&Memory::ClearCacheLine, RSCRATCH);
+	ABI_CallFunctionR((void *)&Memory::CPU_ClearCacheLine, RSCRATCH);
 	ABI_PopRegistersAndAdjustStack(registersInUse, 0);
 	FixupBranch exit = J(true);
 

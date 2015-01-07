@@ -425,7 +425,7 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 				g_audioDMA.remaining_blocks_count = g_audioDMA.AudioDMAControl.NumBlocks;
 
 				// We make the samples ready as soon as possible
-				void *address = Memory::GetPointer(g_audioDMA.SourceAddress);
+				void *address = Memory::Device_GetPointer(g_audioDMA.SourceAddress);
 				AudioCommon::SendAIBuffer((short*)address, g_audioDMA.AudioDMAControl.NumBlocks * 8);
 				CoreTiming::ScheduleEvent_Threadsafe(80, et_GenerateDSPInterrupt, INT_AID);
 			}
@@ -521,7 +521,7 @@ void UpdateAudioDMA()
 			if (g_audioDMA.remaining_blocks_count != 0)
 			{
 				// We make the samples ready as soon as possible
-				void *address = Memory::GetPointer(g_audioDMA.SourceAddress);
+				void *address = Memory::Device_GetPointer(g_audioDMA.SourceAddress);
 				AudioCommon::SendAIBuffer((short*)address, g_audioDMA.AudioDMAControl.NumBlocks * 8);
 			}
 			GenerateDSPInterrupt(DSP::INT_AID);
@@ -570,15 +570,15 @@ static void Do_ARAM_DMA()
 				// See below in the write section for more information
 				if ((g_ARAM_Info.Hex & 0xf) == 3)
 				{
-					Memory::Write_U64_Swap(*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask], g_arDMA.MMAddr);
+					Memory::Device_Write_U64_Swap(*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask], g_arDMA.MMAddr);
 				}
 				else if ((g_ARAM_Info.Hex & 0xf) == 4)
 				{
-					Memory::Write_U64_Swap(*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask], g_arDMA.MMAddr);
+					Memory::Device_Write_U64_Swap(*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask], g_arDMA.MMAddr);
 				}
 				else
 				{
-					Memory::Write_U64_Swap(*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask], g_arDMA.MMAddr);
+					Memory::Device_Write_U64_Swap(*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask], g_arDMA.MMAddr);
 				}
 
 				g_arDMA.MMAddr += 8;
@@ -591,7 +591,7 @@ static void Do_ARAM_DMA()
 			// Assuming no external ARAM installed; returns zeroes on out of bounds reads (verified on real HW)
 			while (g_arDMA.Cnt.count)
 			{
-				Memory::Write_U64(0, g_arDMA.MMAddr);
+				Memory::Device_Write_U64(0, g_arDMA.MMAddr);
 				g_arDMA.MMAddr += 8;
 				g_arDMA.ARAddr += 8;
 				g_arDMA.Cnt.count -= 8;
@@ -614,19 +614,19 @@ static void Do_ARAM_DMA()
 			{
 				if ((g_ARAM_Info.Hex & 0xf) == 3)
 				{
-					*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask] = Common::swap64(Memory::Read_U64(g_arDMA.MMAddr));
+					*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask] = Common::swap64(Memory::Device_Read_U64(g_arDMA.MMAddr));
 				}
 				else if ((g_ARAM_Info.Hex & 0xf) == 4)
 				{
 					if (g_arDMA.ARAddr < 0x400000)
 					{
-						*(u64*)&g_ARAM.ptr[(g_arDMA.ARAddr + 0x400000) & g_ARAM.mask] = Common::swap64(Memory::Read_U64(g_arDMA.MMAddr));
+						*(u64*)&g_ARAM.ptr[(g_arDMA.ARAddr + 0x400000) & g_ARAM.mask] = Common::swap64(Memory::Device_Read_U64(g_arDMA.MMAddr));
 					}
-					*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask] = Common::swap64(Memory::Read_U64(g_arDMA.MMAddr));
+					*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask] = Common::swap64(Memory::Device_Read_U64(g_arDMA.MMAddr));
 				}
 				else
 				{
-					*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask] = Common::swap64(Memory::Read_U64(g_arDMA.MMAddr));
+					*(u64*)&g_ARAM.ptr[g_arDMA.ARAddr & g_ARAM.mask] = Common::swap64(Memory::Device_Read_U64(g_arDMA.MMAddr));
 				}
 
 				g_arDMA.MMAddr += 8;
@@ -655,7 +655,7 @@ u8 ReadARAM(u32 _iAddress)
 		if (_iAddress & 0x10000000)
 			return g_ARAM.ptr[_iAddress & g_ARAM.mask];
 		else
-			return Memory::Read_U8(_iAddress & Memory::RAM_MASK);
+			return Memory::Device_Read_U8(_iAddress & Memory::RAM_MASK);
 	}
 	else
 	{

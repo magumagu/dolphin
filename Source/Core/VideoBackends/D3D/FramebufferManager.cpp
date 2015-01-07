@@ -161,7 +161,7 @@ FramebufferManager::~FramebufferManager()
 
 void FramebufferManager::CopyToRealXFB(u32 xfbAddr, u32 fbWidth, u32 fbHeight, const EFBRectangle& sourceRc,float Gamma)
 {
-	u8* dst = Memory::GetPointer(xfbAddr);
+	u8* dst = Memory::Device_GetPointer(xfbAddr);
 	s_xfbEncoder.Encode(dst, fbWidth, fbHeight, sourceRc, Gamma);
 }
 
