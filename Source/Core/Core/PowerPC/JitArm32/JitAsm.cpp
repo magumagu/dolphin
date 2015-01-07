@@ -69,20 +69,20 @@ static const float GC_ALIGNED16(m_dequantizeTableS[]) =
 
 static void WriteDual32(u32 value1, u32 value2, u32 address)
 {
-	Memory::Write_U32(value1, address);
-	Memory::Write_U32(value2, address + 4);
+	Memory::CPU_Write_U32(value1, address);
+	Memory::CPU_Write_U32(value2, address + 4);
 }
 
 static void WriteDual16(u32 value1, u32 value2, u32 address)
 {
-	Memory::Write_U16(value1, address);
-	Memory::Write_U16(value2, address + 2);
+	Memory::CPU_Write_U16(value1, address);
+	Memory::CPU_Write_U16(value2, address + 2);
 }
 
 static void WriteDual8(u32 value1, u32 value2, u32 address)
 {
-	Memory::Write_U8(value1, address);
-	Memory::Write_U8(value2, address + 1);
+	Memory::CPU_Write_U8(value1, address);
+	Memory::CPU_Write_U8(value2, address + 1);
 }
 
 void JitArmAsmRoutineManager::Generate()
@@ -505,7 +505,7 @@ void JitArmAsmRoutineManager::GenerateCommon()
 		PUSH(5, R0, R1, R2, R3, _LR);
 		VMOV(R0, S0);
 		MOV(R1, R10);
-		MOVI2R(R10, (u32)&Memory::Write_U32);
+		MOVI2R(R10, (u32)&Memory::CPU_Write_U32);
 		BL(R10);
 
 		POP(5, R0, R1, R2, R3, _PC);
@@ -533,7 +533,7 @@ void JitArmAsmRoutineManager::GenerateCommon()
 		PUSH(5, R0, R1, R2, R3, _LR);
 		VMOV(R0, S0);
 		MOV(R1, R10);
-		MOVI2R(R10, (u32)&Memory::Write_U8);
+		MOVI2R(R10, (u32)&Memory::CPU_Write_U8);
 		BL(R10);
 		POP(5, R0, R1, R2, R3, _PC);
 	}
@@ -561,7 +561,7 @@ void JitArmAsmRoutineManager::GenerateCommon()
 		PUSH(5, R0, R1, R2, R3, _LR);
 		VMOV(R0, S0);
 		MOV(R1, R10);
-		MOVI2R(R10, (u32)&Memory::Write_U16);
+		MOVI2R(R10, (u32)&Memory::CPU_Write_U16);
 		BL(R10);
 
 		POP(5, R0, R1, R2, R3, _PC);
