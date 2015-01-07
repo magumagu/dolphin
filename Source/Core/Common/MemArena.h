@@ -43,7 +43,7 @@ enum {
 struct MemoryView
 {
 	u8** out_ptr;
-	u32 virtual_address;
+	u64 virtual_address;
 	u32 size;
 	u32 flags;
 	void* mapped_ptr;

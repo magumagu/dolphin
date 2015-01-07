@@ -27,7 +27,8 @@ namespace Memory
 
 // In 64-bit, this might point to "high memory" (above the 32-bit limit),
 // so be sure to load it into a 64-bit register.
-extern u8* base;
+extern u8* physical_base;
+extern u8* logical_base;
 
 // These are guaranteed to point to "low memory" addresses (sub-32-bit).
 extern u8* m_pRAM;

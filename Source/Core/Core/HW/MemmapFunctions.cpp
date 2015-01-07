@@ -96,9 +96,11 @@ template <XCheckTLBFlag flag, typename T>
 __forceinline T ReadFromHardware(const u32 em_address)
 {
 	int segment = em_address >> 28;
+	bool performTranslation = flag == FLAG_OPCODE ? UReg_MSR(MSR).IR : UReg_MSR(MSR).DR;
+
 	// Quick check for an address that can't meet any of the following conditions,
 	// to speed up the MMU path.
-	if (!BitSet32(0xCFC)[segment])
+	if (performTranslation && !BitSet32(0xCFF)[segment])
 	{
 		// TODO: Figure out the fastest order of tests for both read and write (they are probably different).
 		if ((em_address & 0xC8000000) == 0xC8000000)
@@ -108,11 +110,11 @@ __forceinline T ReadFromHardware(const u32 em_address)
 			else
 				return (T)mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address);
 		}
-		else if (segment == 0x8 || segment == 0xC || segment == 0x0)
+		else if (segment == 0x8 || segment == 0xC)
 		{
 			return bswap((*(const T*)&m_pRAM[em_address & RAM_MASK]));
 		}
-		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD || segment == 0x1))
+		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD))
 		{
 			return bswap((*(const T*)&m_pEXRAM[em_address & EXRAM_MASK]));
 		}
@@ -122,10 +124,24 @@ __forceinline T ReadFromHardware(const u32 em_address)
 		}
 	}
 
+	if (!performTranslation)
+	{
+		if (segment == 0x0)
+		{
+			return bswap((*(const T*)&m_pRAM[em_address & RAM_MASK]));
+		}
+		else if (segment == 0x1)
+		{
+			return bswap((*(const T*)&m_pEXRAM[em_address & EXRAM_MASK]));
+		}
+	}
+
 	// MMU: Do page table translation
 	u32 tlb_addr = TranslateAddress<flag>(em_address);
 	if (tlb_addr == 0)
 	{
+		// TODO: In theory, games can do MMIO/Locked-L1 reads with translation
+		// turned off; in practice, they don't.
 		if (flag == FLAG_READ)
 			GenerateDSIException(em_address, false);
 		return 0;
@@ -153,13 +169,13 @@ __forceinline T ReadFromHardware(const u32 em_address)
 		{
 			if (addr == em_address_next_page)
 				tlb_addr = tlb_addr_next_page;
-			var = (var << 8) | Memory::base[tlb_addr];
+			var = (var << 8) | Memory::physical_base[tlb_addr];
 		}
 		return var;
 	}
 
 	// The easy case!
-	return bswap(*(const T*)&Memory::base[tlb_addr]);
+	return bswap(*(const T*)&Memory::physical_base[tlb_addr]);
 }
 
 
@@ -169,7 +185,9 @@ __forceinline void WriteToHardware(u32 em_address, const T data)
 	int segment = em_address >> 28;
 	// Quick check for an address that can't meet any of the following conditions,
 	// to speed up the MMU path.
-	if (!BitSet32(0xCFC)[segment])
+	bool performTranslation = UReg_MSR(MSR).DR;
+
+	if (performTranslation && !BitSet32(0xCFF)[segment])
 	{
 		// First, let's check for FIFO writes, since they are probably the most common
 		// reason we end up in this function:
@@ -209,12 +227,12 @@ __forceinline void WriteToHardware(u32 em_address, const T data)
 				return;
 			}
 		}
-		else if (segment == 0x8 || segment == 0xC || segment == 0x0)
+		else if (segment == 0x8 || segment == 0xC)
 		{
 			*(T*)&m_pRAM[em_address & RAM_MASK] = bswap(data);
 			return;
 		}
-		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD || segment == 0x1))
+		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD))
 		{
 			*(T*)&m_pEXRAM[em_address & EXRAM_MASK] = bswap(data);
 			return;
@@ -222,6 +240,22 @@ __forceinline void WriteToHardware(u32 em_address, const T data)
 		else if (segment == 0xE && (em_address < (0xE0000000 + L1_CACHE_SIZE)))
 		{
 			*(T*)&m_pL1Cache[em_address & L1_CACHE_MASK] = bswap(data);
+			return;
+		}
+	}
+
+	if (!performTranslation)
+	{
+		// TODO: In theory, games can do FIFO/MMIO/Locked-L1 writes with translation
+		// turned off; in practice, they don't.
+		if (segment == 0x0)
+		{
+			*(T*)&m_pRAM[em_address & RAM_MASK] = bswap(data);
+			return;
+		}
+		else if (segment == 0x1)
+		{
+			*(T*)&m_pEXRAM[em_address & EXRAM_MASK] = bswap(data);
 			return;
 		}
 	}
@@ -253,13 +287,13 @@ __forceinline void WriteToHardware(u32 em_address, const T data)
 		{
 			if (addr == em_address_next_page)
 				tlb_addr = tlb_addr_next_page;
-			Memory::base[tlb_addr] = (u8)val;
+			Memory::physical_base[tlb_addr] = (u8)val;
 		}
 		return;
 	}
 
 	// The easy case!
-	*(T*)&Memory::base[tlb_addr] = bswap(data);
+	*(T*)&Memory::physical_base[tlb_addr] = bswap(data);
 }
 // =====================
 
@@ -688,7 +722,7 @@ static __forceinline u32 TranslatePageAddress(const u32 address, const XCheckTLB
 
 	// Direct access to the fastmem Arena
 	// FIXME: is this the best idea for clean code?
-	u8* base_mem = Memory::base;
+	u8* base_mem = Memory::physical_base;
 
 	// hash function no 1 "xor" .360
 	u32 hash = (VSID ^ page_index);

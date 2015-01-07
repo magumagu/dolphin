@@ -43,7 +43,8 @@ namespace Memory
 // Init() declarations
 // ----------------
 // Store the MemArena here
-u8* base = nullptr;
+u8* physical_base = nullptr;
+u8* logical_base = nullptr;
 
 // The MemArena class
 static MemArena g_arena;
@@ -95,12 +96,12 @@ bool IsInitialized()
 static MemoryView views[] =
 {
 	{&m_pRAM,      0x00000000, RAM_SIZE,      0},
-	{nullptr,      0x80000000, RAM_SIZE,      MV_MIRROR_PREVIOUS},
-	{nullptr,      0xC0000000, RAM_SIZE,      MV_MIRROR_PREVIOUS},
+	{nullptr,      0x280000000, RAM_SIZE,     MV_MIRROR_PREVIOUS},
+	{nullptr,      0x2C0000000, RAM_SIZE,     MV_MIRROR_PREVIOUS},
 	{&m_pL1Cache,  0xE0000000, L1_CACHE_SIZE, 0},
 	{&m_pEXRAM,    0x10000000, EXRAM_SIZE,    MV_WII_ONLY},
-	{nullptr,      0x90000000, EXRAM_SIZE,    MV_WII_ONLY | MV_MIRROR_PREVIOUS},
-	{nullptr,      0xD0000000, EXRAM_SIZE,    MV_WII_ONLY | MV_MIRROR_PREVIOUS},
+	{nullptr,      0x290000000, EXRAM_SIZE,   MV_WII_ONLY | MV_MIRROR_PREVIOUS},
+	{nullptr,      0x2D0000000, EXRAM_SIZE,   MV_WII_ONLY | MV_MIRROR_PREVIOUS},
 };
 static const int num_views = sizeof(views) / sizeof(MemoryView);
 
@@ -110,7 +111,8 @@ void Init()
 
 	u32 flags = 0;
 	if (wii) flags |= MV_WII_ONLY;
-	base = MemoryMap_Setup(views, num_views, flags, &g_arena);
+	physical_base = MemoryMap_Setup(views, num_views, flags, &g_arena);
+	logical_base = physical_base + 0x200000000;
 
 	mmio_mapping = new MMIO::Mapping();
 
@@ -141,7 +143,8 @@ void Shutdown()
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii) flags |= MV_WII_ONLY;
 	MemoryMap_Shutdown(views, num_views, flags, &g_arena);
 	g_arena.ReleaseSHMSegment();
-	base = nullptr;
+	physical_base = nullptr;
+	logical_base = nullptr;
 	delete mmio_mapping;
 	INFO_LOG(MEMMAP, "Memory system shut down.");
 }
