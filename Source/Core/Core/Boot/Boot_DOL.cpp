@@ -99,7 +99,7 @@ void CDolLoader::Load()
 		if (m_dolheader.textOffset[i] != 0)
 		{
 			for (u32 num = 0; num < m_dolheader.textSize[i]; num++)
-				Memory::CPU_Write_U8(text_section[i][num], m_dolheader.textAddress[i] + num);
+				Memory::Debug_Write_U8(text_section[i][num], m_dolheader.textAddress[i] + num);
 		}
 	}
 
@@ -109,7 +109,7 @@ void CDolLoader::Load()
 		if (m_dolheader.dataOffset[i] != 0)
 		{
 			for (u32 num = 0; num < m_dolheader.dataSize[i]; num++)
-				Memory::CPU_Write_U8(data_section[i][num], m_dolheader.dataAddress[i] + num);
+				Memory::Debug_Write_U8(data_section[i][num], m_dolheader.dataAddress[i] + num);
 		}
 	}
 }

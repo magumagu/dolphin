@@ -132,14 +132,14 @@ bool ElfReader::LoadInto(u32 vaddr)
 			u32 writeAddr = segmentVAddr[i];
 
 			const u8 *src = GetSegmentPtr(i);
-			u8 *dst = Memory::CPU_GetPointer(writeAddr);
 			u32 srcSize = p->p_filesz;
 			u32 dstSize = p->p_memsz;
 			u32 *s = (u32*)src;
-			u32 *d = (u32*)dst;
+			u32 d = writeAddr;
 			for (int j = 0; j < (int)(srcSize + 3) / 4; j++)
 			{
-				*d++ = /*_byteswap_ulong*/(*s++);
+				Memory::Debug_Write_U32(/*_byteswap_ulong*/(*s++), d);
+				d += 4;
 			}
 			if (srcSize < dstSize)
 			{
