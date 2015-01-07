@@ -38,7 +38,7 @@ namespace EfbCopy
 
 			if (!g_SWVideoConfig.bBypassXFB)
 			{
-				EfbInterface::yuv422_packed* xfb_in_ram = (EfbInterface::yuv422_packed *) Memory::GetPointer(xfbAddr);
+				EfbInterface::yuv422_packed* xfb_in_ram = (EfbInterface::yuv422_packed *) Memory::Device_GetPointer(xfbAddr);
 
 				EfbInterface::CopyToXFB(xfb_in_ram, fbWidth, fbHeight, sourceRc, Gamma);
 			}
@@ -68,7 +68,7 @@ namespace EfbCopy
 	{
 		if (!g_SWVideoConfig.bHwRasterizer)
 		{
-			u8 *dest_ptr = Memory::GetPointer(bpmem.copyTexDest << 5);
+			u8 *dest_ptr = Memory::Device_GetPointer(bpmem.copyTexDest << 5);
 
 			TextureEncoder::Encode(dest_ptr);
 		}

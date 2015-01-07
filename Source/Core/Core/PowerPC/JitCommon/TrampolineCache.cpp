@@ -65,16 +65,16 @@ const u8* TrampolineCache::GenerateReadTrampoline(const InstructionInfo &info, B
 	switch (info.operandSize)
 	{
 	case 8:
-		CALL((void *)&Memory::Read_U64);
+		CALL((void *)&Memory::CPU_Read_U64);
 		break;
 	case 4:
-		CALL((void *)&Memory::Read_U32);
+		CALL((void *)&Memory::CPU_Read_U32);
 		break;
 	case 2:
-		CALL((void *)&Memory::Read_U16);
+		CALL((void *)&Memory::CPU_Read_U16);
 		break;
 	case 1:
-		CALL((void *)&Memory::Read_U8);
+		CALL((void *)&Memory::CPU_Read_U8);
 		break;
 	}
 
@@ -151,16 +151,16 @@ const u8* TrampolineCache::GenerateWriteTrampoline(const InstructionInfo &info, 
 	switch (info.operandSize)
 	{
 	case 8:
-		CALL((void *)&Memory::Write_U64);
+		CALL((void *)&Memory::CPU_Write_U64);
 		break;
 	case 4:
-		CALL((void *)&Memory::Write_U32);
+		CALL((void *)&Memory::CPU_Write_U32);
 		break;
 	case 2:
-		CALL((void *)&Memory::Write_U16);
+		CALL((void *)&Memory::CPU_Write_U16);
 		break;
 	case 1:
-		CALL((void *)&Memory::Write_U8);
+		CALL((void *)&Memory::CPU_Write_U8);
 		break;
 	}
 

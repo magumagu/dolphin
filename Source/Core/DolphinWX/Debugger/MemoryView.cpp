@@ -324,7 +324,7 @@ void CMemoryView::OnPaint(wxPaintEvent& event)
 			dc.SetTextForeground(*wxBLACK);
 		}
 
-		if (!Memory::IsRAMAddress(address))
+		if (!Memory::Debug_IsRAMAddress(address))
 			continue;
 
 		if (debugger->IsAlive())

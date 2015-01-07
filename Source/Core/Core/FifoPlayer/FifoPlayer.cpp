@@ -391,12 +391,12 @@ void FifoPlayer::LoadMemory()
 
 void FifoPlayer::WriteCP(u32 address, u16 value)
 {
-	Memory::Write_U16(value, 0xCC000000 | address);
+	Memory::CPU_Write_U16(value, 0xCC000000 | address);
 }
 
 void FifoPlayer::WritePI(u32 address, u32 value)
 {
-	Memory::Write_U32(value, 0xCC003000 | address);
+	Memory::CPU_Write_U32(value, 0xCC003000 | address);
 }
 
 void FifoPlayer::FlushWGP()

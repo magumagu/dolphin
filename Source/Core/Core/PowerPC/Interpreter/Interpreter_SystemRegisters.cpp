@@ -329,9 +329,9 @@ void Interpreter::mtspr(UGeckoInstruction _inst)
 			if (iLength == 0)
 				iLength = 128;
 			if (DMAL.DMA_LD)
-				Memory::DMA_MemoryToLC(dwCacheAddress, dwMemAddress, iLength);
+				Memory::CPU_DMA_MemoryToLC(dwCacheAddress, dwMemAddress, iLength);
 			else
-				Memory::DMA_LCToMemory(dwMemAddress, dwCacheAddress, iLength);
+				Memory::CPU_DMA_LCToMemory(dwMemAddress, dwCacheAddress, iLength);
 		}
 		DMAL.DMA_T = 0;
 		break;
@@ -351,7 +351,7 @@ void Interpreter::mtspr(UGeckoInstruction _inst)
 
 	// Page table base etc
 	case SPR_SDR:
-		Memory::SDRUpdated();
+		Memory::CPU_SDRUpdated();
 		break;
 
 	case SPR_XER:

@@ -191,65 +191,60 @@ bool AreMemoryBreakpointsActivated()
 #endif
 }
 
-u32 Read_Instruction(const u32 address)
+u32 Debug_Read_Instruction(const u32 address)
 {
-	UGeckoInstruction inst = ReadUnchecked_U32(address);
+	UGeckoInstruction inst = Debug_Read_U32(address);
 	return inst.hex;
 }
 
-static inline bool ValidCopyRange(u32 address, size_t size)
+static inline bool Device_ValidCopyRange(u32 address, size_t size)
 {
-	return (GetPointer(address) != nullptr &&
-	        GetPointer(address + u32(size)) != nullptr &&
+	return (Device_GetPointer(address) != nullptr &&
+	        Device_GetPointer(address + u32(size)) != nullptr &&
 	        size < EXRAM_SIZE); // Make sure we don't have a range spanning seperate 2 banks
 }
 
-void CopyFromEmu(void* data, u32 address, size_t size)
+void Device_CopyFromEmu(void* data, u32 address, size_t size)
 {
-	if (!ValidCopyRange(address, size))
+	if (!Device_ValidCopyRange(address, size))
 	{
 		PanicAlert("Invalid range in CopyFromEmu. %lx bytes from 0x%08x", (unsigned long)size, address);
 		return;
 	}
-	memcpy(data, GetPointer(address), size);
+	memcpy(data, Device_GetPointer(address), size);
 }
 
-void CopyToEmu(u32 address, const void* data, size_t size)
+void Device_CopyToEmu(u32 address, const void* data, size_t size)
 {
-	if (!ValidCopyRange(address, size))
+	if (!Device_ValidCopyRange(address, size))
 	{
 		PanicAlert("Invalid range in CopyToEmu. %lx bytes to 0x%08x", (unsigned long)size, address);
 		return;
 	}
-	memcpy(GetPointer(address), data, size);
+	memcpy(Device_GetPointer(address), data, size);
 }
 
-void Memset(const u32 _Address, const u8 _iValue, const u32 _iLength)
+void Device_Memset(const u32 _Address, const u8 _iValue, const u32 _iLength)
 {
-	u8* ptr = GetPointer(_Address);
+	u8* ptr = Device_GetPointer(_Address);
 	if (ptr != nullptr)
 	{
 		memset(ptr,_iValue,_iLength);
 	}
-	else
-	{
-		for (u32 i = 0; i < _iLength; i++)
-			Write_U8(_iValue, _Address + i);
-	}
 }
 
-void ClearCacheLine(const u32 address)
+void CPU_ClearCacheLine(const u32 address)
 {
 	// FIXME: does this do the right thing if dcbz is run on hardware memory, e.g.
 	// the FIFO? Do games even do that? Probably not, but we should try to be correct...
 	for (u32 i = 0; i < 32; i += 8)
-		Write_U64(0, address + i);
+		CPU_Write_U64(0, address + i);
 }
 
-void DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlocks)
+void CPU_DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlocks)
 {
 	const u8* src = m_pL1Cache + (cacheAddr & 0x3FFFF);
-	u8* dst = GetPointer(memAddr);
+	u8* dst = Device_GetPointer(memAddr);
 
 	if ((dst != nullptr) && (src != nullptr) && (memAddr & 3) == 0 && (cacheAddr & 3) == 0)
 	{
@@ -259,15 +254,15 @@ void DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlocks)
 	{
 		for (u32 i = 0; i < 32 * numBlocks; i++)
 		{
-			u8 Temp = Read_U8(cacheAddr + i);
-			Write_U8(Temp, memAddr + i);
+			u8 Temp = CPU_Read_U8(cacheAddr + i);
+			CPU_Write_U8(Temp, memAddr + i);
 		}
 	}
 }
 
-void DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks)
+void CPU_DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks)
 {
-	const u8* src = GetPointer(memAddr);
+	const u8* src = Device_GetPointer(memAddr);
 	u8* dst = m_pL1Cache + (cacheAddr & 0x3FFFF);
 
 	if ((dst != nullptr) && (src != nullptr) && (memAddr & 3) == 0 && (cacheAddr & 3) == 0)
@@ -278,15 +273,15 @@ void DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks)
 	{
 		for (u32 i = 0; i < 32 * numBlocks; i++)
 		{
-			u8 Temp = Read_U8(memAddr + i);
-			Write_U8(Temp, cacheAddr + i);
+			u8 Temp = CPU_Read_U8(memAddr + i);
+			CPU_Write_U8(Temp, cacheAddr + i);
 		}
 	}
 }
 
-std::string GetString(u32 em_address, size_t size)
+std::string Device_GetString(u32 em_address, size_t size)
 {
-	const char* ptr = reinterpret_cast<const char*>(GetPointer(em_address));
+	const char* ptr = reinterpret_cast<const char*>(Device_GetPointer(em_address));
 	if (ptr == nullptr)
 		return "";
 
@@ -301,90 +296,74 @@ std::string GetString(u32 em_address, size_t size)
 	}
 }
 
-// GetPointer must always return an address in the bottom 32 bits of address space, so that 64-bit
-// programs don't have problems directly addressing any part of memory.
-// TODO re-think with respect to other BAT setups...
-u8* GetPointer(const u32 address)
+u8* Device_GetPointer(u32 address)
 {
-	switch (address >> 28)
+	// TODO: Should we be masking off more bits here?  Can all devices access
+	// EXRAM?
+	address = address & 0x3FFFFFFF;
+	if (address < REALRAM_SIZE)
+		return m_pRAM + address;
+
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
 	{
-	case 0x0:
-	case 0x8:
-		if ((address & 0xfffffff) < REALRAM_SIZE)
-			return m_pRAM + (address & RAM_MASK);
-	case 0xc:
-		switch (address >> 24)
-		{
-		case 0xcc:
-		case 0xcd:
-			_dbg_assert_msg_(MEMMAP, 0, "GetPointer from IO Bridge doesnt work");
-		case 0xc8:
-			// EFB. We don't want to return a pointer here since we have no memory mapped for it.
-			break;
-
-		default:
-			if ((address & 0xfffffff) < REALRAM_SIZE)
-				return m_pRAM + (address & RAM_MASK);
-		}
-
-	case 0x1:
-	case 0x9:
-	case 0xd:
-		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
-		{
-			if ((address & 0xfffffff) < EXRAM_SIZE)
-				return m_pEXRAM + (address & EXRAM_MASK);
-		}
-		else
-			break;
-
-	case 0xe:
-		if (address < (0xE0000000 + L1_CACHE_SIZE))
-			return m_pL1Cache + (address & L1_CACHE_MASK);
-		else
-			break;
-
-	default:
-		if (bFakeVMEM)
-			return m_pFakeVMEM + (address & FAKEVMEM_MASK);
+		if ((address >> 28) == 0x1 && (address & 0x0fffffff) < EXRAM_SIZE)
+			return m_pEXRAM + (address & EXRAM_MASK);
 	}
 
+	PanicAlert("Unknown Pointer %#8x PC %#8x LR %#8x", address, PC, LR);
 	ERROR_LOG(MEMMAP, "Unknown Pointer %#8x PC %#8x LR %#8x", address, PC, LR);
 
 	return nullptr;
 }
 
-bool IsRAMAddress(const u32 address, bool allow_locked_cache, bool allow_fake_vmem)
+u8 Device_Read_U8(u32 address)
 {
-	switch ((address >> 24) & 0xFC)
-	{
-	case 0x00:
-	case 0x80:
-	case 0xC0:
-		if ((address & 0x1FFFFFFF) < RAM_SIZE)
-			return true;
-		else
-			return false;
-	case 0x10:
-	case 0x90:
-	case 0xD0:
-		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && (address & 0x0FFFFFFF) < EXRAM_SIZE)
-			return true;
-		else
-			return false;
-	case 0xE0:
-		if (allow_locked_cache && address - 0xE0000000 < L1_CACHE_SIZE)
-			return true;
-		else
-			return false;
-	case 0x7C:
-		if (allow_fake_vmem && bFakeVMEM && address >= 0x7E000000)
-			return true;
-		else
-			return false;
-	default:
-		return false;
-	}
+	return *Device_GetPointer(address);
+}
+
+u16 Device_Read_U16(u32 address)
+{
+	return Common::swap16(Device_GetPointer(address));
+}
+
+u32 Device_Read_U32(u32 address)
+{
+	return Common::swap32(Device_GetPointer(address));
+}
+
+u64 Device_Read_U64(u32 address)
+{
+	return Common::swap64(Device_GetPointer(address));
+}
+
+void Device_Write_U8(u8 value, u32 address)
+{
+	*Device_GetPointer(address) = value;
+}
+
+void Device_Write_U16(u16 value, u32 address)
+{
+	*(u16*)Device_GetPointer(address) = Common::swap16(value);
+}
+
+void Device_Write_U32(u32 value, u32 address)
+{
+	*(u32*)Device_GetPointer(address) = Common::swap32(value);
+}
+
+void Device_Write_U64(u64 value, u32 address)
+{
+	*(u64*)Device_GetPointer(address) = Common::swap64(value);
+}
+
+void Device_Write_U32_Swap(u32 value, u32 address)
+{
+	*(u32*)Device_GetPointer(address) = value;
+}
+
+void Device_Write_U64_Swap(u64 value, u32 address)
+{
+	*(u64*)Device_GetPointer(address) = value;
 }
 
 }  // namespace

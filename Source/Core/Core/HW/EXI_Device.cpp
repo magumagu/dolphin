@@ -45,7 +45,7 @@ void IEXIDevice::DMAWrite(u32 _uAddr, u32 _uSize)
 	// _dbg_assert_(EXPANSIONINTERFACE, 0);
 	while (_uSize--)
 	{
-		u8 uByte = Memory::Read_U8(_uAddr++);
+		u8 uByte = Memory::Device_Read_U8(_uAddr++);
 		TransferByte(uByte);
 	}
 }
@@ -57,7 +57,7 @@ void IEXIDevice::DMARead(u32 _uAddr, u32 _uSize)
 	{
 		u8 uByte = 0;
 		TransferByte(uByte);
-		Memory::Write_U8(uByte, _uAddr++);
+		Memory::Device_Write_U8(uByte, _uAddr++);
 	}
 }
 

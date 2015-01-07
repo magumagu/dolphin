@@ -181,7 +181,7 @@ void CMemoryWindow::SetMemoryValue(wxCommandEvent& event)
 		return;
 	}
 
-	Memory::Write_U32(val, addr);
+	Memory::Debug_Write_U32(val, addr);
 	memview->Refresh();
 }
 
