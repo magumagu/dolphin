@@ -315,29 +315,40 @@ static void GenerateISIException(u32 effective_address);
 
 u32 CPU_Read_Opcode(u32 address)
 {
-	if (address == 0x00000000)
+	TryReadInstResult result = CPU_TryReadInstruction(address);
+	if (!result.valid)
 	{
-		// FIXME use assert?
-		PanicAlert("Program tried to read an opcode from [00000000]. It has crashed.");
-		return 0x00000000;
+		GenerateISIException(address);
+		return 0;
 	}
+	return result.hex;
+}
 
-	if (address & ADDR_MASK_MEM1)
+TryReadInstResult CPU_TryReadInstruction(u32 address)
+{
+	// TODO: Use real translation.
+	bool from_bat = true;
+	if (UReg_MSR(MSR).IR && (address & ADDR_MASK_MEM1))
 	{
-		// TODO: Check for MSR instruction address translation flag before translating
 		u32 tlb_addr = TranslateAddress<FLAG_OPCODE>(address);
 		if (tlb_addr == 0)
 		{
-			GenerateISIException(address);
-			return 0;
+			return TryReadInstResult{ false, false, 0 };
 		}
 		else
 		{
 			address = tlb_addr;
+			from_bat = false;
 		}
 	}
+	else
+	{
+		// "Translate" address.
+		address = address & 0x3FFFFFFF;
+	}
 
-	return PowerPC::ppcState.iCache.ReadInstruction(address);
+	u32 hex = PowerPC::ppcState.iCache.ReadInstruction(address);
+	return TryReadInstResult{ true, from_bat, hex };
 }
 
 static __forceinline void Memcheck(u32 address, u32 var, bool write, int size)
@@ -471,6 +482,12 @@ u8 Debug_Read_U8(const u32 address)
 	return var;
 }
 
+u16 Debug_Read_U16(const u32 address)
+{
+	u16 var = ReadFromHardware<FLAG_NO_EXCEPTION, u16>(address);
+	return var;
+}
+
 u32 Debug_Read_U32(const u32 address)
 {
 	u32 var = ReadFromHardware<FLAG_NO_EXCEPTION, u32>(address);
@@ -482,10 +499,70 @@ void Debug_Write_U8(const u8 var, const u32 address)
 	WriteToHardware<FLAG_NO_EXCEPTION, u8>(address, var);
 }
 
+void Debug_Write_U16(const u16 var, const u32 address)
+{
+	WriteToHardware<FLAG_NO_EXCEPTION, u16>(address, var);
+}
 
 void Debug_Write_U32(const u32 var, const u32 address)
 {
 	WriteToHardware<FLAG_NO_EXCEPTION, u32>(address, var);
+}
+
+void Debug_Write_U64(const u64 var, const u32 address)
+{
+	WriteToHardware<FLAG_NO_EXCEPTION, u64>(address, var);
+}
+
+std::string Debug_GetString(u32 address, size_t size)
+{
+	std::string s;
+	do
+	{
+		if (!Debug_IsRAMAddress(address))
+			break;
+		u8 res = Debug_Read_U8(address);
+		if (!res)
+			break;
+		++address;
+	} while (size == 0 || s.length() < size);
+	return s;
+}
+
+bool CPU_IsRAMAddress(const u32 address)
+{
+	// TODO: Implement
+	return false;
+}
+
+bool Debug_IsRAMAddress(const u32 address)
+{
+	// TODO: This needs to be rewritten; it makes incorrect assumptions
+	// about BATs and page tables.
+	bool performTranslation = UReg_MSR(MSR).DR;
+	int segment = address >> 28;
+	if (performTranslation)
+	{
+		if ((segment == 0x8 || segment == 0xC) && (address & 0x0FFFFFFF) < RAM_SIZE)
+			return true;
+		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD) && (address & 0x0FFFFFFF) < EXRAM_SIZE)
+			return true;
+		else if (segment == 0xE && (address < (0xE0000000 + L1_CACHE_SIZE)))
+			return true;
+	}
+	else
+	{
+		if (segment == 0x0 && (address & 0x0FFFFFFF) < RAM_SIZE)
+			return true;
+		else if (m_pEXRAM && segment == 0x1 && (address & 0x0FFFFFFF) < RAM_SIZE)
+			return true;
+	}
+
+	u32 translated_address = TranslateAddress<FLAG_NO_EXCEPTION>(address);
+	if (!address)
+		return false;
+
+	return true;
 }
 
 // *********************************************************************************

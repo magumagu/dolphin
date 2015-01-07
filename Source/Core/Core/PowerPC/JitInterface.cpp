@@ -201,20 +201,6 @@ namespace JitInterface
 			jit->GetBlockCache()->InvalidateICache(address, size, forced);
 	}
 
-	u32 ReadOpcodeJIT(u32 _Address)
-	{
-		if ((_Address & Memory::ADDR_MASK_MEM1))
-		{
-			_Address = Memory::TranslateAddress<Memory::FLAG_OPCODE>(_Address);
-			if (_Address == 0)
-			{
-				return 0;
-			}
-		}
-
-		return PowerPC::ppcState.iCache.ReadInstruction(_Address);
-	}
-
 	void CompileExceptionCheck(ExceptionType type)
 	{
 		if (!jit)

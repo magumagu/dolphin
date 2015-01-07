@@ -308,7 +308,7 @@ static void FindFunctionsAfterBLR(PPCSymbolDB *func_db)
 	{
 		while (true)
 		{
-			if (PPCTables::IsValidInstruction(Memory::Read_Instruction(location)))
+			if (PPCTables::IsValidInstruction(Memory::Debug_Read_Instruction(location)))
 			{
 				//check if this function is already mapped
 				Symbol *f = func_db->AddFunction(location);
@@ -646,38 +646,35 @@ u32 PPCAnalyzer::Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 
 		return address;
 	}
 
-	bool virtualAddr = !!(address & JIT_ICACHE_VMEM_BIT);
-	if (virtualAddr)
-	{
-		if (!Memory::TranslateAddress<Memory::FLAG_NO_EXCEPTION>(address))
-		{
-			// Memory exception occurred during instruction fetch
-			block->m_memory_exception = true;
-			return address;
-		}
-	}
-
 	CodeOp *code = buffer->codebuffer;
 
 	bool found_exit = false;
 	u32 return_address = 0;
 	u32 numFollows = 0;
 	u32 num_inst = 0;
+	bool prev_inst_from_bat = true;
 
 	for (u32 i = 0; i < blockSize; ++i)
 	{
-		UGeckoInstruction inst = JitInterface::ReadOpcodeJIT(address);
+		auto result = Memory::CPU_TryReadInstruction(address);
+		if (!result.valid)
+		{
+			if (i == 0)
+				block->m_memory_exception = true;
+			break;
+		}
+		UGeckoInstruction inst = result.hex;
 
-		if (inst.hex != 0)
 		{
 			// Slight hack: the JIT block cache currently assumes all blocks end at the same place,
 			// but broken blocks due to page faults break this assumption. Avoid this by just ending
 			// all virtual memory instruction blocks at page boundaries.
 			// FIXME: improve the JIT block cache so we don't need to do this.
-			if (virtualAddr && i > 0 && (address & 0xfff) == 0)
+			if ((!result.from_bat || !prev_inst_from_bat) && i > 0 && (address & 0xfff) == 0)
 			{
 				break;
 			}
+			prev_inst_from_bat = result.from_bat;
 
 			num_inst++;
 			memset(&code[i], 0, sizeof(CodeOp));
@@ -800,14 +797,6 @@ u32 PPCAnalyzer::Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 
 				merged_addresses[size_of_merged_addresses++] = address;
 			}
 #endif
-		}
-		else
-		{
-			// ISI exception or other critical memory exception occured (game over)
-			// We can continue on in MMU mode though, so don't spam this error in that case.
-			if (!virtualAddr)
-				ERROR_LOG(DYNA_REC, "Instruction hex was 0!");
-			break;
 		}
 	}
 

@@ -81,6 +81,7 @@ u32 Debug_Read_Instruction(const u32 address);
 void Debug_Write_U8(const u8 var, const u32 address);
 void Debug_Write_U16(const u16 var, const u32 address);
 void Debug_Write_U32(const u32 var, const u32 address);
+void Debug_Write_U64(const u64 var, const u32 address);
 
 // Returns whether a read or write to the given address will resolve to a RAM
 // access given the current CPU state.
@@ -92,6 +93,13 @@ std::string Debug_GetString(u32 em_address, size_t size = 0);
 
 // Used by interpreter to read instructions, uses iCache
 u32 CPU_Read_Opcode(const u32 address);
+struct TryReadInstResult
+{
+	bool valid;
+	bool from_bat;
+	u32 hex;
+};
+TryReadInstResult CPU_TryReadInstruction(const u32 address);
 
 u8  CPU_Read_U8(const u32 address);
 u16 CPU_Read_U16(const u32 address);

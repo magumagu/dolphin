@@ -90,7 +90,8 @@ static bool InstallCodeHandler()
 	}
 
 	// Install code handler
-	Memory::Debug_CopyToEmu(INSTALLER_BASE_ADDRESS, data.data(), data.length());
+	for (size_t i = 0, e = data.length(); i < e; ++i)
+		Memory::Debug_Write_U8(data[i], (u32)(INSTALLER_BASE_ADDRESS + i));
 
 	// Patch the code handler to the system starting up
 	for (unsigned int h = 0; h < data.length(); h += 4)

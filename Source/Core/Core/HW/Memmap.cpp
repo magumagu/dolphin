@@ -273,31 +273,74 @@ std::string Device_GetString(u32 em_address, size_t size)
 	}
 }
 
-u8* GetPointer(const u32 address)
+u8* Device_GetPointer(u32 address)
 {
-	switch (address >> 28)
+	// TODO: Should we be masking off more bits here?  Can all devices access
+	// EXRAM?
+	address = address & 0x3FFFFFFF;
+	if (address < REALRAM_SIZE)
+		return m_pRAM + address;
+
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
 	{
-	case 0x0:
-		if (address < REALRAM_SIZE)
-			return m_pRAM + address;
-		break;
-
-	case 0x1:
-		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
-		{
-			if ((address & 0xfffffff) < EXRAM_SIZE)
-				return m_pEXRAM + (address & EXRAM_MASK);
-		}
-		else
-			break;
-
-	default:
-		break;
+		if ((address >> 28) == 0x1 && (address & 0x0fffffff) < EXRAM_SIZE)
+			return m_pEXRAM + (address & EXRAM_MASK);
 	}
 
+	PanicAlert("Unknown Pointer %#8x PC %#8x LR %#8x", address, PC, LR);
 	ERROR_LOG(MEMMAP, "Unknown Pointer %#8x PC %#8x LR %#8x", address, PC, LR);
 
 	return nullptr;
+}
+
+u8 Device_Read_U8(u32 address)
+{
+	return *Device_GetPointer(address);
+}
+
+u16 Device_Read_U16(u32 address)
+{
+	return Common::swap16(Device_GetPointer(address));
+}
+
+u32 Device_Read_U32(u32 address)
+{
+	return Common::swap32(Device_GetPointer(address));
+}
+
+u64 Device_Read_U64(u32 address)
+{
+	return Common::swap64(Device_GetPointer(address));
+}
+
+void Device_Write_U8(u8 value, u32 address)
+{
+	*Device_GetPointer(address) = value;
+}
+
+void Device_Write_U16(u16 value, u32 address)
+{
+	*(u16*)Device_GetPointer(address) = Common::swap16(value);
+}
+
+void Device_Write_U32(u32 value, u32 address)
+{
+	*(u32*)Device_GetPointer(address) = Common::swap32(value);
+}
+
+void Device_Write_U64(u64 value, u32 address)
+{
+	*(u64*)Device_GetPointer(address) = Common::swap64(value);
+}
+
+void Device_Write_U32_Swap(u32 value, u32 address)
+{
+	*(u32*)Device_GetPointer(address) = value;
+}
+
+void Device_Write_U64_Swap(u64 value, u32 address)
+{
+	*(u64*)Device_GetPointer(address) = value;
 }
 
 }  // namespace
