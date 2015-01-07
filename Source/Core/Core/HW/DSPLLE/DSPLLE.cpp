@@ -185,7 +185,7 @@ bool DSPLLE::Initialize(bool bWii, bool bDSPThread)
 		return false;
 
 	// DSPLLE directly accesses the fastmem arena.
-	g_dsp.cpu_ram = Memory::base;
+	g_dsp.cpu_ram = Memory::physical_base;
 	DSPCore_Reset();
 
 	InitInstructionTable();

@@ -38,7 +38,7 @@ void Jit64AsmRoutineManager::Generate()
 	MOV(64, MDisp(RSP, 8), Imm32((u32)-1));
 
 	// Two statically allocated registers.
-	MOV(64, R(RMEM), Imm64((u64)Memory::base));
+	//MOV(64, R(RMEM), Imm64((u64)Memory::physical_base));
 	MOV(64, R(RPPCSTATE), Imm64((u64)&PowerPC::ppcState + 0x80));
 
 	const u8* outerLoop = GetCodePtr();
@@ -82,6 +82,15 @@ void Jit64AsmRoutineManager::Generate()
 			SetJumpTarget(skipToRealDispatch);
 
 			dispatcherNoCheck = GetCodePtr();
+
+			TEST(32, PPCSTATE(msr), Imm32(1 << (31 - 27)));
+			FixupBranch physmem = J_CC(CC_NZ);
+			MOV(64, R(RMEM), Imm64((u64)Memory::physical_base));
+			FixupBranch membaseend = J();
+			SetJumpTarget(physmem);
+			MOV(64, R(RMEM), Imm64((u64)Memory::logical_base));
+			SetJumpTarget(membaseend);
+
 			MOV(32, R(RSCRATCH), PPCSTATE(pc));
 
 			u64 icache = (u64)jit->GetBlockCache()->iCache.data();

@@ -43,6 +43,8 @@ bool CBoot::EmulatedBS2_GC()
 	// Set up MSR and the BAT SPR registers.
 	UReg_MSR& m_MSR = ((UReg_MSR&)PowerPC::ppcState.msr);
 	m_MSR.FP = 1;
+	m_MSR.DR = 1;
+	m_MSR.IR = 1;
 	PowerPC::ppcState.spr[SPR_IBAT0U] = 0x80001fff;
 	PowerPC::ppcState.spr[SPR_IBAT0L] = 0x00000002;
 	PowerPC::ppcState.spr[SPR_DBAT0U] = 0x80001fff;
