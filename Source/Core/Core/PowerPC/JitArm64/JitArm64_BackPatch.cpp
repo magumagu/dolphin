@@ -235,22 +235,22 @@ u32 JitArm64::EmitBackpatchRoutine(ARM64XEmitter* emit, u32 flags, bool fastmem,
 			emit->MOV(W0, RS);
 
 			if (flags & BackPatchInfo::FLAG_SIZE_32)
-				emit->MOVI2R(X30, (u64)&Memory::CPU_Write_U32);
+				emit->MOVI2R(X30, (u64)&PowerPC::Write_U32);
 			else if (flags & BackPatchInfo::FLAG_SIZE_16)
-				emit->MOVI2R(X30, (u64)&Memory::CPU_Write_U16);
+				emit->MOVI2R(X30, (u64)&PowerPC::Write_U16);
 			else
-				emit->MOVI2R(X30, (u64)&Memory::CPU_Write_U8);
+				emit->MOVI2R(X30, (u64)&PowerPC::Write_U8);
 
 			emit->BLR(X30);
 		}
 		else
 		{
 			if (flags & BackPatchInfo::FLAG_SIZE_32)
-				emit->MOVI2R(X30, (u64)&Memory::CPU_Read_U32);
+				emit->MOVI2R(X30, (u64)&PowerPC::Read_U32);
 			else if (flags & BackPatchInfo::FLAG_SIZE_16)
-				emit->MOVI2R(X30, (u64)&Memory::CPU_Read_U16);
+				emit->MOVI2R(X30, (u64)&PowerPC::Read_U16);
 			else if (flags & BackPatchInfo::FLAG_SIZE_8)
-				emit->MOVI2R(X30, (u64)&Memory::CPU_Read_U8);
+				emit->MOVI2R(X30, (u64)&PowerPC::Read_U8);
 
 			emit->BLR(X30);
 

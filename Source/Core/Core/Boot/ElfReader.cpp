@@ -9,7 +9,7 @@
 
 #include "Core/Boot/ElfReader.h"
 #include "Core/Debugger/Debugger_SymbolMap.h"
-#include "Core/HW/Memmap.h"
+#include "Core/PowerPC/PowerPC.h"
 #include "Core/PowerPC/PPCSymbolDB.h"
 
 static void bswap(u32 &w) {w = Common::swap32(w);}
@@ -138,7 +138,7 @@ bool ElfReader::LoadInto(u32 vaddr)
 			u32 d = writeAddr;
 			for (int j = 0; j < (int)(srcSize + 3) / 4; j++)
 			{
-				Memory::Debug_Write_U32(/*_byteswap_ulong*/(*s++), d);
+				PowerPC::Debug_Write_U32(/*_byteswap_ulong*/(*s++), d);
 				d += 4;
 			}
 			if (srcSize < dstSize)

@@ -257,5 +257,5 @@ void Jit64AsmRoutineManager::GenerateCommon()
 	ADD(32, 1, M(&m_gatherPipeCount));
 	RET();
 	SetJumpTarget(skip_fast_write);
-	CALL((void *)&Memory::CPU_Write_U8);*/
+	CALL((void *)&PowerPC::Write_U8);*/
 }

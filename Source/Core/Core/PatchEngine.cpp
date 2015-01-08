@@ -30,7 +30,7 @@
 #include "Core/GeckoCode.h"
 #include "Core/GeckoCodeConfig.h"
 #include "Core/PatchEngine.h"
-#include "Core/HW/Memmap.h"
+#include "Core/PowerPC/PowerPC.h"
 
 using namespace Common;
 
@@ -188,13 +188,13 @@ static void ApplyPatches(const std::vector<Patch> &patches)
 				switch (entry.type)
 				{
 				case PATCH_8BIT:
-					Memory::Debug_Write_U8((u8)value, addr);
+					PowerPC::Debug_Write_U8((u8)value, addr);
 					break;
 				case PATCH_16BIT:
-					Memory::Debug_Write_U16((u16)value, addr);
+					PowerPC::Debug_Write_U16((u16)value, addr);
 					break;
 				case PATCH_32BIT:
-					Memory::Debug_Write_U32(value, addr);
+					PowerPC::Debug_Write_U32(value, addr);
 					break;
 				default:
 					//unknown patchtype

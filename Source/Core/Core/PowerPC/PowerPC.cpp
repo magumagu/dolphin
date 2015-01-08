@@ -512,7 +512,7 @@ void CheckBreakPoints()
 
 void OnIdle(u32 _uThreadAddr)
 {
-	u32 nextThread = Memory::CPU_Read_U32(_uThreadAddr);
+	u32 nextThread = PowerPC::Read_U32(_uThreadAddr);
 	if (PowerPC::ppcState.Exceptions)
 		return;
 	//do idle skipping
@@ -526,7 +526,6 @@ void OnIdleIL()
 }
 
 }  // namespace
-
 
 // FPSCR update functions
 

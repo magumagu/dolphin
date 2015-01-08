@@ -32,7 +32,7 @@
 #include "Core/PowerPC/GDBStub.h"
 #endif
 
-namespace Memory
+namespace PowerPC
 {
 
 #define HW_PAGE_SIZE 4096
@@ -116,37 +116,37 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 			if (em_address < 0xcc000000)
 				return EFB_Read(em_address);
 			else
-				return (T)mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address);
+				return (T)Memory::mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address);
 		}
-		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < REALRAM_SIZE)
+		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
 		{
-			return bswap((*(const T*)&m_pRAM[em_address & RAM_MASK]));
+			return bswap((*(const T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK]));
 		}
-		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < EXRAM_SIZE)
+		else if (Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 		{
-			return bswap((*(const T*)&m_pEXRAM[em_address & EXRAM_MASK]));
+			return bswap((*(const T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK]));
 		}
-		else if (segment == 0xE && (em_address < (0xE0000000 + L1_CACHE_SIZE)))
+		else if (segment == 0xE && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
 		{
-			return bswap((*(const T*)&m_pL1Cache[em_address & L1_CACHE_MASK]));
+			return bswap((*(const T*)&Memory::m_pL1Cache[em_address & Memory::L1_CACHE_MASK]));
 		}
 	}
 
-	if (performTranslation && bFakeVMEM && (segment == 0x7 || segment == 0x4))
+	if (performTranslation && Memory::bFakeVMEM && (segment == 0x7 || segment == 0x4))
 	{
 		// fake VMEM
-		return bswap((*(const T*)&m_pFakeVMEM[em_address & FAKEVMEM_MASK]));
+		return bswap((*(const T*)&Memory::m_pFakeVMEM[em_address & Memory::FAKEVMEM_MASK]));
 	}
 
 	if (!performTranslation)
 	{
-		if (segment == 0x0 && (em_address & 0x0FFFFFFF) < REALRAM_SIZE)
+		if (segment == 0x0 && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
 		{
-			return bswap((*(const T*)&m_pRAM[em_address & RAM_MASK]));
+			return bswap((*(const T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK]));
 		}
-		else if (m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < EXRAM_SIZE)
+		else if (Memory::m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 		{
-			return bswap((*(const T*)&m_pEXRAM[em_address & EXRAM_MASK]));
+			return bswap((*(const T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK]));
 		}
 		else
 		{
@@ -242,31 +242,31 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 			}
 			else
 			{
-				mmio_mapping->Write(em_address, data);
+				Memory::mmio_mapping->Write(em_address, data);
 				return;
 			}
 		}
-		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < REALRAM_SIZE)
+		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
 		{
-			*(T*)&m_pRAM[em_address & RAM_MASK] = bswap(data);
+			*(T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK] = bswap(data);
 			return;
 		}
-		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < EXRAM_SIZE)
+		else if (Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 		{
-			*(T*)&m_pEXRAM[em_address & EXRAM_MASK] = bswap(data);
+			*(T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK] = bswap(data);
 			return;
 		}
-		else if (segment == 0xE && (em_address < (0xE0000000 + L1_CACHE_SIZE)))
+		else if (segment == 0xE && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
 		{
-			*(T*)&m_pL1Cache[em_address & L1_CACHE_MASK] = bswap(data);
+			*(T*)&Memory::m_pL1Cache[em_address & Memory::L1_CACHE_MASK] = bswap(data);
 			return;
 		}
 	}
 
-	if (performTranslation && bFakeVMEM && (segment == 0x7 || segment == 0x4))
+	if (performTranslation && Memory::bFakeVMEM && (segment == 0x7 || segment == 0x4))
 	{
 		// fake VMEM
-		*(T*)&m_pFakeVMEM[em_address & FAKEVMEM_MASK] = bswap(data);
+		*(T*)&Memory::m_pFakeVMEM[em_address & Memory::FAKEVMEM_MASK] = bswap(data);
 		return;
 	}
 
@@ -274,14 +274,14 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 	{
 		// TODO: In theory, games can do FIFO/MMIO/Locked-L1 writes with translation
 		// turned off; in practice, they don't.
-		if (segment == 0x0 && (em_address & 0x0FFFFFFF) < REALRAM_SIZE)
+		if (segment == 0x0 && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
 		{
-			*(T*)&m_pRAM[em_address & RAM_MASK] = bswap(data);
+			*(T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK] = bswap(data);
 			return;
 		}
-		else if (m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < EXRAM_SIZE)
+		else if (Memory::m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 		{
-			*(T*)&m_pEXRAM[em_address & EXRAM_MASK] = bswap(data);
+			*(T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK] = bswap(data);
 			return;
 		}
 		else
@@ -336,9 +336,9 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 
 static void GenerateISIException(u32 effective_address);
 
-u32 CPU_Read_Opcode(u32 address)
+u32 Read_Opcode(u32 address)
 {
-	TryReadInstResult result = CPU_TryReadInstruction(address);
+	TryReadInstResult result = TryReadInstruction(address);
 	if (!result.valid)
 	{
 		GenerateISIException(address);
@@ -347,13 +347,13 @@ u32 CPU_Read_Opcode(u32 address)
 	return result.hex;
 }
 
-TryReadInstResult CPU_TryReadInstruction(u32 address)
+TryReadInstResult TryReadInstruction(u32 address)
 {
 	bool from_bat = true;
 	if (UReg_MSR(MSR).IR)
 	{
 		// TODO: Use real translation.
-		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU && (address & ADDR_MASK_MEM1))
+		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU && (address & Memory::ADDR_MASK_MEM1))
 		{
 			u32 tlb_addr = TranslateAddress<FLAG_OPCODE>(address);
 			if (tlb_addr == 0)
@@ -369,9 +369,9 @@ TryReadInstResult CPU_TryReadInstruction(u32 address)
 		else
 		{
 			int segment = address >> 28;
-			if (segment == 0x8 && (address & 0x3FFFFFFF) < REALRAM_SIZE)
+			if (segment == 0x8 && (address & 0x3FFFFFFF) < Memory::REALRAM_SIZE)
 				address = address & 0x3FFFFFFF;
-			else if (segment == 0x9 && (address & 0x3FFFFFFF) < EXRAM_SIZE)
+			else if (segment == 0x9 && (address & 0x3FFFFFFF) < Memory::EXRAM_SIZE)
 				address = address & 0x3FFFFFFF;
 			else
 				return TryReadInstResult{ false, false, 0 };
@@ -387,6 +387,12 @@ TryReadInstResult CPU_TryReadInstruction(u32 address)
 	return TryReadInstResult{ true, from_bat, hex };
 }
 
+u32 Debug_Read_Instruction(const u32 address)
+{
+	UGeckoInstruction inst = Debug_Read_U32(address);
+	return inst.hex;
+}
+
 static __forceinline void Memcheck(u32 address, u32 var, bool write, int size)
 {
 #ifdef ENABLE_MEM_CHECK
@@ -399,35 +405,35 @@ static __forceinline void Memcheck(u32 address, u32 var, bool write, int size)
 #endif
 }
 
-u8 CPU_Read_U8(const u32 address)
+u8 Read_U8(const u32 address)
 {
 	u8 var = ReadFromHardware<FLAG_READ, u8>(address);
 	Memcheck(address, var, false, 1);
 	return (u8)var;
 }
 
-u16 CPU_Read_U16(const u32 address)
+u16 Read_U16(const u32 address)
 {
 	u16 var = ReadFromHardware<FLAG_READ, u16>(address);
 	Memcheck(address, var, false, 2);
 	return (u16)var;
 }
 
-u32 CPU_Read_U32(const u32 address)
+u32 Read_U32(const u32 address)
 {
 	u32 var = ReadFromHardware<FLAG_READ, u32>(address);
 	Memcheck(address, var, false, 4);
 	return var;
 }
 
-u64 CPU_Read_U64(const u32 address)
+u64 Read_U64(const u32 address)
 {
 	u64 var = ReadFromHardware<FLAG_READ, u64>(address);
 	Memcheck(address, (u32)var, false, 8);
 	return var;
 }
 
-double CPU_Read_F64(const u32 address)
+double Read_F64(const u32 address)
 {
 	union
 	{
@@ -435,11 +441,11 @@ double CPU_Read_F64(const u32 address)
 		double d;
 	} cvt;
 
-	cvt.i = CPU_Read_U64(address);
+	cvt.i = Read_U64(address);
 	return cvt.d;
 }
 
-float CPU_Read_F32(const u32 address)
+float Read_F32(const u32 address)
 {
 	union
 	{
@@ -447,61 +453,61 @@ float CPU_Read_F32(const u32 address)
 		float d;
 	} cvt;
 
-	cvt.i = CPU_Read_U32(address);
+	cvt.i = Read_U32(address);
 	return cvt.d;
 }
 
-u32 CPU_Read_U8_ZX(const u32 address)
+u32 Read_U8_ZX(const u32 address)
 {
-	return (u32)CPU_Read_U8(address);
+	return (u32)Read_U8(address);
 }
 
-u32 CPU_Read_U16_ZX(const u32 address)
+u32 Read_U16_ZX(const u32 address)
 {
-	return (u32)CPU_Read_U16(address);
+	return (u32)Read_U16(address);
 }
 
-void CPU_Write_U8(const u8 var, const u32 address)
+void Write_U8(const u8 var, const u32 address)
 {
 	Memcheck(address, var, true, 1);
 	WriteToHardware<FLAG_WRITE, u8>(address, var);
 }
 
-void CPU_Write_U16(const u16 var, const u32 address)
+void Write_U16(const u16 var, const u32 address)
 {
 	Memcheck(address, var, true, 2);
 	WriteToHardware<FLAG_WRITE, u16>(address, var);
 }
-void CPU_Write_U16_Swap(const u16 var, const u32 address)
+void Write_U16_Swap(const u16 var, const u32 address)
 {
 	Memcheck(address, var, true, 2);
-	CPU_Write_U16(Common::swap16(var), address);
+	Write_U16(Common::swap16(var), address);
 }
 
 
-void CPU_Write_U32(const u32 var, const u32 address)
+void Write_U32(const u32 var, const u32 address)
 {
 	Memcheck(address, var, true, 4);
 	WriteToHardware<FLAG_WRITE, u32>(address, var);
 }
-void CPU_Write_U32_Swap(const u32 var, const u32 address)
+void Write_U32_Swap(const u32 var, const u32 address)
 {
 	Memcheck(address, var, true, 4);
-	CPU_Write_U32(Common::swap32(var), address);
+	Write_U32(Common::swap32(var), address);
 }
 
-void CPU_Write_U64(const u64 var, const u32 address)
+void Write_U64(const u64 var, const u32 address)
 {
 	Memcheck(address, (u32)var, true, 8);
 	WriteToHardware<FLAG_WRITE, u64>(address, var);
 }
-void CPU_Write_U64_Swap(const u64 var, const u32 address)
+void Write_U64_Swap(const u64 var, const u32 address)
 {
 	Memcheck(address, (u32)var, true, 8);
-	CPU_Write_U64(Common::swap64(var), address);
+	Write_U64(Common::swap64(var), address);
 }
 
-void CPU_Write_F64(const double var, const u32 address)
+void Write_F64(const double var, const u32 address)
 {
 	union
 	{
@@ -509,7 +515,7 @@ void CPU_Write_F64(const double var, const u32 address)
 		double d;
 	} cvt;
 	cvt.d = var;
-	CPU_Write_U64(cvt.i, address);
+	Write_U64(cvt.i, address);
 }
 
 u8 Debug_Read_U8(const u32 address)
@@ -565,7 +571,7 @@ std::string Debug_GetString(u32 address, size_t size)
 	return s;
 }
 
-bool CPU_IsRAMAddress(const u32 address)
+bool IsOptimizableRAMAddress(const u32 address)
 {
 	// TODO: Implement
 	return false;
@@ -579,13 +585,13 @@ bool Debug_IsRAMAddress(u32 address)
 	int segment = address >> 28;
 	if (performTranslation)
 	{
-		if ((segment == 0x8 || segment == 0xC) && (address & 0x0FFFFFFF) < REALRAM_SIZE)
+		if ((segment == 0x8 || segment == 0xC) && (address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
 			return true;
-		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD) && (address & 0x0FFFFFFF) < EXRAM_SIZE)
+		else if (Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 			return true;
-		else if (bFakeVMEM && (segment == 0x7 || segment == 0x4))
+		else if (Memory::bFakeVMEM && (segment == 0x7 || segment == 0x4))
 			return true;
-		else if (segment == 0xE && (address < (0xE0000000 + L1_CACHE_SIZE)))
+		else if (segment == 0xE && (address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
 			return true;
 
 		address = TranslateAddress<FLAG_NO_EXCEPTION>(address);
@@ -593,13 +599,59 @@ bool Debug_IsRAMAddress(u32 address)
 			return false;
 	}
 
-	if (segment == 0x0 && (address & 0x0FFFFFFF) < REALRAM_SIZE)
+	if (segment == 0x0 && (address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
 		return true;
-	else if (m_pEXRAM && segment == 0x1 && (address & 0x0FFFFFFF) < EXRAM_SIZE)
+	else if (Memory::m_pEXRAM && segment == 0x1 && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 		return true;
 	return false;
 
 
+}
+
+void ClearCacheLine(const u32 address)
+{
+	// FIXME: does this do the right thing if dcbz is run on hardware memory, e.g.
+	// the FIFO? Do games even do that? Probably not, but we should try to be correct...
+	for (u32 i = 0; i < 32; i += 8)
+		Write_U64(0, address + i);
+}
+
+void DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlocks)
+{
+	const u8* src = Memory::m_pL1Cache + (cacheAddr & 0x3FFFF);
+	u8* dst = Memory::GetPointer(memAddr);
+
+	if ((dst != nullptr) && (src != nullptr) && (memAddr & 3) == 0 && (cacheAddr & 3) == 0)
+	{
+		memcpy(dst, src, 32 * numBlocks);
+	}
+	else
+	{
+		for (u32 i = 0; i < 32 * numBlocks; i++)
+		{
+			u8 Temp = Read_U8(cacheAddr + i);
+			Write_U8(Temp, memAddr + i);
+		}
+	}
+}
+
+void DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks)
+{
+	const u8* src = Memory::GetPointer(memAddr);
+	u8* dst = Memory::m_pL1Cache + (cacheAddr & 0x3FFFF);
+
+	if ((dst != nullptr) && (src != nullptr) && (memAddr & 3) == 0 && (cacheAddr & 3) == 0)
+	{
+		memcpy(dst, src, 32 * numBlocks);
+	}
+	else
+	{
+		for (u32 i = 0; i < 32 * numBlocks; i++)
+		{
+			u8 Temp = Read_U8(memAddr + i);
+			Write_U8(Temp, cacheAddr + i);
+		}
+	}
 }
 
 // *********************************************************************************
@@ -724,7 +776,7 @@ static void GenerateISIException(u32 _EffectiveAddress)
 }
 
 
-void CPU_SDRUpdated()
+void SDRUpdated()
 {
 	u32 htabmask = SDR1_HTABMASK(PowerPC::ppcState.spr[SPR_SDR]);
 	u32 x = 1;
@@ -821,7 +873,7 @@ static __forceinline void UpdateTLBEntry(const XCheckTLBFlag flag, UPTE2 PTE2, c
 	tlbe->tag[index] = tag;
 }
 
-void CPU_InvalidateTLBEntry(u32 address)
+void InvalidateTLBEntry(u32 address)
 {
 	PowerPC::tlb_entry *tlbe = &PowerPC::ppcState.tlb[0][(address >> HW_PAGE_INDEX_SHIFT) & HW_PAGE_INDEX_MASK];
 	tlbe->tag[0] = TLB_TAG_INVALID;

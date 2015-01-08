@@ -42,9 +42,9 @@ void JitILBase::lXz(UGeckoInstruction inst)
 		PowerPC::GetState() != PowerPC::CPU_STEPPING &&
 		inst.OPCD == 32 && // Lwx
 		(inst.hex & 0xFFFF0000) == 0x800D0000 &&
-		(Memory::Debug_Read_U32(js.compilerPC + 4) == 0x28000000 ||
-		(SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && Memory::Debug_Read_U32(js.compilerPC + 4) == 0x2C000000)) &&
-		Memory::Debug_Read_U32(js.compilerPC + 8) == 0x4182fff8)
+		(PowerPC::Debug_Read_U32(js.compilerPC + 4) == 0x28000000 ||
+		(SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && PowerPC::Debug_Read_U32(js.compilerPC + 4) == 0x2C000000)) &&
+		PowerPC::Debug_Read_U32(js.compilerPC + 8) == 0x4182fff8)
 	{
 		val = ibuild.EmitLoad32(addr);
 		ibuild.EmitIdleBranch(val, ibuild.EmitIntConst(js.compilerPC));
@@ -142,7 +142,7 @@ void JitILBase::dcbst(UGeckoInstruction inst)
 	// dcbt = 0x7c00022c
 	// TODO: We shouldn't use a debug read here; it should be possible to get the
 	// previous instruction from the JIT state.
-	FALLBACK_IF((Memory::Debug_Read_U32(js.compilerPC - 4) & 0x7c00022c) != 0x7c00022c);
+	FALLBACK_IF((PowerPC::Debug_Read_U32(js.compilerPC - 4) & 0x7c00022c) != 0x7c00022c);
 }
 
 // Zero cache line.

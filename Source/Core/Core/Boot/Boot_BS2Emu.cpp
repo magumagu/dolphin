@@ -61,26 +61,26 @@ bool CBoot::EmulatedBS2_GC()
 	// to 0x80000000 according to YAGCD 4.2.
 	DVDInterface::DVDRead(/*offset*/0x00000000, /*address*/0x00000000, 0x20, false); // write disc info
 
-	Memory::Debug_Write_U32(0x0D15EA5E, 0x80000020); // Booted from bootrom. 0xE5207C22 = booted from jtag
-	Memory::Debug_Write_U32(Memory::REALRAM_SIZE, 0x80000028); // Physical Memory Size (24MB on retail)
+	PowerPC::Debug_Write_U32(0x0D15EA5E, 0x80000020); // Booted from bootrom. 0xE5207C22 = booted from jtag
+	PowerPC::Debug_Write_U32(Memory::REALRAM_SIZE, 0x80000028); // Physical Memory Size (24MB on retail)
 	// TODO determine why some games fail when using a retail ID. (Seem to take different EXI paths, see Ikaruga for example)
-	Memory::Debug_Write_U32(0x10000006, 0x8000002C); // Console type - DevKit  (retail ID == 0x00000003) see YAGCD 4.2.1.1.2
+	PowerPC::Debug_Write_U32(0x10000006, 0x8000002C); // Console type - DevKit  (retail ID == 0x00000003) see YAGCD 4.2.1.1.2
 
-	Memory::Debug_Write_U32(SConfig::GetInstance().m_LocalCoreStartupParameter.bNTSC
+	PowerPC::Debug_Write_U32(SConfig::GetInstance().m_LocalCoreStartupParameter.bNTSC
 						 ? 0 : 1, 0x800000CC); // Fake the VI Init of the IPL (YAGCD 4.2.1.4)
 
-	Memory::Debug_Write_U32(0x01000000, 0x800000d0); // ARAM Size. 16MB main + 4/16/32MB external (retail consoles have no external ARAM)
+	PowerPC::Debug_Write_U32(0x01000000, 0x800000d0); // ARAM Size. 16MB main + 4/16/32MB external (retail consoles have no external ARAM)
 
-	Memory::Debug_Write_U32(0x09a7ec80, 0x800000F8); // Bus Clock Speed
-	Memory::Debug_Write_U32(0x1cf7c580, 0x800000FC); // CPU Clock Speed
+	PowerPC::Debug_Write_U32(0x09a7ec80, 0x800000F8); // Bus Clock Speed
+	PowerPC::Debug_Write_U32(0x1cf7c580, 0x800000FC); // CPU Clock Speed
 
-	Memory::Debug_Write_U32(0x4c000064, 0x80000300); // Write default DFI Handler:     rfi
-	Memory::Debug_Write_U32(0x4c000064, 0x80000800); // Write default FPU Handler:     rfi
-	Memory::Debug_Write_U32(0x4c000064, 0x80000C00); // Write default Syscall Handler: rfi
+	PowerPC::Debug_Write_U32(0x4c000064, 0x80000300); // Write default DFI Handler:     rfi
+	PowerPC::Debug_Write_U32(0x4c000064, 0x80000800); // Write default FPU Handler:     rfi
+	PowerPC::Debug_Write_U32(0x4c000064, 0x80000C00); // Write default Syscall Handler: rfi
 
-	Memory::Debug_Write_U64((u64)CEXIIPL::GetGCTime() * (u64)40500000, 0x800030D8); // Preset time base ticks
+	PowerPC::Debug_Write_U64((u64)CEXIIPL::GetGCTime() * (u64)40500000, 0x800030D8); // Preset time base ticks
 	// HIO checks this
-	//Memory::Debug_Write_U16(0x8200,     0x000030e6); // Console type
+	//PowerPC::Debug_Write_U16(0x8200,     0x000030e6); // Console type
 
 	HLE::Patch(0x81300000, "OSReport"); // HLE OSReport for Apploader
 
@@ -119,9 +119,9 @@ bool CBoot::EmulatedBS2_GC()
 	PowerPC::ppcState.gpr[4] = iAppLoaderFuncAddr + 4;
 	PowerPC::ppcState.gpr[5] = iAppLoaderFuncAddr + 8;
 	RunFunction(iAppLoaderEntry);
-	u32 iAppLoaderInit = Memory::CPU_Read_U32(iAppLoaderFuncAddr + 0);
-	u32 iAppLoaderMain = Memory::CPU_Read_U32(iAppLoaderFuncAddr + 4);
-	u32 iAppLoaderClose = Memory::CPU_Read_U32(iAppLoaderFuncAddr + 8);
+	u32 iAppLoaderInit = PowerPC::Read_U32(iAppLoaderFuncAddr + 0);
+	u32 iAppLoaderMain = PowerPC::Read_U32(iAppLoaderFuncAddr + 4);
+	u32 iAppLoaderClose = PowerPC::Read_U32(iAppLoaderFuncAddr + 8);
 
 	// iAppLoaderInit
 	DEBUG_LOG(MASTER_LOG, "Call iAppLoaderInit");
@@ -140,9 +140,9 @@ bool CBoot::EmulatedBS2_GC()
 
 		RunFunction(iAppLoaderMain);
 
-		u32 iRamAddress = Memory::CPU_Read_U32(0x81300004);
-		u32 iLength     = Memory::CPU_Read_U32(0x81300008);
-		u32 iDVDOffset  = Memory::CPU_Read_U32(0x8130000c);
+		u32 iRamAddress = PowerPC::Read_U32(0x81300004);
+		u32 iLength     = PowerPC::Read_U32(0x81300008);
+		u32 iDVDOffset  = PowerPC::Read_U32(0x8130000c);
 
 		INFO_LOG(MASTER_LOG, "DVDRead: offset: %08x   memOffset: %08x   length: %i", iDVDOffset, iRamAddress, iLength);
 		DVDInterface::DVDRead(iDVDOffset, iRamAddress, iLength, false);
@@ -372,9 +372,9 @@ bool CBoot::EmulatedBS2_Wii()
 		PowerPC::ppcState.gpr[4] = iAppLoaderFuncAddr + 4;
 		PowerPC::ppcState.gpr[5] = iAppLoaderFuncAddr + 8;
 		RunFunction(iAppLoaderEntry);
-		u32 iAppLoaderInit = Memory::CPU_Read_U32(iAppLoaderFuncAddr + 0);
-		u32 iAppLoaderMain = Memory::CPU_Read_U32(iAppLoaderFuncAddr + 4);
-		u32 iAppLoaderClose = Memory::CPU_Read_U32(iAppLoaderFuncAddr + 8);
+		u32 iAppLoaderInit = PowerPC::Read_U32(iAppLoaderFuncAddr + 0);
+		u32 iAppLoaderMain = PowerPC::Read_U32(iAppLoaderFuncAddr + 4);
+		u32 iAppLoaderClose = PowerPC::Read_U32(iAppLoaderFuncAddr + 8);
 
 		// iAppLoaderInit
 		DEBUG_LOG(BOOT, "Run iAppLoaderInit");
@@ -395,9 +395,9 @@ bool CBoot::EmulatedBS2_Wii()
 
 			RunFunction(iAppLoaderMain);
 
-			u32 iRamAddress = Memory::CPU_Read_U32(0x81300004);
-			u32 iLength     = Memory::CPU_Read_U32(0x81300008);
-			u32 iDVDOffset  = Memory::CPU_Read_U32(0x8130000c) << 2;
+			u32 iRamAddress = PowerPC::Read_U32(0x81300004);
+			u32 iLength     = PowerPC::Read_U32(0x81300008);
+			u32 iDVDOffset  = PowerPC::Read_U32(0x8130000c) << 2;
 
 			INFO_LOG(BOOT, "DVDRead: offset: %08x   memOffset: %08x   length: %i", iDVDOffset, iRamAddress, iLength);
 			DVDInterface::DVDRead(iDVDOffset, iRamAddress, iLength, true);
@@ -412,8 +412,8 @@ bool CBoot::EmulatedBS2_Wii()
 		// Pass the "#002 check"
 		// Apploader writes the IOS version and revision here, we copy it
 		// Fake IOSv9 r2.4 if no version is found (elf loading)
-		u32 firmwareVer = Memory::CPU_Read_U32(0x80003188);
-		Memory::CPU_Write_U32(firmwareVer ? firmwareVer : 0x00090204, 0x80003140);
+		u32 firmwareVer = PowerPC::Read_U32(0x80003188);
+		PowerPC::Write_U32(firmwareVer ? firmwareVer : 0x00090204, 0x80003140);
 
 		// Load patches and run startup patches
 		PatchEngine::LoadPatches();

@@ -43,7 +43,7 @@ static u32 GetWatchAddr(int count)
 
 static u32 GetWatchValue(int count)
 {
-	return Memory::Debug_Read_U32(GetWatchAddr(count));
+	return PowerPC::Debug_Read_U32(GetWatchAddr(count));
 }
 
 static void AddWatchAddr(int count, u32 value)
@@ -71,7 +71,7 @@ static void SetWatchName(int count, const std::string& value)
 
 static void SetWatchValue(int count, u32 value)
 {
-	Memory::Debug_Write_U32(value, GetWatchAddr(count));
+	PowerPC::Debug_Write_U32(value, GetWatchAddr(count));
 }
 
 static wxString GetValueByRowCol(int row, int col)
@@ -102,8 +102,8 @@ static wxString GetValueByRowCol(int row, int col)
 			case 4:
 			{
 				u32 addr = GetWatchAddr(row);
-				if (Memory::Debug_IsRAMAddress(addr))
-					return Memory::Debug_GetString(addr, 32).c_str();
+				if (PowerPC::Debug_IsRAMAddress(addr))
+					return PowerPC::Debug_GetString(addr, 32).c_str();
 				else
 					return wxEmptyString;
 			}

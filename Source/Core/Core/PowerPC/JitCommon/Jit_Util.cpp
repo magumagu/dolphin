@@ -334,9 +334,9 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 			//    access the RAM buffer and load from there).
 			// 2. If the address is in the MMIO range, find the appropriate
 			//    MMIO handler and generate the code to load using the handler.
-			// 3. Otherwise, just generate a call to Memory::CPU_Read_* with the
+			// 3. Otherwise, just generate a call to PowerPC::Read_* with the
 			//    address hardcoded.
-			if (Memory::CPU_IsRAMAddress(address))
+			if (PowerPC::IsOptimizableRAMAddress(address))
 			{
 				UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
 			}
@@ -350,10 +350,10 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 				ABI_PushRegistersAndAdjustStack(registersInUse, 0);
 				switch (accessSize)
 				{
-				case 64: ABI_CallFunctionC((void *)&Memory::CPU_Read_U64, address); break;
-				case 32: ABI_CallFunctionC((void *)&Memory::CPU_Read_U32, address); break;
-				case 16: ABI_CallFunctionC((void *)&Memory::CPU_Read_U16_ZX, address); break;
-				case 8:  ABI_CallFunctionC((void *)&Memory::CPU_Read_U8_ZX, address); break;
+				case 64: ABI_CallFunctionC((void *)&PowerPC::Read_U64, address); break;
+				case 32: ABI_CallFunctionC((void *)&PowerPC::Read_U32, address); break;
+				case 16: ABI_CallFunctionC((void *)&PowerPC::Read_U16_ZX, address); break;
+				case 8:  ABI_CallFunctionC((void *)&PowerPC::Read_U8_ZX, address); break;
 				}
 				ABI_PopRegistersAndAdjustStack(registersInUse, 0);
 
@@ -392,16 +392,16 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 			switch (accessSize)
 			{
 			case 64:
-				ABI_CallFunctionR((void *)&Memory::CPU_Read_U64, reg_addr);
+				ABI_CallFunctionR((void *)&PowerPC::Read_U64, reg_addr);
 				break;
 			case 32:
-				ABI_CallFunctionR((void *)&Memory::CPU_Read_U32, reg_addr);
+				ABI_CallFunctionR((void *)&PowerPC::Read_U32, reg_addr);
 				break;
 			case 16:
-				ABI_CallFunctionR((void *)&Memory::CPU_Read_U16_ZX, reg_addr);
+				ABI_CallFunctionR((void *)&PowerPC::Read_U16_ZX, reg_addr);
 				break;
 			case 8:
-				ABI_CallFunctionR((void *)&Memory::CPU_Read_U8_ZX, reg_addr);
+				ABI_CallFunctionR((void *)&PowerPC::Read_U8_ZX, reg_addr);
 				break;
 			}
 			ABI_PopRegistersAndAdjustStack(registersInUse, rsp_alignment);
@@ -516,7 +516,7 @@ bool EmuCodeBlock::WriteToConstAddress(int accessSize, OpArg arg, u32 address, B
 		UnsafeWriteGatherPipe(accessSize);
 		return false;
 	}
-	else if (Memory::CPU_IsRAMAddress(address))
+	else if (PowerPC::IsOptimizableRAMAddress(address))
 	{
 		WriteToConstRamAddress(accessSize, arg, address);
 		return false;
@@ -530,16 +530,16 @@ bool EmuCodeBlock::WriteToConstAddress(int accessSize, OpArg arg, u32 address, B
 		switch (accessSize)
 		{
 		case 64:
-			ABI_CallFunctionAC(64, (void *)&Memory::CPU_Write_U64, arg, address);
+			ABI_CallFunctionAC(64, (void *)&PowerPC::Write_U64, arg, address);
 			break;
 		case 32:
-			ABI_CallFunctionAC(32, (void *)&Memory::CPU_Write_U32, arg, address);
+			ABI_CallFunctionAC(32, (void *)&PowerPC::Write_U32, arg, address);
 			break;
 		case 16:
-			ABI_CallFunctionAC(16, (void *)&Memory::CPU_Write_U16, arg, address);
+			ABI_CallFunctionAC(16, (void *)&PowerPC::Write_U16, arg, address);
 			break;
 		case 8:
-			ABI_CallFunctionAC(8, (void *)&Memory::CPU_Write_U8, arg, address);
+			ABI_CallFunctionAC(8, (void *)&PowerPC::Write_U8, arg, address);
 			break;
 		}
 		ABI_PopRegistersAndAdjustStack(registersInUse, 0);
@@ -625,16 +625,16 @@ void EmuCodeBlock::SafeWriteRegToReg(OpArg reg_value, X64Reg reg_addr, int acces
 	switch (accessSize)
 	{
 	case 64:
-		ABI_CallFunctionRR(swap ? ((void *)&Memory::CPU_Write_U64) : ((void *)&Memory::CPU_Write_U64_Swap), reg, reg_addr);
+		ABI_CallFunctionRR(swap ? ((void *)&PowerPC::Write_U64) : ((void *)&PowerPC::Write_U64_Swap), reg, reg_addr);
 		break;
 	case 32:
-		ABI_CallFunctionRR(swap ? ((void *)&Memory::CPU_Write_U32) : ((void *)&Memory::CPU_Write_U32_Swap), reg, reg_addr);
+		ABI_CallFunctionRR(swap ? ((void *)&PowerPC::Write_U32) : ((void *)&PowerPC::Write_U32_Swap), reg, reg_addr);
 		break;
 	case 16:
-		ABI_CallFunctionRR(swap ? ((void *)&Memory::CPU_Write_U16) : ((void *)&Memory::CPU_Write_U16_Swap), reg, reg_addr);
+		ABI_CallFunctionRR(swap ? ((void *)&PowerPC::Write_U16) : ((void *)&PowerPC::Write_U16_Swap), reg, reg_addr);
 		break;
 	case 8:
-		ABI_CallFunctionRR((void *)&Memory::CPU_Write_U8, reg, reg_addr);
+		ABI_CallFunctionRR((void *)&PowerPC::Write_U8, reg, reg_addr);
 		break;
 	}
 	ABI_PopRegistersAndAdjustStack(registersInUse, rsp_alignment);
