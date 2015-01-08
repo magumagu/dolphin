@@ -117,9 +117,9 @@ void Jit64::lXXx(UGeckoInstruction inst)
 	    PowerPC::GetState() != PowerPC::CPU_STEPPING &&
 	    inst.OPCD == 32 &&
 	    (inst.hex & 0xFFFF0000) == 0x800D0000 &&
-	    (Memory::Debug_Read_U32(js.compilerPC + 4) == 0x28000000 ||
-		(SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && Memory::Debug_Read_U32(js.compilerPC + 4) == 0x2C000000)) &&
-		Memory::Debug_Read_U32(js.compilerPC + 8) == 0x4182fff8)
+	    (PowerPC::Debug_Read_U32(js.compilerPC + 4) == 0x28000000 ||
+		(SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && PowerPC::Debug_Read_U32(js.compilerPC + 4) == 0x2C000000)) &&
+		PowerPC::Debug_Read_U32(js.compilerPC + 8) == 0x4182fff8)
 	{
 		// TODO(LinesPrower):
 		// - Rewrite this!
@@ -300,7 +300,7 @@ void Jit64::dcbst(UGeckoInstruction inst)
 	// dcbt = 0x7c00022c
 	// TODO: We shouldn't use a debug read here.  It should be possible to get
 	// the previous instruction out of the JIT state.
-	FALLBACK_IF((Memory::Debug_Read_U32(js.compilerPC - 4) & 0x7c00022c) != 0x7c00022c);
+	FALLBACK_IF((PowerPC::Debug_Read_U32(js.compilerPC - 4) & 0x7c00022c) != 0x7c00022c);
 }
 
 // Zero cache line.
@@ -333,7 +333,7 @@ void Jit64::dcbz(UGeckoInstruction inst)
 	MOV(32, M(&PC), Imm32(jit->js.compilerPC));
 	BitSet32 registersInUse = CallerSavedRegistersInUse();
 	ABI_PushRegistersAndAdjustStack(registersInUse, 0);
-	ABI_CallFunctionR((void *)&Memory::CPU_ClearCacheLine, RSCRATCH);
+	ABI_CallFunctionR((void *)&PowerPC::ClearCacheLine, RSCRATCH);
 	ABI_PopRegistersAndAdjustStack(registersInUse, 0);
 	FixupBranch exit = J(true);
 

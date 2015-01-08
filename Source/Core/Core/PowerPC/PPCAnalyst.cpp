@@ -96,7 +96,7 @@ bool AnalyzeFunction(u32 startAddr, Symbol &func, int max_size)
 		if (func.size >= CODEBUFFER_SIZE * 4) //weird
 			return false;
 
-		UGeckoInstruction instr = (UGeckoInstruction)Memory::Debug_Read_U32(addr);
+		UGeckoInstruction instr = (UGeckoInstruction)PowerPC::Debug_Read_U32(addr);
 		if (max_size && func.size > max_size)
 		{
 			func.address = startAddr;
@@ -270,7 +270,7 @@ static void FindFunctionsFromBranches(u32 startAddr, u32 endAddr, SymbolDB *func
 {
 	for (u32 addr = startAddr; addr < endAddr; addr+=4)
 	{
-		UGeckoInstruction instr = (UGeckoInstruction)Memory::Debug_Read_U32(addr);
+		UGeckoInstruction instr = (UGeckoInstruction)PowerPC::Debug_Read_U32(addr);
 
 		if (PPCTables::IsValidInstruction(instr))
 		{
@@ -283,7 +283,7 @@ static void FindFunctionsFromBranches(u32 startAddr, u32 endAddr, SymbolDB *func
 						u32 target = SignExt26(instr.LI << 2);
 						if (!instr.AA)
 							target += addr;
-						if (Memory::Debug_IsRAMAddress(target))
+						if (PowerPC::Debug_IsRAMAddress(target))
 						{
 							func_db->AddFunction(target);
 						}
@@ -308,7 +308,7 @@ static void FindFunctionsAfterBLR(PPCSymbolDB *func_db)
 	{
 		while (true)
 		{
-			if (PPCTables::IsValidInstruction(Memory::Debug_Read_Instruction(location)))
+			if (PPCTables::IsValidInstruction(PowerPC::Debug_Read_Instruction(location)))
 			{
 				//check if this function is already mapped
 				Symbol *f = func_db->AddFunction(location);
@@ -649,7 +649,7 @@ u32 PPCAnalyzer::Analyze(u32 address, CodeBlock *block, CodeBuffer *buffer, u32 
 
 	for (u32 i = 0; i < blockSize; ++i)
 	{
-		auto result = Memory::CPU_TryReadInstruction(address);
+		auto result = PowerPC::TryReadInstruction(address);
 		if (!result.valid)
 		{
 			if (i == 0)

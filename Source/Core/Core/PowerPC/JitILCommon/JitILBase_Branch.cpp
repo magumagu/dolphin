@@ -145,9 +145,9 @@ void JitILBase::bcx(UGeckoInstruction inst)
 	// TODO: We shouldn't use debug reads here.
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bSkipIdle &&
 		inst.hex == 0x4182fff8 &&
-		(Memory::Debug_Read_U32(js.compilerPC - 8) & 0xFFFF0000) == 0x800D0000 &&
-		(Memory::Debug_Read_U32(js.compilerPC - 4) == 0x28000000 ||
-		(SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && Memory::Debug_Read_U32(js.compilerPC - 4) == 0x2C000000))
+		(PowerPC::Debug_Read_U32(js.compilerPC - 8) & 0xFFFF0000) == 0x800D0000 &&
+		(PowerPC::Debug_Read_U32(js.compilerPC - 4) == 0x28000000 ||
+		(SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && PowerPC::Debug_Read_U32(js.compilerPC - 4) == 0x2C000000))
 		)
 	{
 		// Uh, Do nothing.

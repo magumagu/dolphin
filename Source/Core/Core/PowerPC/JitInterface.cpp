@@ -224,7 +224,7 @@ namespace JitInterface
 		if (PC != 0 && (exception_addresses->find(PC)) == (exception_addresses->end()))
 		{
 			// TODO: We shouldn't use a debug read here.  What is this trying to do?
-			int optype = GetOpInfo(Memory::Debug_Read_U32(PC))->type;
+			int optype = GetOpInfo(PowerPC::Debug_Read_U32(PC))->type;
 			if (optype == OPTYPE_STORE || optype == OPTYPE_STOREFP || (optype == OPTYPE_STOREPS))
 			{
 				exception_addresses->insert(PC);

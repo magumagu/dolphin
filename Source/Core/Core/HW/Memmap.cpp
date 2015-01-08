@@ -191,12 +191,6 @@ bool AreMemoryBreakpointsActivated()
 #endif
 }
 
-u32 Debug_Read_Instruction(const u32 address)
-{
-	UGeckoInstruction inst = Debug_Read_U32(address);
-	return inst.hex;
-}
-
 static inline bool ValidCopyRange(u32 address, size_t size)
 {
 	return (GetPointer(address) != nullptr &&
@@ -230,52 +224,6 @@ void Memset(const u32 _Address, const u8 _iValue, const u32 _iLength)
 	if (ptr != nullptr)
 	{
 		memset(ptr,_iValue,_iLength);
-	}
-}
-
-void CPU_ClearCacheLine(const u32 address)
-{
-	// FIXME: does this do the right thing if dcbz is run on hardware memory, e.g.
-	// the FIFO? Do games even do that? Probably not, but we should try to be correct...
-	for (u32 i = 0; i < 32; i += 8)
-		CPU_Write_U64(0, address + i);
-}
-
-void CPU_DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlocks)
-{
-	const u8* src = m_pL1Cache + (cacheAddr & 0x3FFFF);
-	u8* dst = GetPointer(memAddr);
-
-	if ((dst != nullptr) && (src != nullptr) && (memAddr & 3) == 0 && (cacheAddr & 3) == 0)
-	{
-		memcpy(dst, src, 32 * numBlocks);
-	}
-	else
-	{
-		for (u32 i = 0; i < 32 * numBlocks; i++)
-		{
-			u8 Temp = CPU_Read_U8(cacheAddr + i);
-			CPU_Write_U8(Temp, memAddr + i);
-		}
-	}
-}
-
-void CPU_DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks)
-{
-	const u8* src = GetPointer(memAddr);
-	u8* dst = m_pL1Cache + (cacheAddr & 0x3FFFF);
-
-	if ((dst != nullptr) && (src != nullptr) && (memAddr & 3) == 0 && (cacheAddr & 3) == 0)
-	{
-		memcpy(dst, src, 32 * numBlocks);
-	}
-	else
-	{
-		for (u32 i = 0; i < 32 * numBlocks; i++)
-		{
-			u8 Temp = CPU_Read_U8(memAddr + i);
-			CPU_Write_U8(Temp, cacheAddr + i);
-		}
 	}
 }
 
