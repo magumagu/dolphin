@@ -188,15 +188,13 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 		{
 			if (addr == em_address_next_page)
 				tlb_addr = tlb_addr_next_page;
-			// TODO: The read from physical_base can cause a crash if the TLB is corrupt.
-			var = (var << 8) | Memory::physical_base[tlb_addr];
+			var = (var << 8) | Memory::GetPointer(tlb_addr);
 		}
 		return var;
 	}
 
 	// The easy case!
-	// TODO: The read from physical_base can cause a crash if the TLB is corrupt.
-	return bswap(*(const T*)&Memory::physical_base[tlb_addr]);
+	return bswap(*(const T*)&Memory::GetPointer(tlb_addr));
 }
 
 
@@ -320,15 +318,13 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 		{
 			if (addr == em_address_next_page)
 				tlb_addr = tlb_addr_next_page;
-			// TODO: The write to physical_base can cause a crash if the TLB is corrupt.
-			Memory::physical_base[tlb_addr] = (u8)val;
+			Memory::GetPointer(tlb_addr) = (u8)val;
 		}
 		return;
 	}
 
 	// The easy case!
-	// TODO: The write to physical_base can cause a crash if the TLB is corrupt.
-	*(T*)&Memory::physical_base[tlb_addr] = bswap(data);
+	*(T*)Memory::GetPointer(tlb_addr) = bswap(data);
 }
 // =====================
 
@@ -575,7 +571,7 @@ bool CPU_IsRAMAddress(const u32 address)
 	return false;
 }
 
-bool Debug_IsRAMAddress(const u32 address)
+bool Debug_IsRAMAddress(u32 address)
 {
 	// TODO: This needs to be rewritten; it makes incorrect assumptions
 	// about BATs and page tables.
@@ -587,22 +583,23 @@ bool Debug_IsRAMAddress(const u32 address)
 			return true;
 		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD) && (address & 0x0FFFFFFF) < EXRAM_SIZE)
 			return true;
+		else if (bFakeVMEM && (segment == 0x7 || segment == 0x4))
+			return true;
 		else if (segment == 0xE && (address < (0xE0000000 + L1_CACHE_SIZE)))
 			return true;
-	}
-	else
-	{
-		if (segment == 0x0 && (address & 0x0FFFFFFF) < REALRAM_SIZE)
-			return true;
-		else if (m_pEXRAM && segment == 0x1 && (address & 0x0FFFFFFF) < EXRAM_SIZE)
-			return true;
+
+		address = TranslateAddress<FLAG_NO_EXCEPTION>(address);
+		if (!address)
+			return false;
 	}
 
-	u32 translated_address = TranslateAddress<FLAG_NO_EXCEPTION>(address);
-	if (!translated_address)
-		return false;
+	if (segment == 0x0 && (address & 0x0FFFFFFF) < REALRAM_SIZE)
+		return true;
+	else if (m_pEXRAM && segment == 0x1 && (address & 0x0FFFFFFF) < EXRAM_SIZE)
+		return true;
+	return false;
 
-	return true;
+
 }
 
 // *********************************************************************************
@@ -852,10 +849,6 @@ static __forceinline u32 TranslatePageAddress(const u32 address, const XCheckTLB
 	u32 VSID = SR_VSID(sr);                  // 24 bit
 	u32 api = EA_API(address);              //  6 bit (part of page_index)
 
-	// Direct access to the fastmem Arena
-	// TODO: This can crash: physical addresses aren't guaranteed to be valid.
-	u8* base_mem = Memory::physical_base;
-
 	// hash function no 1 "xor" .360
 	u32 hash = (VSID ^ page_index);
 	u32 pte1 = bswap((VSID << 7) | api | PTE1_V);
@@ -873,10 +866,10 @@ static __forceinline u32 TranslatePageAddress(const u32 address, const XCheckTLB
 
 		for (int i = 0; i < 8; i++, pteg_addr += 8)
 		{
-			if (pte1 == *(u32*)&base_mem[pteg_addr])
+			if (pte1 == *(u32*)Memory::GetPointer(pteg_addr))
 			{
 				UPTE2 PTE2;
-				PTE2.Hex = bswap((*(u32*)&base_mem[(pteg_addr + 4)]));
+				PTE2.Hex = bswap((*(u32*)Memory::GetPointer(pteg_addr + 4)));
 
 				// set the access bits
 				switch (flag)
@@ -888,7 +881,7 @@ static __forceinline u32 TranslatePageAddress(const u32 address, const XCheckTLB
 				}
 
 				if (flag != FLAG_NO_EXCEPTION)
-					*(u32*)&base_mem[(pteg_addr + 4)] = bswap(PTE2.Hex);
+					*(u32*)Memory::GetPointer(pteg_addr + 4) = bswap(PTE2.Hex);
 
 				// We already updated the TLB entry if this was caused by a C bit.
 				if (res != TLB_UPDATE_C)
@@ -964,14 +957,10 @@ static u32 TranslateBlockAddress(const u32 address, const XCheckTLBFlag flag)
 template <const XCheckTLBFlag flag>
 u32 TranslateAddress(const u32 address)
 {
-	// Check MSR[IR] bit before translating instruction addresses.  Rogue Leader clears IR and DR??
-	//if ((_Flag == FLAG_OPCODE) && !(MSR & (1 << (31 - 26)))) return _Address;
-
-	// Check MSR[DR] bit before translating data addresses
-	//if (((_Flag == FLAG_READ) || (_Flag == FLAG_WRITE)) && !(MSR & (1 << (31 - 27)))) return _Address;
-
-	// Technically we should do this, but almost no games, even heavy MMU ones, use any custom BATs whatsoever,
-	// so only do it where it's really needed.
+	// TODO: bBAT in theory should allow dynamic changes to the BAT registers.
+	// In reality, the option is mostly useless at the moment because we don't
+	// always translate addresses when we should. ReadFromHardware/WriteFromHardware,
+	// fastmem, the JIT cache, and some misc code in the JIT assume default BATs.
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bBAT)
 	{
 		u32 tlb_addr = TranslateBlockAddress(address, flag);
