@@ -109,7 +109,7 @@ static MemoryView views[] =
 	{&m_pRAM,      0x00000000, RAM_SIZE,      0},
 	{nullptr,      0x280000000, RAM_SIZE,     MV_MIRROR_PREVIOUS},
 	{nullptr,      0x2C0000000, RAM_SIZE,     MV_MIRROR_PREVIOUS},
-	{&m_pL1Cache,  0xE0000000, L1_CACHE_SIZE, 0},
+	{&m_pL1Cache,  0x2E0000000, L1_CACHE_SIZE, 0},
 	{&m_pFakeVMEM, 0x27E000000, FAKEVMEM_SIZE, MV_FAKE_VMEM},
 	{&m_pEXRAM,    0x10000000, EXRAM_SIZE,    MV_WII_ONLY},
 	{nullptr,      0x290000000, EXRAM_SIZE,   MV_WII_ONLY | MV_MIRROR_PREVIOUS},
@@ -197,36 +197,36 @@ u32 Debug_Read_Instruction(const u32 address)
 	return inst.hex;
 }
 
-static inline bool Device_ValidCopyRange(u32 address, size_t size)
+static inline bool ValidCopyRange(u32 address, size_t size)
 {
-	return (Device_GetPointer(address) != nullptr &&
-	        Device_GetPointer(address + u32(size)) != nullptr &&
+	return (GetPointer(address) != nullptr &&
+	        GetPointer(address + u32(size)) != nullptr &&
 	        size < EXRAM_SIZE); // Make sure we don't have a range spanning seperate 2 banks
 }
 
-void Device_CopyFromEmu(void* data, u32 address, size_t size)
+void CopyFromEmu(void* data, u32 address, size_t size)
 {
-	if (!Device_ValidCopyRange(address, size))
+	if (!ValidCopyRange(address, size))
 	{
 		PanicAlert("Invalid range in CopyFromEmu. %lx bytes from 0x%08x", (unsigned long)size, address);
 		return;
 	}
-	memcpy(data, Device_GetPointer(address), size);
+	memcpy(data, GetPointer(address), size);
 }
 
-void Device_CopyToEmu(u32 address, const void* data, size_t size)
+void CopyToEmu(u32 address, const void* data, size_t size)
 {
-	if (!Device_ValidCopyRange(address, size))
+	if (!ValidCopyRange(address, size))
 	{
 		PanicAlert("Invalid range in CopyToEmu. %lx bytes to 0x%08x", (unsigned long)size, address);
 		return;
 	}
-	memcpy(Device_GetPointer(address), data, size);
+	memcpy(GetPointer(address), data, size);
 }
 
-void Device_Memset(const u32 _Address, const u8 _iValue, const u32 _iLength)
+void Memset(const u32 _Address, const u8 _iValue, const u32 _iLength)
 {
-	u8* ptr = Device_GetPointer(_Address);
+	u8* ptr = GetPointer(_Address);
 	if (ptr != nullptr)
 	{
 		memset(ptr,_iValue,_iLength);
@@ -244,7 +244,7 @@ void CPU_ClearCacheLine(const u32 address)
 void CPU_DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlocks)
 {
 	const u8* src = m_pL1Cache + (cacheAddr & 0x3FFFF);
-	u8* dst = Device_GetPointer(memAddr);
+	u8* dst = GetPointer(memAddr);
 
 	if ((dst != nullptr) && (src != nullptr) && (memAddr & 3) == 0 && (cacheAddr & 3) == 0)
 	{
@@ -262,7 +262,7 @@ void CPU_DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlo
 
 void CPU_DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks)
 {
-	const u8* src = Device_GetPointer(memAddr);
+	const u8* src = GetPointer(memAddr);
 	u8* dst = m_pL1Cache + (cacheAddr & 0x3FFFF);
 
 	if ((dst != nullptr) && (src != nullptr) && (memAddr & 3) == 0 && (cacheAddr & 3) == 0)
@@ -279,9 +279,9 @@ void CPU_DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlo
 	}
 }
 
-std::string Device_GetString(u32 em_address, size_t size)
+std::string GetString(u32 em_address, size_t size)
 {
-	const char* ptr = reinterpret_cast<const char*>(Device_GetPointer(em_address));
+	const char* ptr = reinterpret_cast<const char*>(GetPointer(em_address));
 	if (ptr == nullptr)
 		return "";
 
@@ -296,7 +296,7 @@ std::string Device_GetString(u32 em_address, size_t size)
 	}
 }
 
-u8* Device_GetPointer(u32 address)
+u8* GetPointer(u32 address)
 {
 	// TODO: Should we be masking off more bits here?  Can all devices access
 	// EXRAM?
@@ -316,54 +316,54 @@ u8* Device_GetPointer(u32 address)
 	return nullptr;
 }
 
-u8 Device_Read_U8(u32 address)
+u8 Read_U8(u32 address)
 {
-	return *Device_GetPointer(address);
+	return *GetPointer(address);
 }
 
-u16 Device_Read_U16(u32 address)
+u16 Read_U16(u32 address)
 {
-	return Common::swap16(Device_GetPointer(address));
+	return Common::swap16(GetPointer(address));
 }
 
-u32 Device_Read_U32(u32 address)
+u32 Read_U32(u32 address)
 {
-	return Common::swap32(Device_GetPointer(address));
+	return Common::swap32(GetPointer(address));
 }
 
-u64 Device_Read_U64(u32 address)
+u64 Read_U64(u32 address)
 {
-	return Common::swap64(Device_GetPointer(address));
+	return Common::swap64(GetPointer(address));
 }
 
-void Device_Write_U8(u8 value, u32 address)
+void Write_U8(u8 value, u32 address)
 {
-	*Device_GetPointer(address) = value;
+	*GetPointer(address) = value;
 }
 
-void Device_Write_U16(u16 value, u32 address)
+void Write_U16(u16 value, u32 address)
 {
-	*(u16*)Device_GetPointer(address) = Common::swap16(value);
+	*(u16*)GetPointer(address) = Common::swap16(value);
 }
 
-void Device_Write_U32(u32 value, u32 address)
+void Write_U32(u32 value, u32 address)
 {
-	*(u32*)Device_GetPointer(address) = Common::swap32(value);
+	*(u32*)GetPointer(address) = Common::swap32(value);
 }
 
-void Device_Write_U64(u64 value, u32 address)
+void Write_U64(u64 value, u32 address)
 {
-	*(u64*)Device_GetPointer(address) = Common::swap64(value);
+	*(u64*)GetPointer(address) = Common::swap64(value);
 }
 
-void Device_Write_U32_Swap(u32 value, u32 address)
+void Write_U32_Swap(u32 value, u32 address)
 {
-	*(u32*)Device_GetPointer(address) = value;
+	*(u32*)GetPointer(address) = value;
 }
 
-void Device_Write_U64_Swap(u64 value, u32 address)
+void Write_U64_Swap(u64 value, u32 address)
 {
-	*(u64*)Device_GetPointer(address) = value;
+	*(u64*)GetPointer(address) = value;
 }
 
 }  // namespace

@@ -104,7 +104,7 @@ template <XCheckTLBFlag flag, typename T>
 __forceinline static T ReadFromHardware(const u32 em_address)
 {
 	int segment = em_address >> 28;
-	bool performTranslation = flag == FLAG_OPCODE ? UReg_MSR(MSR).IR : UReg_MSR(MSR).DR;
+	bool performTranslation = UReg_MSR(MSR).DR;
 
 	// Quick check for an address that can't meet any of the following conditions,
 	// to speed up the MMU path.
@@ -126,15 +126,16 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 		{
 			return bswap((*(const T*)&m_pEXRAM[em_address & EXRAM_MASK]));
 		}
-		if (bFakeVMEM && (segment == 0x7 || segment == 0x4))
-		{
-			// fake VMEM
-			return bswap((*(const T*)&m_pFakeVMEM[em_address & FAKEVMEM_MASK]));
-		}
 		else if (segment == 0xE && (em_address < (0xE0000000 + L1_CACHE_SIZE)))
 		{
 			return bswap((*(const T*)&m_pL1Cache[em_address & L1_CACHE_MASK]));
 		}
+	}
+
+	if (performTranslation && bFakeVMEM && (segment == 0x7 || segment == 0x4))
+	{
+		// fake VMEM
+		return bswap((*(const T*)&m_pFakeVMEM[em_address & FAKEVMEM_MASK]));
 	}
 
 	if (!performTranslation)
@@ -250,17 +251,18 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 			*(T*)&m_pEXRAM[em_address & EXRAM_MASK] = bswap(data);
 			return;
 		}
-		else if (bFakeVMEM && (segment == 0x7 || segment == 0x4))
-		{
-			// fake VMEM
-			*(T*)&m_pFakeVMEM[em_address & FAKEVMEM_MASK] = bswap(data);
-			return;
-		}
 		else if (segment == 0xE && (em_address < (0xE0000000 + L1_CACHE_SIZE)))
 		{
 			*(T*)&m_pL1Cache[em_address & L1_CACHE_MASK] = bswap(data);
 			return;
 		}
+	}
+
+	if (performTranslation && bFakeVMEM && (segment == 0x7 || segment == 0x4))
+	{
+		// fake VMEM
+		*(T*)&m_pFakeVMEM[em_address & FAKEVMEM_MASK] = bswap(data);
+		return;
 	}
 
 	if (!performTranslation)
