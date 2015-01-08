@@ -145,20 +145,20 @@ bool CPU_IsRAMAddress(const u32 address);
 
 // Routines to access physically addressed memory, designed for use by
 // emulated hardware outside the CPU. Use "Device_" prefix.
-std::string Device_GetString(u32 em_address, size_t size = 0);
-u8* Device_GetPointer(const u32 address);
-void Device_CopyFromEmu(void* data, u32 address, size_t size);
-void Device_CopyToEmu(u32 address, const void* data, size_t size);
-void Device_Memset(const u32 address, const u8 var, const u32 length);
-u8  Device_Read_U8(const u32 address);
-u16 Device_Read_U16(const u32 address);
-u32 Device_Read_U32(const u32 address);
-u64 Device_Read_U64(const u32 address);
-void Device_Write_U8(const u8 var, const u32 address);
-void Device_Write_U16(const u16 var, const u32 address);
-void Device_Write_U32(const u32 var, const u32 address);
-void Device_Write_U64(const u64 var, const u32 address);
-void Device_Write_U32_Swap(const u32 var, const u32 address);
-void Device_Write_U64_Swap(const u64 var, const u32 address);
+std::string GetString(u32 em_address, size_t size = 0);
+u8* GetPointer(const u32 address);
+void CopyFromEmu(void* data, u32 address, size_t size);
+void CopyToEmu(u32 address, const void* data, size_t size);
+void Memset(const u32 address, const u8 var, const u32 length);
+u8  Read_U8(const u32 address);
+u16 Read_U16(const u32 address);
+u32 Read_U32(const u32 address);
+u64 Read_U64(const u32 address);
+void Write_U8(const u8 var, const u32 address);
+void Write_U16(const u16 var, const u32 address);
+void Write_U32(const u32 var, const u32 address);
+void Write_U64(const u64 var, const u32 address);
+void Write_U32_Swap(const u32 var, const u32 address);
+void Write_U64_Swap(const u64 var, const u32 address);
 
 }
