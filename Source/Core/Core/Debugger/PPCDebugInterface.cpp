@@ -180,6 +180,8 @@ void PPCDebugInterface::BreakNow()
 // -------------
 int PPCDebugInterface::GetColor(unsigned int address)
 {
+	if (!IsAlive())
+		return 0xFFFFFF;
 	if (!Memory::Debug_IsRAMAddress(address))
 		return 0xeeeeee;
 	static const int colors[6] =

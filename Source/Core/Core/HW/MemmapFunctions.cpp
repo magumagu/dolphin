@@ -118,11 +118,11 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 			else
 				return (T)mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address);
 		}
-		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x3FFFFFFF) < REALRAM_SIZE)
+		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < REALRAM_SIZE)
 		{
 			return bswap((*(const T*)&m_pRAM[em_address & RAM_MASK]));
 		}
-		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x3FFFFFFF) < EXRAM_SIZE)
+		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < EXRAM_SIZE)
 		{
 			return bswap((*(const T*)&m_pEXRAM[em_address & EXRAM_MASK]));
 		}
@@ -140,11 +140,11 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 
 	if (!performTranslation)
 	{
-		if (segment == 0x0 && (em_address & 0x3FFFFFFF) < REALRAM_SIZE)
+		if (segment == 0x0 && (em_address & 0x0FFFFFFF) < REALRAM_SIZE)
 		{
 			return bswap((*(const T*)&m_pRAM[em_address & RAM_MASK]));
 		}
-		else if (m_pEXRAM && segment == 0x1 && (em_address & 0x3FFFFFFF) < EXRAM_SIZE)
+		else if (m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < EXRAM_SIZE)
 		{
 			return bswap((*(const T*)&m_pEXRAM[em_address & EXRAM_MASK]));
 		}
@@ -188,13 +188,13 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 		{
 			if (addr == em_address_next_page)
 				tlb_addr = tlb_addr_next_page;
-			var = (var << 8) | Memory::GetPointer(tlb_addr);
+			var = (var << 8) | *Memory::GetPointer(tlb_addr);
 		}
 		return var;
 	}
 
 	// The easy case!
-	return bswap(*(const T*)&Memory::GetPointer(tlb_addr));
+	return bswap(*(const T*)Memory::GetPointer(tlb_addr));
 }
 
 
@@ -246,12 +246,12 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 				return;
 			}
 		}
-		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x3FFFFFFF) < REALRAM_SIZE)
+		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < REALRAM_SIZE)
 		{
 			*(T*)&m_pRAM[em_address & RAM_MASK] = bswap(data);
 			return;
 		}
-		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x3FFFFFFF) < EXRAM_SIZE)
+		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < EXRAM_SIZE)
 		{
 			*(T*)&m_pEXRAM[em_address & EXRAM_MASK] = bswap(data);
 			return;
@@ -274,12 +274,12 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 	{
 		// TODO: In theory, games can do FIFO/MMIO/Locked-L1 writes with translation
 		// turned off; in practice, they don't.
-		if (segment == 0x0 && (em_address & 0x3FFFFFFF) < REALRAM_SIZE)
+		if (segment == 0x0 && (em_address & 0x0FFFFFFF) < REALRAM_SIZE)
 		{
 			*(T*)&m_pRAM[em_address & RAM_MASK] = bswap(data);
 			return;
 		}
-		else if (m_pEXRAM && segment == 0x1 && (em_address & 0x3FFFFFFF) < EXRAM_SIZE)
+		else if (m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < EXRAM_SIZE)
 		{
 			*(T*)&m_pEXRAM[em_address & EXRAM_MASK] = bswap(data);
 			return;
@@ -318,7 +318,7 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 		{
 			if (addr == em_address_next_page)
 				tlb_addr = tlb_addr_next_page;
-			Memory::GetPointer(tlb_addr) = (u8)val;
+			*Memory::GetPointer(tlb_addr) = (u8)val;
 		}
 		return;
 	}
