@@ -118,11 +118,11 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 			else
 				return (T)mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address);
 		}
-		else if (segment == 0x8 || segment == 0xC)
+		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x3FFFFFFF) < REALRAM_SIZE)
 		{
 			return bswap((*(const T*)&m_pRAM[em_address & RAM_MASK]));
 		}
-		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD))
+		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x3FFFFFFF) < EXRAM_SIZE)
 		{
 			return bswap((*(const T*)&m_pEXRAM[em_address & EXRAM_MASK]));
 		}
@@ -140,13 +140,18 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 
 	if (!performTranslation)
 	{
-		if (segment == 0x0)
+		if (segment == 0x0 && (em_address & 0x3FFFFFFF) < REALRAM_SIZE)
 		{
 			return bswap((*(const T*)&m_pRAM[em_address & RAM_MASK]));
 		}
-		else if (segment == 0x1)
+		else if (m_pEXRAM && segment == 0x1 && (em_address & 0x3FFFFFFF) < EXRAM_SIZE)
 		{
 			return bswap((*(const T*)&m_pEXRAM[em_address & EXRAM_MASK]));
+		}
+		else
+		{
+			PanicAlert("Unable to resolve read address %x PC %x", em_address, PC);
+			return 0;
 		}
 	}
 
@@ -183,12 +188,14 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 		{
 			if (addr == em_address_next_page)
 				tlb_addr = tlb_addr_next_page;
+			// TODO: The read from physical_base can cause a crash if the TLB is corrupt.
 			var = (var << 8) | Memory::physical_base[tlb_addr];
 		}
 		return var;
 	}
 
 	// The easy case!
+	// TODO: The read from physical_base can cause a crash if the TLB is corrupt.
 	return bswap(*(const T*)&Memory::physical_base[tlb_addr]);
 }
 
@@ -215,7 +222,7 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 			case 8: GPFifo::Write64((u64)data, em_address); return;
 			}
 		}
-		if (flag == FLAG_WRITE && (em_address & 0xC8000000) == 0xC8000000)
+		if (flag == FLAG_WRITE && (em_address & 0xF8000000) == 0xC8000000)
 		{
 			if (em_address < 0xcc000000)
 			{
@@ -241,12 +248,12 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 				return;
 			}
 		}
-		else if (segment == 0x8 || segment == 0xC)
+		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x3FFFFFFF) < REALRAM_SIZE)
 		{
 			*(T*)&m_pRAM[em_address & RAM_MASK] = bswap(data);
 			return;
 		}
-		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD))
+		else if (m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x3FFFFFFF) < EXRAM_SIZE)
 		{
 			*(T*)&m_pEXRAM[em_address & EXRAM_MASK] = bswap(data);
 			return;
@@ -269,14 +276,19 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 	{
 		// TODO: In theory, games can do FIFO/MMIO/Locked-L1 writes with translation
 		// turned off; in practice, they don't.
-		if (segment == 0x0)
+		if (segment == 0x0 && (em_address & 0x3FFFFFFF) < REALRAM_SIZE)
 		{
 			*(T*)&m_pRAM[em_address & RAM_MASK] = bswap(data);
 			return;
 		}
-		else if (segment == 0x1)
+		else if (m_pEXRAM && segment == 0x1 && (em_address & 0x3FFFFFFF) < EXRAM_SIZE)
 		{
 			*(T*)&m_pEXRAM[em_address & EXRAM_MASK] = bswap(data);
+			return;
+		}
+		else
+		{
+			PanicAlert("Unable to resolve write address %x PC %x", em_address, PC);
 			return;
 		}
 	}
@@ -308,12 +320,14 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 		{
 			if (addr == em_address_next_page)
 				tlb_addr = tlb_addr_next_page;
+			// TODO: The write to physical_base can cause a crash if the TLB is corrupt.
 			Memory::physical_base[tlb_addr] = (u8)val;
 		}
 		return;
 	}
 
 	// The easy case!
+	// TODO: The write to physical_base can cause a crash if the TLB is corrupt.
 	*(T*)&Memory::physical_base[tlb_addr] = bswap(data);
 }
 // =====================
@@ -839,7 +853,7 @@ static __forceinline u32 TranslatePageAddress(const u32 address, const XCheckTLB
 	u32 api = EA_API(address);              //  6 bit (part of page_index)
 
 	// Direct access to the fastmem Arena
-	// FIXME: is this the best idea for clean code?
+	// TODO: This can crash: physical addresses aren't guaranteed to be valid.
 	u8* base_mem = Memory::physical_base;
 
 	// hash function no 1 "xor" .360
