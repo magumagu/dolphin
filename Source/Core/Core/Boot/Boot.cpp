@@ -190,7 +190,7 @@ bool CBoot::Load_BS2(const std::string& _rBootROMFilename)
 
 	Memory::CopyToEmu(0x01200000, data.data() + 0x100, 0x700);
 	Memory::CopyToEmu(0x01300000, data.data() + 0x820, 0x1AFE00);
-	PC = 0x81200000;
+	PC = 0x01200000;
 	return true;
 }
 
@@ -256,7 +256,7 @@ bool CBoot::BootUp()
 		}
 
 		// Scan for common HLE functions
-		if (_StartupPara.bSkipIdle && !_StartupPara.bEnableDebugging)
+		if (_StartupPara.bSkipIdle && _StartupPara.bHLE_BS2 && !_StartupPara.bEnableDebugging)
 		{
 			PPCAnalyst::FindFunctions(0x80004000, 0x811fffff, &g_symbolDB);
 			SignatureDB db;
