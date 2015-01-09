@@ -135,7 +135,7 @@ void GetStringVA(std::string& _rOutBuffer, u32 strReg)
 			_rOutBuffer += string[i];
 		}
 	}
-	if (_rOutBuffer[_rOutBuffer.length() - 1] == '\n')
+	if (!_rOutBuffer.empty() && _rOutBuffer[_rOutBuffer.length() - 1] == '\n')
 		_rOutBuffer.resize(_rOutBuffer.length() - 1);
 }
 
