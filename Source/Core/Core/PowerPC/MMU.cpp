@@ -118,17 +118,11 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 			else
 				return (T)Memory::mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address);
 		}
-		else if ((segment == 0x0 || segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
+		else if (((segment == 0x0 || segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE) ||
+			(Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE) ||
+			(segment == 0xE && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE))))
 		{
-			return bswap((*(const T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK]));
-		}
-		else if (Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
-		{
-			return bswap((*(const T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK]));
-		}
-		else if (segment == 0xE && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
-		{
-			return bswap((*(const T*)&Memory::m_pL1Cache[em_address & Memory::L1_CACHE_MASK]));
+			return bswap((*(const T*)&Memory::logical_base[em_address]));
 		}
 	}
 
@@ -140,19 +134,21 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 
 	if (!performTranslation)
 	{
-		if (segment == 0x0 && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
+		if ((segment == 0x0 && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE) ||
+			(Memory::m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE))
 		{
-			return bswap((*(const T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK]));
+			return bswap((*(const T*)&Memory::physical_base[em_address]));
 		}
-		else if (Memory::m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+		if (flag == FLAG_READ && (em_address & 0xF8000000) == 0x08000000)
 		{
-			return bswap((*(const T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK]));
+			if (em_address < 0x0c000000)
+				return EFB_Read(em_address);
+			else
+				return (T)Memory::mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address | 0xC0000000);
 		}
-		else
-		{
-			PanicAlert("Unable to resolve read address %x PC %x", em_address, PC);
-			return 0;
-		}
+
+		PanicAlert("Unable to resolve read address %x PC %x", em_address, PC);
+		return 0;
 	}
 
 	// MMU: Do page table translation
@@ -246,19 +242,11 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 				return;
 			}
 		}
-		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
+		if (((segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE) ||
+			(Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE) ||
+			(segment == 0xE && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE))))
 		{
-			*(T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK] = bswap(data);
-			return;
-		}
-		else if (Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
-		{
-			*(T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK] = bswap(data);
-			return;
-		}
-		else if (segment == 0xE && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
-		{
-			*(T*)&Memory::m_pL1Cache[em_address & Memory::L1_CACHE_MASK] = bswap(data);
+			*(T*)&Memory::logical_base[em_address] = bswap(data);
 			return;
 		}
 	}
@@ -274,17 +262,23 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 	{
 		// TODO: In theory, games can do FIFO/MMIO/Locked-L1 writes with translation
 		// turned off; in practice, they don't.
-		if (segment == 0x0 && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
+		if ((segment == 0x0 && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE) ||
+			(Memory::m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE))
 		{
-			*(T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK] = bswap(data);
+			*(T*)&Memory::physical_base[em_address] = bswap(data);
 			return;
 		}
-		else if (Memory::m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+		if (flag == FLAG_WRITE && (em_address & 0xFFFFF000) == 0xCC008000)
 		{
-			*(T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK] = bswap(data);
-			return;
+			switch (sizeof(T))
+			{
+			case 1: GPFifo::Write8((u8)data, em_address); return;
+			case 2: GPFifo::Write16((u16)data, em_address); return;
+			case 4: GPFifo::Write32((u32)data, em_address); return;
+			case 8: GPFifo::Write64((u64)data, em_address); return;
+			}
 		}
-		else if (flag == FLAG_WRITE && (em_address & 0xF8000000) == 0x08000000)
+		if (flag == FLAG_WRITE && (em_address & 0xF8000000) == 0x08000000)
 		{
 			if (em_address < 0x0c000000)
 			{
@@ -310,11 +304,8 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 				return;
 			}
 		}
-		else
-		{
-			PanicAlert("Unable to resolve write address %x PC %x", em_address, PC);
-			return;
-		}
+		PanicAlert("Unable to resolve write address %x PC %x", em_address, PC);
+		return;
 	}
 
 	// MMU: Do page table translation

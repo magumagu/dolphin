@@ -107,6 +107,7 @@ bool IsInitialized()
 static MemoryView views[] =
 {
 	{&m_pRAM,      0x00000000, RAM_SIZE,      0},
+	{nullptr,      0x200000000, RAM_SIZE,     MV_MIRROR_PREVIOUS},
 	{nullptr,      0x280000000, RAM_SIZE,     MV_MIRROR_PREVIOUS},
 	{nullptr,      0x2C0000000, RAM_SIZE,     MV_MIRROR_PREVIOUS},
 	{&m_pL1Cache,  0x2E0000000, L1_CACHE_SIZE, 0},
