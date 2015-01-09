@@ -284,6 +284,32 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 			*(T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK] = bswap(data);
 			return;
 		}
+		else if (flag == FLAG_WRITE && (em_address & 0xF8000000) == 0x08000000)
+		{
+			if (em_address < 0x0c000000)
+			{
+				int x = (em_address & 0xfff) >> 2;
+				int y = (em_address >> 12) & 0x3ff;
+
+				// TODO figure out a way to send data without falling into the template trap
+				if (em_address & 0x00400000)
+				{
+					g_video_backend->Video_AccessEFB(POKE_Z, x, y, (u32)data);
+					DEBUG_LOG(MEMMAP, "EFB Z Write %08x @ %i, %i", (u32)data, x, y);
+				}
+				else
+				{
+					g_video_backend->Video_AccessEFB(POKE_COLOR, x, y, (u32)data);
+					DEBUG_LOG(MEMMAP, "EFB Color Write %08x @ %i, %i", (u32)data, x, y);
+				}
+				return;
+			}
+			else
+			{
+				Memory::mmio_mapping->Write(em_address | 0xC0000000, data);
+				return;
+			}
+		}
 		else
 		{
 			PanicAlert("Unable to resolve write address %x PC %x", em_address, PC);
