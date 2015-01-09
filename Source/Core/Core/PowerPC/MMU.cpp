@@ -108,7 +108,7 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 
 	// Quick check for an address that can't meet any of the following conditions,
 	// to speed up the MMU path.
-	if (performTranslation && !BitSet32(0xCFF)[segment])
+	if (performTranslation && !BitSet32(0xCFC)[segment])
 	{
 		// TODO: Figure out the fastest order of tests for both read and write (they are probably different).
 		if (flag == FLAG_READ && (em_address & 0xF8000000) == 0xC8000000)
@@ -118,7 +118,7 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 			else
 				return (T)Memory::mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address);
 		}
-		else if ((segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
+		else if ((segment == 0x0 || segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
 		{
 			return bswap((*(const T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK]));
 		}
@@ -206,7 +206,7 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 	// to speed up the MMU path.
 	bool performTranslation = UReg_MSR(MSR).DR;
 
-	if (performTranslation && !BitSet32(0xCFF)[segment])
+	if (performTranslation && !BitSet32(0xCFC)[segment])
 	{
 		// First, let's check for FIFO writes, since they are probably the most common
 		// reason we end up in this function:
@@ -369,7 +369,7 @@ TryReadInstResult TryReadInstruction(u32 address)
 		else
 		{
 			int segment = address >> 28;
-			if (segment == 0x8 && (address & 0x3FFFFFFF) < Memory::REALRAM_SIZE)
+			if ((segment == 0x8 || segment == 0x0) && (address & 0x3FFFFFFF) < Memory::REALRAM_SIZE)
 				address = address & 0x3FFFFFFF;
 			else if (segment == 0x9 && (address & 0x3FFFFFFF) < Memory::EXRAM_SIZE)
 				address = address & 0x3FFFFFFF;
@@ -585,7 +585,7 @@ bool Debug_IsRAMAddress(u32 address)
 	int segment = address >> 28;
 	if (performTranslation)
 	{
-		if ((segment == 0x8 || segment == 0xC) && (address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
+		if ((segment == 0x8 || segment == 0xC || segment == 0x0) && (address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
 			return true;
 		else if (Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 			return true;
