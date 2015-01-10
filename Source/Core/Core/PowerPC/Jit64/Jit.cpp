@@ -180,6 +180,7 @@ void Jit64::Init()
 	jo.accurateSinglePrecision = true;
 	js.memcheck = SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU;
 	js.fastmemLoadStore = NULL;
+	js.compilerPC = 0;
 
 	gpr.SetEmitter(this);
 	fpr.SetEmitter(this);

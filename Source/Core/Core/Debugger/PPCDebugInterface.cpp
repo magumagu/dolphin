@@ -23,7 +23,7 @@ std::string PPCDebugInterface::Disassemble(unsigned int address)
 	if (PowerPC::GetState() == PowerPC::CPU_POWERDOWN)
 		return "";
 
-	if (Core::GetState() != Core::CORE_UNINITIALIZED)
+	if (Core::GetState() == Core::CORE_PAUSE)
 	{
 		if (!PowerPC::Debug_IsRAMAddress(address))
 		{
