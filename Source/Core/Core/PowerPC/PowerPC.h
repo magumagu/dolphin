@@ -194,7 +194,7 @@ void UpdatePerformanceMonitor(u32 cycles, u32 num_load_stores, u32 num_fp_inst);
 #define riPS1(i) (*(u64*)(&PowerPC::ppcState.ps[i][1]))
 
 // Routines for debugger UI, cheats, etc. to access emulated memory from the
-// perspective of the CPU.  Not for use by core emulation routines. 
+// perspective of the CPU.  Not for use by core emulation routines.
 // Use "Debug_" prefix.
 u8 Debug_Read_U8(const u32 address);
 u16 Debug_Read_U16(const u32 address);
@@ -212,7 +212,7 @@ bool Debug_IsRAMAddress(const u32 address);
 
 std::string Debug_GetString(u32 em_address, size_t size = 0);
 
-// Routines for the CPU cores to access memory. Use "CPU_" prefix.
+// Routines for the CPU core to access memory.
 
 // Used by interpreter to read instructions, uses iCache
 u32 Read_Opcode(const u32 address);
