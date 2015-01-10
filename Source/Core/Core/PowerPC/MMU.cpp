@@ -708,6 +708,30 @@ void ClearCacheLine(const u32 address)
 void DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlocks)
 {
 	const u8* src = Memory::m_pL1Cache + (cacheAddr & 0x3FFFF);
+	if ((memAddr & 0x0F000000) == 0x08000000)
+	{
+		for (u32 i = 0; i < 32 * numBlocks; i+=4)
+		{
+			u32 data = *(u32*)(Memory::m_pL1Cache + ((cacheAddr + i) & 0x3FFFF));
+			u32 write_address = memAddr + i;
+			int x = (write_address & 0xfff) >> 2;
+			int y = (write_address >> 12) & 0x3ff;
+
+			// TODO figure out a way to send data without falling into the template trap
+			if (write_address & 0x00400000)
+			{
+				g_video_backend->Video_AccessEFB(POKE_Z, x, y, (u32)data);
+				DEBUG_LOG(MEMMAP, "EFB Z Write %08x @ %i, %i", (u32)data, x, y);
+			}
+			else
+			{
+				g_video_backend->Video_AccessEFB(POKE_COLOR, x, y, (u32)data);
+				DEBUG_LOG(MEMMAP, "EFB Color Write %08x @ %i, %i", (u32)data, x, y);
+			}
+		}
+		return;
+	}
+
 	u8* dst = Memory::GetPointer(memAddr);
 
 	if ((dst != nullptr) && (src != nullptr) && (memAddr & 3) == 0 && (cacheAddr & 3) == 0)
