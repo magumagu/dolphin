@@ -83,6 +83,9 @@ void Jit64AsmRoutineManager::Generate()
 
 			dispatcherNoCheck = GetCodePtr();
 
+			// Switch to the correct memory base, in case MSR.DR has changed.
+			// TODO: Is there a more efficient place to put this?  We don't
+			// need to do this for indirect jumps, just exceptions etc.
 			TEST(32, PPCSTATE(msr), Imm32(1 << (31 - 27)));
 			FixupBranch physmem = J_CC(CC_NZ);
 			MOV(64, R(RMEM), Imm64((u64)Memory::physical_base));
@@ -93,6 +96,12 @@ void Jit64AsmRoutineManager::Generate()
 
 			MOV(32, R(RSCRATCH), PPCSTATE(pc));
 
+			// TODO: We need to handle code which executes the same PC with
+			// different values of MSR.IR. It probably makes sense to handle
+			// MSR.DR here too, to allow IsOptimizableRAMAddress-based
+			// optimizations safe, because IR and DR are usually set/cleared together.
+			// TODO: Branching based on the 20 most significant bits of instruction
+			// addresses without translating them is wrong.
 			u64 icache = (u64)jit->GetBlockCache()->iCache.data();
 			u64 icacheVmem = (u64)jit->GetBlockCache()->iCacheVMEM.data();
 			u64 icacheEx = (u64)jit->GetBlockCache()->iCacheEx.data();

@@ -360,29 +360,11 @@ void Jit64::mtmsr(UGeckoInstruction inst)
 	gpr.Flush();
 	fpr.Flush();
 
-	// If some exceptions are pending and EE are now enabled, force checking
-	// external exceptions when going out of mtmsr in order to execute delayed
-	// interrupts as soon as possible.
-	TEST(32, PPCSTATE(msr), Imm32(0x8000));
-	FixupBranch eeDisabled = J_CC(CC_Z);
-
-	TEST(32, PPCSTATE(Exceptions), Imm32(EXCEPTION_EXTERNAL_INT | EXCEPTION_PERFORMANCE_MONITOR | EXCEPTION_DECREMENTER));
-	FixupBranch noExceptionsPending = J_CC(CC_Z);
-
-	// Check if a CP interrupt is waiting and keep the GPU emulation in sync (issue 4336)
-	TEST(32, M(&ProcessorInterface::m_InterruptCause), Imm32(ProcessorInterface::INT_CAUSE_CP));
-	FixupBranch cpInt = J_CC(CC_NZ);
-
+	// Using an external exception exit serves two purposes here: one, it forces
+	// an exception check (which might trigger an exception suppressed by MSR.EE),
+	// and two, it prevents block linking, which doesn't work if MSR.DR/IR change.
 	MOV(32, PPCSTATE(pc), Imm32(js.compilerPC + 4));
 	WriteExternalExceptionExit();
-
-	SetJumpTarget(cpInt);
-	SetJumpTarget(noExceptionsPending);
-	SetJumpTarget(eeDisabled);
-
-	WriteExit(js.compilerPC + 4);
-
-	js.firstFPInstructionFound = false;
 }
 
 void Jit64::mfmsr(UGeckoInstruction inst)
