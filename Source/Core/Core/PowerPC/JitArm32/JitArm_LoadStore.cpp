@@ -145,7 +145,7 @@ void JitArm::SafeStoreFromReg(s32 dest, u32 value, s32 regOffset, int accessSize
 			STR(R11, R14);
 			jit->js.fifoBytesThisBlock += accessSize >> 3;
 		}
-		else if (Memory::IsRAMAddress(imm_addr))
+		else if (PowerPC::IsOptimizableRAMAddress(imm_addr))
 		{
 			MOVI2R(rA, imm_addr);
 			EmitBackpatchRoutine(this, flags, SConfig::GetInstance().m_LocalCoreStartupParameter.bFastmem, true, RS);

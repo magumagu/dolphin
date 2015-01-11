@@ -118,7 +118,7 @@ void JitArm64::SafeLoadToReg(u32 dest, s32 addr, s32 offsetReg, u32 flags, s32 o
 	if (update)
 		MOV(gpr.R(addr), addr_reg);
 
-	if (is_immediate && Memory::IsRAMAddress(imm_addr))
+	if (is_immediate && PowerPC::IsOptimizableRAMAddress(imm_addr))
 	{
 		EmitBackpatchRoutine(this, flags, true, false, dest_reg, XA);
 	}
@@ -229,7 +229,7 @@ void JitArm64::SafeStoreFromReg(s32 dest, u32 value, s32 regOffset, u32 flags, s
 	if (is_immediate)
 		MOVI2R(XA, imm_addr);
 
-	if (is_immediate && Memory::IsRAMAddress(imm_addr))
+	if (is_immediate && PowerPC::IsOptimizableRAMAddress(imm_addr))
 	{
 		EmitBackpatchRoutine(this, flags, true, false, RS, XA);
 	}
