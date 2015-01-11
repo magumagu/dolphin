@@ -97,12 +97,12 @@ u8 *EmuCodeBlock::UnsafeLoadToReg(X64Reg reg_value, OpArg opAddress, int accessS
 			opAddress = R(reg_value);
 			offset = 0;
 		}
-
 		memOperand = MComplex(RMEM, opAddress.GetSimpleReg(), SCALE_1, offset);
 	}
 	else if (opAddress.IsImm())
 	{
-		memOperand = MDisp(RMEM, (opAddress.offset + offset) & 0x3FFFFFFF);
+		MOV(32, R(reg_value), Imm32((u32)(opAddress.offset + offset)));
+		memOperand = MRegSum(RMEM, reg_value);
 	}
 	else
 	{

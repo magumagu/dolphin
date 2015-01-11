@@ -597,7 +597,6 @@ bool IsOptimizableRAMAddress(const u32 address)
 
 	return (((segment == 0x8 || segment == 0xC || segment == 0x0) && (address & 0x0FFFFFFF) < Memory::REALRAM_SIZE) ||
 		(Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE) ||
-		(Memory::bFakeVMEM && (segment == 0x7 || segment == 0x4)) ||
 		(segment == 0xE && (address < (0xE0000000 + Memory::L1_CACHE_SIZE))));
 }
 
