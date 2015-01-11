@@ -259,8 +259,7 @@ u8* GetPointer(u32 address)
 			return m_pEXRAM + (address & EXRAM_MASK);
 	}
 
-	PanicAlert("Unknown Pointer %#8x PC %#8x LR %#8x", address, PC, LR);
-	ERROR_LOG(MEMMAP, "Unknown Pointer %#8x PC %#8x LR %#8x", address, PC, LR);
+	ERROR_LOG(MEMMAP, "Unknown Pointer 0x%08x PC 0x%08x LR 0x%08x", address, PC, LR);
 
 	return nullptr;
 }

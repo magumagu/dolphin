@@ -189,7 +189,7 @@ bool JitArm::DisasmLoadStore(const u8* ptr, u32* flags, ARMReg* rD, ARMReg* V1)
 
 bool JitArm::HandleFault(uintptr_t access_address, SContext* ctx)
 {
-	if (access_address < (uintptr_t)Memory::base)
+	if (access_address < (uintptr_t)Memory::physical_base)
 		PanicAlertT("Exception handler - access below memory space. 0x%08x", access_address);
 	return BackPatch(ctx);
 }

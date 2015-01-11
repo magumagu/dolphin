@@ -397,7 +397,7 @@ TryReadInstResult TryReadInstruction(u32 address)
 	else
 	{
 		if (address & 0xC0000000)
-			PanicAlert("Strange program counter with address translation off: %x", address);
+			ERROR_LOG(MEMMAP, "Strange program counter with address translation off: 0x%08x", address);
 	}
 
 	u32 hex = PowerPC::ppcState.iCache.ReadInstruction(address);
