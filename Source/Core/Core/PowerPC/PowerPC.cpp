@@ -512,12 +512,8 @@ void CheckBreakPoints()
 
 void OnIdle(u32 _uThreadAddr)
 {
-	u32 nextThread = PowerPC::Read_U32(_uThreadAddr);
-	if (PowerPC::ppcState.Exceptions)
-		return;
-	//do idle skipping
-	if (nextThread == 0)
-		CoreTiming::Idle();
+	PowerPC::CheckExternalExceptions();
+	CoreTiming::Idle();
 }
 
 void OnIdleIL()
