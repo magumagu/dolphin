@@ -229,7 +229,7 @@ namespace JitInterface
 			if (type == ExceptionType::EXCEPTIONS_FIFO_WRITE)
 			{
 				// Check in case the code has been replaced since: do we need to do this?
-				int optype = GetOpInfo(Memory::Debug_Read_U32(PC))->type;
+				int optype = GetOpInfo(PowerPC::Debug_Read_U32(PC))->type;
 				if (optype != OPTYPE_STORE && optype != OPTYPE_STOREFP && (optype != OPTYPE_STOREPS))
 					return;
 			}
