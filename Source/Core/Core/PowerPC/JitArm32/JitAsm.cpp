@@ -96,7 +96,7 @@ void JitArmAsmRoutineManager::Generate()
 	SUB(_SP, _SP, 4);
 
 	MOVI2R(R9, (u32)&PowerPC::ppcState.spr[0]);
-	MOVI2R(R8, (u32)Memory::base);
+	MOVI2R(R8, (u32)Memory::physical_base);
 
 	FixupBranch skipToRealDispatcher = B();
 	dispatcher = GetCodePtr();
