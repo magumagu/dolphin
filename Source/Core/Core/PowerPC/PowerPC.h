@@ -255,6 +255,8 @@ void ClearCacheLine(const u32 address); // Zeroes 32 bytes; address should be 32
 // TLB functions
 void SDRUpdated();
 void InvalidateTLBEntry(u32 address);
+void DBATUpdated();
+void IBATUpdated();
 
 // Result changes based on the BAT registers and MSR.DR.  Returns whether
 // it's safe to optimize a read or write to this address to an unguarded
