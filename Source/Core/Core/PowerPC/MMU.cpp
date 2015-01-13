@@ -176,7 +176,7 @@ __forceinline static T ReadFromHardware(u32 em_address)
 	// In Fake-VMEM mode, we need to map the memory somewhere into
 	// physical memory for BAT translation to work; we currently use
 	// [0x7E000000, 0x80000000).
-	if (Memory::bFakeVMEM && ((em_address & 0xFE) == 0x7E))
+	if (Memory::bFakeVMEM && ((em_address & 0xFE000000) == 0x7E000000))
 	{
 		return bswap(*(T*)&Memory::m_pFakeVMEM[em_address & Memory::RAM_MASK]);
 	}
@@ -253,7 +253,7 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 	// In Fake-VMEM mode, we need to map the memory somewhere into
 	// physical memory for BAT translation to work; we currently use
 	// [0x7E000000, 0x80000000).
-	if (Memory::bFakeVMEM && ((em_address & 0xFE) == 0x7E))
+	if (Memory::bFakeVMEM && ((em_address & 0xFE000000) == 0x7E000000))
 	{
 		*(T*)&Memory::m_pFakeVMEM[em_address & Memory::RAM_MASK] = bswap(data);
 		return;
