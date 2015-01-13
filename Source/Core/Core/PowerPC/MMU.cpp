@@ -167,7 +167,23 @@ __forceinline static T ReadFromHardware(u32 em_address)
 	}
 
 	// TODO: Make sure these are safe for unaligned addresses.
-	int segment = em_address >> 28;
+
+	// Locked L1 technically doesn't have a fixed address, but games all use 0xE0000000.
+	if ((em_address >> 28) == 0xE && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
+	{
+		return bswap((*(const T*)&Memory::m_pL1Cache[em_address & 0x0FFFFFFF]));
+	}
+	// In Fake-VMEM mode, we need to map the memory somewhere into
+	// physical memory for BAT translation to work; we currently use
+	// [0x7E000000, 0x80000000).
+	if (Memory::bFakeVMEM && ((em_address & 0xFE) == 0x7E))
+	{
+		return bswap(*(T*)&Memory::m_pFakeVMEM[em_address & Memory::RAM_MASK]);
+	}
+
+	if (em_address & 0xC0000000)
+		ERROR_LOG(MEMMAP, "Strange read address: 0x%08x", em_address);
+	em_address &= 0x3FFFFFFF;
 
 	if (flag == FLAG_READ && (em_address & 0xF8000000) == 0x08000000)
 	{
@@ -180,13 +196,9 @@ __forceinline static T ReadFromHardware(u32 em_address)
 	{
 		return bswap((*(const T*)&Memory::m_pRAM[em_address]));
 	}
-	if (Memory::m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+	if (Memory::m_pEXRAM && (em_address >> 28) == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 	{
 		return bswap((*(const T*)&Memory::m_pEXRAM[em_address & 0x0FFFFFFF]));
-	}
-	if (segment == 0xE && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
-	{
-		return bswap((*(const T*)&Memory::m_pL1Cache[em_address & 0x0FFFFFFF]));
 	}
 	PanicAlert("Unable to resolve read address %x PC %x", em_address, PC);
 	return 0;
@@ -232,7 +244,24 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 		em_address = translated_addr.address;
 	}
 
-	int segment = em_address >> 28;
+	// Locked L1 technically doesn't have a fixed address, but games all use 0xE0000000.
+	if ((em_address >> 28 == 0xE) && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
+	{
+		*(T*)&Memory::m_pL1Cache[em_address & 0x0FFFFFFF] = bswap(data);
+		return;
+	}
+	// In Fake-VMEM mode, we need to map the memory somewhere into
+	// physical memory for BAT translation to work; we currently use
+	// [0x7E000000, 0x80000000).
+	if (Memory::bFakeVMEM && ((em_address & 0xFE) == 0x7E))
+	{
+		*(T*)&Memory::m_pFakeVMEM[em_address & Memory::RAM_MASK] = bswap(data);
+		return;
+	}
+
+	if (em_address & 0xC0000000)
+		ERROR_LOG(MEMMAP, "Strange write address: 0x%08x", em_address);
+	em_address &= 0x3FFFFFFF;
 
 	if (flag == FLAG_WRITE && (em_address & 0xFFFFF000) == 0x0C008000)
 	{
@@ -275,22 +304,9 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 		*(T*)&Memory::m_pRAM[em_address] = bswap(data);
 		return;
 	}
-	if (Memory::m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+	if (Memory::m_pEXRAM && (em_address >> 28) == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 	{
 		*(T*)&Memory::m_pEXRAM[em_address & 0x0FFFFFFF] = bswap(data);
-		return;
-	}
-	if (segment == 0xE && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
-	{
-		*(T*)&Memory::m_pL1Cache[em_address & 0x0FFFFFFF] = bswap(data);
-		return;
-	}
-	// In Fake-VMEM mode, we need to map the memory somewhere into
-	// physical memory for BAT translation to work; we currently use
-	// [0x7E000000, 0x80000000).
-	if (Memory::bFakeVMEM && ((em_address & 0xFE) == 0x7E))
-	{
-		*(T*)&Memory::m_pFakeVMEM[em_address & Memory::RAM_MASK] = bswap(data);
 		return;
 	}
 	PanicAlert("Unable to resolve write address %x PC %x", em_address, PC);
