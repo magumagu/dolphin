@@ -380,6 +380,7 @@ void Interpreter::mtspr(UGeckoInstruction _inst)
 	case SPR_DBAT7L:
 	case SPR_DBAT7U:
 		PowerPC::DBATUpdated();
+		break;
 
 	case SPR_IBAT0L:
 	case SPR_IBAT0U:
@@ -398,6 +399,7 @@ void Interpreter::mtspr(UGeckoInstruction _inst)
 	case SPR_IBAT7L:
 	case SPR_IBAT7U:
 		PowerPC::IBATUpdated();
+		break;
 	}
 }
 
