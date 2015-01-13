@@ -1014,7 +1014,6 @@ TranslateAddressResult TranslateAddress(const u32 address)
 		u32 result_addr = (bat_result & ~1) | (address & 0x0001FFFF);
 		return TranslateAddressResult{ true, true, result_addr };
 	}
-	if (flag == FLAG_READ && (address >> 28) != 0x2) PanicAlert("Page not found %08x", address);
 	return TranslatePageAddress(address, flag);
 }
 

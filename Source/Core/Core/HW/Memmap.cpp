@@ -259,6 +259,7 @@ void UpdateLogicalMemoryRegion(u32 index, u32 logical_address, u32 logical_size,
 				if (intersection_start > translated_address)
 					base += intersection_start - translated_address;
 				u32 mapped_size = intersection_end - intersection_start;
+				// TODO: Add debugging code to check if this overlaps with another region.
 				region.mapped_pointer = g_arena.CreateView(position, mapped_size, base);
 				if (!region.mapped_pointer)
 				{
