@@ -937,22 +937,41 @@ static __forceinline TranslateAddressResult TranslatePageAddress(const u32 addre
 	return TranslateAddressResult{ false, false, 0 };
 }
 
-static void UpdateBATs(u32* bat_table, u32 base_spr)
+namespace
+{
+	struct BATTranslation
+	{
+		u32 logical_address;
+		u32 logical_size;
+		u32 translated_address;
+	};
+}
+
+static void ComputeBATTranslations(BATTranslation *translation, u32 base_spr)
 {
 	for (int i = 0; i < 4; ++i)
 	{
 		u32 spr = base_spr + i * 2;
 		UReg_BAT_Up batu = PowerPC::ppcState.spr[spr];
 		UReg_BAT_Lo batl = PowerPC::ppcState.spr[spr + 1];
+		translation[i].logical_address = batu.BEPI << 17;
+		translation[i].logical_size = (batu.BL + 1) << 17;
+		translation[i].translated_address = batl.BRPN << 17;
 		if (batl.PP == 0)
-			continue;
-		u32 start_effective = batu.BEPI;
-		u32 effective_size = batu.BL + 1;
-		u32 start_physical = batl.BRPN << 17;
-		for (unsigned i = 0; i < effective_size; ++i)
+			translation[i].logical_size = 0;
+	}
+}
+
+static void UpdateBATs(u32* bat_table, BATTranslation *translation)
+{
+	for (u32 i = 0; i < 8; ++i)
+	{
+		u32 start = translation[i].logical_address >> 17;
+		u32 size = translation[i].logical_size >> 17;
+		for (u32 j = 0; j < size; ++j)
 		{
-			u32 address = start_physical + (i << 17);
-			bat_table[start_effective + i] = address | 0x1;
+			u32 address = translation[i].translated_address + (j << 17);
+			bat_table[start + j] = address | 0x1;
 		}
 	}
 }
@@ -972,10 +991,12 @@ void UpdateFakeMMUDBat(u32 start_addr)
 void DBATUpdated()
 {
 	memset(dbat_table, 0, sizeof(dbat_table));
-	UpdateBATs(dbat_table, SPR_DBAT0U);
+	BATTranslation t[8] = {};
+	ComputeBATTranslations(t, SPR_DBAT0U);
 	bool extended_bats = SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && HID4.SBE;
 	if (extended_bats)
-		UpdateBATs(dbat_table, SPR_DBAT4U);
+		ComputeBATTranslations(t + 4, SPR_DBAT4U);
+	UpdateBATs(dbat_table, t);
 	if (Memory::bFakeVMEM)
 	{
 		// In Fake-MMU mode, insert some extra entries into the BAT tables.
@@ -984,24 +1005,25 @@ void DBATUpdated()
 	}
 	for (int i = 0, e = extended_bats ? 8 : 4; i < e; ++i)
 	{
-		u32 spr = i < 4 ? (SPR_DBAT0U + i * 2) : (SPR_DBAT4U + (i - 4) * 2);
-		UReg_BAT_Up batu = PowerPC::ppcState.spr[spr];
-		UReg_BAT_Lo batl = PowerPC::ppcState.spr[spr + 1];
-		u32 start_effective = batu.BEPI << 17;
-		u32 effective_size = (batu.BL + 1) << 17;
-		u32 start_physical = batl.BRPN << 17;
-		if (batl.PP == 0)
-			effective_size = 0;
-		Memory::UpdateLogicalMemoryRegion(i, start_effective, effective_size, start_physical);
+		Memory::InvalidateLogicalMemoryRegion(i, t[i].logical_address,
+			t[i].logical_size, t[i].translated_address);
+	}
+	for (int i = 0, e = extended_bats ? 8 : 4; i < e; ++i)
+	{
+		Memory::UpdateLogicalMemoryRegion(i, t[i].logical_address,
+		    t[i].logical_size, t[i].translated_address);
 	}
 }
 
 void IBATUpdated()
 {
 	memset(ibat_table, 0, sizeof(ibat_table));
-	UpdateBATs(ibat_table, SPR_IBAT0U);
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && HID4.SBE)
-		UpdateBATs(ibat_table, SPR_IBAT4U);
+	BATTranslation t[8] = {};
+	ComputeBATTranslations(t, SPR_IBAT0U);
+	bool extended_bats = SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && HID4.SBE;
+	if (extended_bats)
+		ComputeBATTranslations(t + 4, SPR_IBAT4U);
+	UpdateBATs(ibat_table, t);
 }
 
 // Translate effective address using BAT or PAT.  Returns 0 if the address cannot be translated.
