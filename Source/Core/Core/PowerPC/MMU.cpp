@@ -972,6 +972,8 @@ static void ComputeBATTranslations(BATTranslation *translation, u32 base_spr)
 		UReg_BAT_Lo batl = PowerPC::ppcState.spr[spr + 1];
 		translation[i].logical_address = batu.BEPI << 17;
 		translation[i].logical_size = (batu.BL + 1) << 17;
+		if (CountSetBits(translation[i].logical_size) != 1)
+			PanicAlert("Bad BAT setup");
 		translation[i].translated_address = batl.BRPN << 17;
 		if (batl.PP == 0)
 			translation[i].logical_size = 0;
@@ -1019,12 +1021,12 @@ void DBATUpdated()
 		UpdateFakeMMUDBat(0x40000000);
 		UpdateFakeMMUDBat(0x70000000);
 	}
-	for (int i = 0, e = extended_bats ? 8 : 4; i < e; ++i)
+	for (int i = 7; i >= 0; --i)
 	{
 		Memory::InvalidateLogicalMemoryRegion(i, t[i].logical_address,
 			t[i].logical_size, t[i].translated_address);
 	}
-	for (int i = 0, e = extended_bats ? 8 : 4; i < e; ++i)
+	for (int i = 7; i >= 0; --i)
 	{
 		Memory::UpdateLogicalMemoryRegion(i, t[i].logical_address,
 		    t[i].logical_size, t[i].translated_address);

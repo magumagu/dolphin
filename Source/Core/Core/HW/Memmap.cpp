@@ -227,9 +227,9 @@ void Init()
 void InvalidateLogicalMemoryRegion(u32 index, u32 logical_address, u32 logical_size, u32 translated_address)
 {
 	LogicalMemoryRegion &region = logical_regions[index];
-	if (region.logical_size == logical_address && region.logical_size == logical_size &&
-	    region.translated_address == translated_address)
-		return;
+	//if (region.logical_size == logical_address && region.logical_size == logical_size &&
+	//    region.translated_address == translated_address)
+	//	return;
 
 	if (region.mapped_size)
 	{
@@ -246,9 +246,9 @@ void InvalidateLogicalMemoryRegion(u32 index, u32 logical_address, u32 logical_s
 void UpdateLogicalMemoryRegion(u32 index, u32 logical_address, u32 logical_size, u32 translated_address)
 {
 	LogicalMemoryRegion &region = logical_regions[index];
-	if (region.logical_size == logical_address && region.logical_size == logical_size &&
-	    region.translated_address == translated_address)
-		return;
+	//if (region.logical_size == logical_address && region.logical_size == logical_size &&
+	//    region.translated_address == translated_address)
+	//	return;
 
 	if (logical_size)
 	{
