@@ -71,6 +71,8 @@ void Init();
 void Shutdown();
 void DoState(PointerWrap &p);
 
+void UpdateLogicalMemoryRegion(u32 index, u32 logical_address, u32 logical_size, u32 physical_address);
+
 void Clear();
 bool AreMemoryBreakpointsActivated();
 

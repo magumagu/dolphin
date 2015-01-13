@@ -973,7 +973,8 @@ void DBATUpdated()
 {
 	memset(dbat_table, 0, sizeof(dbat_table));
 	UpdateBATs(dbat_table, SPR_DBAT0U);
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && HID4.SBE)
+	bool extended_bats = SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && HID4.SBE;
+	if (extended_bats)
 		UpdateBATs(dbat_table, SPR_DBAT4U);
 	if (Memory::bFakeVMEM)
 	{
@@ -981,7 +982,18 @@ void DBATUpdated()
 		UpdateFakeMMUDBat(0x40000000);
 		UpdateFakeMMUDBat(0x70000000);
 	}
-	// TODO: We need to remap the fastmem arena
+	for (int i = 0, e = extended_bats ? 8 : 4; i < e; ++i)
+	{
+		u32 spr = i < 4 ? (SPR_DBAT0U + i * 2) : (SPR_DBAT4U + (i - 4) * 2);
+		UReg_BAT_Up batu = PowerPC::ppcState.spr[spr];
+		UReg_BAT_Lo batl = PowerPC::ppcState.spr[spr + 1];
+		u32 start_effective = batu.BEPI << 17;
+		u32 effective_size = (batu.BL + 1) << 17;
+		u32 start_physical = batl.BRPN << 17;
+		if (batl.PP == 0)
+			effective_size = 0;
+		Memory::UpdateLogicalMemoryRegion(i, start_effective, effective_size, start_physical);
+	}
 }
 
 void IBATUpdated()
