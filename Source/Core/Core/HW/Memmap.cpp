@@ -122,6 +122,7 @@ namespace
 	{
 		u32 logical_address;
 		u32 logical_size;
+		u32 translated_address;
 		u32 mapped_size;
 		void *mapped_pointer;
 	};
@@ -226,7 +227,8 @@ void Init()
 void UpdateLogicalMemoryRegion(u32 index, u32 logical_address, u32 logical_size, u32 translated_address)
 {
 	LogicalMemoryRegion &region = logical_regions[index];
-	if (region.logical_size == logical_address && region.logical_size == logical_size)
+	if (region.logical_size == logical_address && region.logical_size == logical_size &&
+		region.translated_address == translated_address)
 		return;
 
 	if (region.mapped_size)
@@ -235,6 +237,10 @@ void UpdateLogicalMemoryRegion(u32 index, u32 logical_address, u32 logical_size,
 		region.mapped_pointer = 0;
 		region.mapped_size = 0;
 	}
+
+	region.logical_address = 0;
+	region.logical_size = 0;
+	region.translated_address = 0;
 
 	if (logical_size)
 	{
@@ -259,7 +265,25 @@ void UpdateLogicalMemoryRegion(u32 index, u32 logical_address, u32 logical_size,
 				if (intersection_start > translated_address)
 					base += intersection_start - translated_address;
 				u32 mapped_size = intersection_end - intersection_start;
-				// TODO: Add debugging code to check if this overlaps with another region.
+
+				// Make sure this doesn't overlap another mapping; games shouldn't be
+				// doing this intentionally, but we update the mappings even when
+				// translation is turned off.
+				for (LogicalMemoryRegion &other_region : logical_regions)
+				{
+					if (!other_region.mapped_size)
+						continue;
+					u8* other_ptr = (u8*)other_region.mapped_pointer;
+					u32 other_size = other_region.mapped_size;
+					u8* conflict_start = std::max(base, other_ptr);
+					u8* conflict_end = std::min(base + mapped_size, other_ptr + other_size);
+					if (conflict_start < conflict_end)
+					{
+						WARN_LOG(MEMMAP, "Conflicting bases; skipping mapping for BAT %d at 0x%08x", index, logical_address);
+						return;
+					}
+				}
+
 				region.mapped_pointer = g_arena.CreateView(position, mapped_size, base);
 				if (!region.mapped_pointer)
 				{
@@ -274,6 +298,7 @@ void UpdateLogicalMemoryRegion(u32 index, u32 logical_address, u32 logical_size,
 
 	region.logical_address = logical_address;
 	region.logical_size = logical_size;
+	region.translated_address = translated_address;
 }
 
 void DoState(PointerWrap &p)
@@ -310,6 +335,9 @@ void Shutdown()
 		g_arena.ReleaseView(region.mapped_pointer, region.mapped_size);
 		region.mapped_pointer = 0;
 		region.mapped_size = 0;
+		region.logical_address = 0;
+		region.logical_size = 0;
+		region.translated_address = 0;
 	}
 	g_arena.ReleaseSHMSegment();
 	physical_base = nullptr;
