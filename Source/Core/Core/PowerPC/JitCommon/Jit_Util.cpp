@@ -234,46 +234,6 @@ void EmuCodeBlock::MMIOLoadToReg(MMIO::Mapping* mmio, Gen::X64Reg reg_value,
 	}
 }
 
-FixupBranch EmuCodeBlock::CheckIfSafeAddress(OpArg reg_value, X64Reg reg_addr, BitSet32 registers_in_use, u32 mem_mask)
-{
-	registers_in_use[reg_addr] = true;
-	if (reg_value.IsSimpleReg())
-		registers_in_use[reg_value.GetSimpleReg()] = true;
-
-	// Get ourselves a free register; try to pick one that doesn't involve pushing, if we can.
-	X64Reg scratch = RSCRATCH;
-	if (!registers_in_use[RSCRATCH])
-		scratch = RSCRATCH;
-	else if (!registers_in_use[RSCRATCH_EXTRA])
-		scratch = RSCRATCH_EXTRA;
-	else
-		scratch = reg_addr;
-
-	// On Gamecube games with MMU, do a little bit of extra work to make sure we're not accessing the
-	// 0x81800000 to 0x83FFFFFF range.
-	// It's okay to take a shortcut and not check this range on non-MMU games, since we're already
-	// assuming they'll never do an invalid memory access.
-	// The slightly more complex check needed for Wii games using the space just above MEM1 isn't
-	// implemented here yet, since there are no known working Wii MMU games to test it with.
-	if (jit->js.memcheck && !SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
-	{
-		if (scratch == reg_addr)
-			PUSH(scratch);
-		else
-			MOV(32, R(scratch), R(reg_addr));
-		AND(32, R(scratch), Imm32(0x3FFFFFFF));
-		CMP(32, R(scratch), Imm32(0x01800000));
-		if (scratch == reg_addr)
-			POP(scratch);
-		return J_CC(CC_AE, farcode.Enabled());
-	}
-	else
-	{
-		TEST(32, R(reg_addr), Imm32(mem_mask));
-		return J_CC(CC_NZ, farcode.Enabled());
-	}
-}
-
 void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress, int accessSize, s32 offset, BitSet32 registersInUse, bool signExtend, int flags)
 {
 	registersInUse[reg_value] = false;
@@ -292,11 +252,6 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 	}
 	else
 	{
-		u32 mem_mask = Memory::ADDR_MASK_HW_ACCESS;
-
-		// The following masks the region used by the GC/Wii virtual memory lib
-		mem_mask |= Memory::ADDR_MASK_MEM1;
-
 		if (opAddress.IsImm())
 		{
 			u32 address = (u32)opAddress.offset + offset;
@@ -314,7 +269,8 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 			{
 				UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
 			}
-			else if (MMIO::IsMMIOAddress(address) && accessSize != 64)
+			// TODO: We need to translate before performing this check.
+			else if (0 && MMIO::IsMMIOAddress(address) && accessSize != 64)
 			{
 				MMIOLoadToReg(Memory::mmio_mapping, reg_value, registersInUse,
 				              address, accessSize, signExtend);
@@ -353,14 +309,6 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 				LEA(32, RSCRATCH, MDisp(opAddress.GetSimpleReg(), offset));
 			}
 
-			FixupBranch slow, exit;
-			slow = CheckIfSafeAddress(R(reg_value), reg_addr, registersInUse, mem_mask);
-			UnsafeLoadToReg(reg_value, R(reg_addr), accessSize, 0, signExtend);
-			if (farcode.Enabled())
-				SwitchToFarCode();
-			else
-				exit = J(true);
-			SetJumpTarget(slow);
 			size_t rsp_alignment = (flags & SAFE_LOADSTORE_NO_PROLOG) ? 8 : 0;
 			ABI_PushRegistersAndAdjustStack(registersInUse, rsp_alignment);
 			switch (accessSize)
@@ -390,13 +338,6 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 			{
 				MOVZX(64, accessSize, reg_value, R(ABI_RETURN));
 			}
-
-			if (farcode.Enabled())
-			{
-				exit = J(true);
-				SwitchToNearCode();
-			}
-			SetJumpTarget(exit);
 		}
 	}
 }
@@ -482,7 +423,8 @@ bool EmuCodeBlock::WriteToConstAddress(int accessSize, OpArg arg, u32 address, B
 
 	// If we already know the address through constant folding, we can do some
 	// fun tricks...
-	if ((address & 0xFFFFF000) == 0xCC008000 && jit->jo.optimizeGatherPipe)
+	// TODO: We need to translate before performing this check.
+	if (0 && (address & 0xFFFFF000) == 0xCC008000 && jit->jo.optimizeGatherPipe)
 	{
 		if (!arg.IsSimpleReg() || arg.GetSimpleReg() != RSCRATCH)
 			MOV(accessSize, R(RSCRATCH), arg);
@@ -562,21 +504,7 @@ void EmuCodeBlock::SafeWriteRegToReg(OpArg reg_value, X64Reg reg_addr, int acces
 		}
 	}
 
-	u32 mem_mask = Memory::ADDR_MASK_HW_ACCESS;
-
-	// The following masks the region used by the GC/Wii virtual memory lib
-	mem_mask |= Memory::ADDR_MASK_MEM1;
-
 	bool swap = !(flags & SAFE_LOADSTORE_NO_SWAP);
-
-	FixupBranch slow, exit;
-	slow = CheckIfSafeAddress(reg_value, reg_addr, registersInUse, mem_mask);
-	UnsafeWriteRegToReg(reg_value, reg_addr, accessSize, 0, swap);
-	if (farcode.Enabled())
-		SwitchToFarCode();
-	else
-		exit = J(true);
-	SetJumpTarget(slow);
 
 	// PC is used by memory watchpoints (if enabled) or to print accurate PC locations in debug logs
 	MOV(32, PPCSTATE(pc), Imm32(jit->js.compilerPC));
@@ -612,12 +540,6 @@ void EmuCodeBlock::SafeWriteRegToReg(OpArg reg_value, X64Reg reg_addr, int acces
 		break;
 	}
 	ABI_PopRegistersAndAdjustStack(registersInUse, rsp_alignment);
-	if (farcode.Enabled())
-	{
-		exit = J(true);
-		SwitchToNearCode();
-	}
-	SetJumpTarget(exit);
 }
 
 void EmuCodeBlock::WriteToConstRamAddress(int accessSize, OpArg arg, u32 address, bool swap)
