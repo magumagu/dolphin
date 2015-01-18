@@ -72,8 +72,15 @@ enum XCheckTLBFlag
 	FLAG_READ,
 	FLAG_WRITE,
 	FLAG_OPCODE,
+	FLAG_OPCODE_NO_EXCEPTION,
 	FLAG_NO_TRANSLATE
 };
+
+static bool IsOpcodeFlag(XCheckTLBFlag flag)
+{
+	return flag == FLAG_OPCODE || flag == FLAG_OPCODE_NO_EXCEPTION;
+}
+
 struct TranslateAddressResult
 {
 	bool valid;
@@ -661,6 +668,27 @@ void ClearCacheLine(const u32 address)
 		Write_U64(0, address + i);
 }
 
+TranslateResult JitCache_TranslateAddress(u32 address)
+{
+	bool from_bat = true;
+
+	if (UReg_MSR(MSR).IR)
+	{
+		auto tlb_addr = TranslateAddress<FLAG_OPCODE_NO_EXCEPTION>(address);
+		if (!tlb_addr.valid)
+		{
+			return TranslateResult{ false, false, 0 };
+		}
+		else
+		{
+			address = tlb_addr.address;
+			from_bat = tlb_addr.from_bat;
+		}
+	}
+
+	return TranslateResult{ true, from_bat, address };
+}
+
 // *********************************************************************************
 // Warning: Test Area
 //
@@ -818,7 +846,7 @@ enum TLBLookupResult
 static __forceinline TLBLookupResult LookupTLBPageAddress(const XCheckTLBFlag flag, const u32 vpa, u32 *paddr)
 {
 	u32 tag = vpa >> HW_PAGE_INDEX_SHIFT;
-	PowerPC::tlb_entry *tlbe = &PowerPC::ppcState.tlb[flag == FLAG_OPCODE][tag & HW_PAGE_INDEX_MASK];
+	PowerPC::tlb_entry *tlbe = &PowerPC::ppcState.tlb[IsOpcodeFlag(flag)][tag & HW_PAGE_INDEX_MASK];
 	if (tlbe->tag[0] == tag)
 	{
 		// Check if C bit requires updating
@@ -834,7 +862,7 @@ static __forceinline TLBLookupResult LookupTLBPageAddress(const XCheckTLBFlag fl
 			}
 		}
 
-		if (flag != FLAG_NO_EXCEPTION)
+		if (flag != FLAG_NO_EXCEPTION && flag != FLAG_OPCODE_NO_EXCEPTION)
 			tlbe->recent = 0;
 
 		*paddr = tlbe->paddr[0] | (vpa & 0xfff);
@@ -856,7 +884,7 @@ static __forceinline TLBLookupResult LookupTLBPageAddress(const XCheckTLBFlag fl
 			}
 		}
 
-		if (flag != FLAG_NO_EXCEPTION)
+		if (flag != FLAG_NO_EXCEPTION && flag != FLAG_OPCODE_NO_EXCEPTION)
 			tlbe->recent = 1;
 
 		*paddr = tlbe->paddr[1] | (vpa & 0xfff);
@@ -868,11 +896,11 @@ static __forceinline TLBLookupResult LookupTLBPageAddress(const XCheckTLBFlag fl
 
 static __forceinline void UpdateTLBEntry(const XCheckTLBFlag flag, UPTE2 PTE2, const u32 address)
 {
-	if (flag == FLAG_NO_EXCEPTION)
+	if (flag == FLAG_NO_EXCEPTION || flag == FLAG_OPCODE_NO_EXCEPTION)
 		return;
 
 	int tag = address >> HW_PAGE_INDEX_SHIFT;
-	PowerPC::tlb_entry *tlbe = &PowerPC::ppcState.tlb[flag == FLAG_OPCODE][tag & HW_PAGE_INDEX_MASK];
+	PowerPC::tlb_entry *tlbe = &PowerPC::ppcState.tlb[IsOpcodeFlag(flag)][tag & HW_PAGE_INDEX_MASK];
 	int index = tlbe->recent == 0 && tlbe->tag[0] != TLB_TAG_INVALID;
 	tlbe->recent = index;
 	tlbe->paddr[index] = PTE2.RPN << HW_PAGE_INDEX_SHIFT;
@@ -933,13 +961,14 @@ static __forceinline TranslateAddressResult TranslatePageAddress(const u32 addre
 				// set the access bits
 				switch (flag)
 				{
-				case FLAG_NO_EXCEPTION: break;
+				case FLAG_NO_EXCEPTION:
+				case FLAG_OPCODE_NO_EXCEPTION: break;
 				case FLAG_READ:     PTE2.R = 1; break;
 				case FLAG_WRITE:    PTE2.R = 1; PTE2.C = 1; break;
 				case FLAG_OPCODE:   PTE2.R = 1; break;
 				}
 
-				if (flag != FLAG_NO_EXCEPTION)
+				if (flag != FLAG_NO_EXCEPTION && flag != FLAG_OPCODE_NO_EXCEPTION)
 					*(u32*)&Memory::physical_base[pteg_addr + 4] = bswap(PTE2.Hex);
 
 				// We already updated the TLB entry if this was caused by a C bit.

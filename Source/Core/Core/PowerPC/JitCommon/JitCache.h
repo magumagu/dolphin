@@ -36,7 +36,8 @@ struct JitBlock
 	const u8 *checkedEntry;
 	const u8 *normalEntry;
 
-	u32 originalAddress;
+	u32 effectiveAddress;
+	u32 physicalAddress;
 	u32 codeSize;
 	u32 originalSize;
 	int runCount;  // for profiling.
