@@ -190,7 +190,7 @@ bool CBoot::Load_BS2(const std::string& _rBootROMFilename)
 
 	Memory::CopyToEmu(0x01200000, data.data() + 0x100, 0x700);
 	Memory::CopyToEmu(0x01300000, data.data() + 0x820, 0x1AFE00);
-	PC = 0x01200000;
+	PC = 0x81200000;
 	return true;
 }
 
