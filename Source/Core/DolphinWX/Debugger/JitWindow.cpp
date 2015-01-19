@@ -175,7 +175,7 @@ std::string HostDisassembler::DisassembleBlock(u32* address, u32* host_instructi
 
 	JitBlock* block = jit->GetBlockCache()->GetBlock(block_num);
 
-	const u8* code = (const u8*)jit->GetBlockCache()->GetCompiledCodeFromBlock(block_num);
+	const u8* code = block->normalEntry;
 
 	*code_size = block->codeSize;
 	*address = block->effectiveAddress;

@@ -40,6 +40,7 @@ struct JitBlock
 	u32 physicalAddress;
 	u32 codeSize;
 	u32 originalSize;
+	u32 msrBits;
 	int runCount;  // for profiling.
 
 	bool invalid;
@@ -107,7 +108,6 @@ class JitBaseBlockCache
 		MAX_NUM_BLOCKS = 65536 * 2,
 	};
 
-	std::array<const u8*, MAX_NUM_BLOCKS> blockCodePointers;
 	std::array<JitBlock, MAX_NUM_BLOCKS> blocks;
 	int num_blocks;
 	std::multimap<u32, int> links_to;
@@ -145,16 +145,14 @@ public:
 
 	// Code Cache
 	JitBlock *GetBlock(int block_num);
+	JitBlock *GetBlocks() { return blocks.data(); }
 	int GetNumBlocks() const;
-	const u8 **GetCodePointers();
 	std::array<u8, JIT_ICACHE_SIZE>   iCache;
 	std::array<u8, JIT_ICACHEEX_SIZE> iCacheEx;
 	std::array<u8, JIT_ICACHE_SIZE>   iCacheVMEM;
 
 	// Fast way to get a block. Only works on the first ppc instruction of a block.
 	int GetBlockNumberFromStartAddress(u32 em_address);
-
-	CompiledCode GetCompiledCodeFromBlock(int block_num);
 
 	// DOES NOT WORK CORRECTLY WITH INLINING
 	void InvalidateICache(u32 address, const u32 length, bool forced);

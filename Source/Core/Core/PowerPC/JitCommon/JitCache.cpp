@@ -76,7 +76,6 @@ using namespace Gen;
 		valid_block.ClearAll();
 
 		num_blocks = 0;
-		blockCodePointers.fill(nullptr);
 	}
 
 	void JitBaseBlockCache::Reset()
@@ -113,6 +112,7 @@ using namespace Gen;
 		b.invalid = false;
 		b.effectiveAddress = em_address;
 		b.physicalAddress = PowerPC::JitCache_TranslateAddress(em_address).address;
+		b.msrBits = MSR & 0x30;
 		b.linkData.clear();
 		num_blocks++; //commit the current block
 		return num_blocks - 1;
@@ -120,7 +120,6 @@ using namespace Gen;
 
 	void JitBaseBlockCache::FinalizeBlock(int block_num, bool block_link, const u8 *code_ptr)
 	{
-		blockCodePointers[block_num] = code_ptr;
 		JitBlock &b = blocks[block_num];
 		u32* icp = GetICachePtr(b.physicalAddress);
 		if ((s32)*icp >= 0)
@@ -153,13 +152,8 @@ using namespace Gen;
 			LinkBlockExits(block_num);
 		}
 
-		JitRegister::Register(blockCodePointers[block_num], b.codeSize,
+		JitRegister::Register(b.normalEntry, b.codeSize,
 			"JIT_PPC_%08x", b.physicalAddress);
-	}
-
-	const u8 **JitBaseBlockCache::GetCodePointers()
-	{
-		return blockCodePointers.data();
 	}
 
 	u32* JitBaseBlockCache::GetICachePtr(u32 addr)
@@ -188,11 +182,6 @@ using namespace Gen;
 			return -1;
 
 		return inst;
-	}
-
-	CompiledCode JitBaseBlockCache::GetCompiledCodeFromBlock(int block_num)
-	{
-		return (CompiledCode)blockCodePointers[block_num];
 	}
 
 	//Block linker

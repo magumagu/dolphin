@@ -1086,4 +1086,9 @@ TranslateAddressResult TranslateAddress(const u32 address)
 	return TranslatePageAddress(address, flag);
 }
 
+u32 JitCache_PageTranslateAddress(u32 address)
+{
+	return TranslatePageAddress(address, FLAG_OPCODE_NO_EXCEPTION).address;
+}
+
 } // namespace

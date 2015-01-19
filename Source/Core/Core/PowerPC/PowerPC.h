@@ -270,7 +270,8 @@ struct TranslateResult
 	u32 address;
 };
 TranslateResult JitCache_TranslateAddress(u32 address);
-
+u32 JitCache_PageTranslateAddress(u32 address);
+extern u32 ibat_table[];
 }  // namespace
 
 enum CRBits
