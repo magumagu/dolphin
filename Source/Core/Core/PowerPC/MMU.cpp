@@ -24,6 +24,7 @@
 #include "Core/HW/GPFifo.h"
 #include "Core/HW/Memmap.h"
 #include "Core/HW/MMIO.h"
+#include "Core/PowerPC/JitInterface.h"
 #include "Core/PowerPC/PowerPC.h"
 
 #include "VideoCommon/VideoBackendBase.h"
@@ -1038,16 +1039,8 @@ void DBATUpdated()
 		UpdateFakeMMUDBat(0x40000000);
 		UpdateFakeMMUDBat(0x70000000);
 	}
-	for (int i = 7; i >= 0; --i)
-	{
-		Memory::InvalidateLogicalMemoryRegion(i, t[i].logical_address,
-			t[i].logical_size, t[i].translated_address);
-	}
-	for (int i = 7; i >= 0; --i)
-	{
-		Memory::UpdateLogicalMemoryRegion(i, t[i].logical_address,
-		    t[i].logical_size, t[i].translated_address);
-	}
+	Memory::UpdateLogicalMemory(dbat_table);
+	JitInterface::ClearSafe();
 }
 
 void IBATUpdated()
@@ -1059,6 +1052,7 @@ void IBATUpdated()
 	if (extended_bats)
 		ComputeBATTranslations(t + 4, SPR_IBAT4U);
 	UpdateBATs(ibat_table, t);
+	JitInterface::ClearSafe();
 }
 
 // Translate effective address using BAT or PAT.  Returns 0 if the address cannot be translated.

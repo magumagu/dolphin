@@ -118,13 +118,10 @@ namespace
 		u32 shm_position;
 	};
 
-	struct LogicalMemoryRegion
+	struct LogicalMemoryView
 	{
-		u32 logical_address;
-		u32 logical_size;
-		u32 translated_address;
+		void* mapped_pointer;
 		u32 mapped_size;
-		void *mapped_pointer;
 	};
 }
 
@@ -166,7 +163,7 @@ static PhysicalMemoryRegion physical_regions[] =
 	{&m_pEXRAM,    0x10000000, EXRAM_SIZE,    MV_WII_ONLY},
 };
 
-static LogicalMemoryRegion logical_regions[8];
+static std::vector<LogicalMemoryView> logical_mapped_entries;
 
 void Init()
 {
@@ -224,89 +221,54 @@ void Init()
 	m_IsInitialized = true;
 }
 
-void InvalidateLogicalMemoryRegion(u32 index, u32 logical_address, u32 logical_size, u32 translated_address)
+void UpdateLogicalMemory(u32* dbat_table)
 {
-	LogicalMemoryRegion &region = logical_regions[index];
-	//if (region.logical_size == logical_address && region.logical_size == logical_size &&
-	//    region.translated_address == translated_address)
-	//	return;
-
-	if (region.mapped_size)
+	for (auto &entry : logical_mapped_entries)
 	{
-		g_arena.ReleaseView(region.mapped_pointer, region.mapped_size);
-		region.mapped_pointer = 0;
-		region.mapped_size = 0;
+		g_arena.ReleaseView(entry.mapped_pointer, entry.mapped_size);
 	}
-
-	region.logical_address = 0;
-	region.logical_size = 0;
-	region.translated_address = 0;
-}
-
-void UpdateLogicalMemoryRegion(u32 index, u32 logical_address, u32 logical_size, u32 translated_address)
-{
-	LogicalMemoryRegion &region = logical_regions[index];
-	//if (region.logical_size == logical_address && region.logical_size == logical_size &&
-	//    region.translated_address == translated_address)
-	//	return;
-
-	if (logical_size)
+	logical_mapped_entries.clear();
+	for (unsigned i = 0; i < (1 << (32 - 17)); ++i)
 	{
-		// Find an overlapping physical region if any.
-		u32 intersection_start = 0, intersection_end = 0;
-		for (PhysicalMemoryRegion &physical_region : physical_regions)
+		if (dbat_table[i] & 1)
 		{
-			u32 mapping_address = physical_region.physical_address;
-			u32 mapping_end = mapping_address + physical_region.size;
-			u32 intersection_start = std::max(mapping_address, translated_address);
-			u32 intersection_end = std::min(mapping_end, translated_address + logical_size);
-			if (intersection_start < intersection_end)
+			unsigned logical_address = i << 17;
+			// TODO: Merge adjacent mappings to make this faster.
+			unsigned logical_size = 1 << 17;
+			unsigned translated_address = dbat_table[i] & ~1;
+			u32 intersection_start = 0, intersection_end = 0;
+			for (PhysicalMemoryRegion &physical_region : physical_regions)
 			{
-				// Found an overlapping region; map it.
-				// We only worry about one overlapping region; in theory, a logical
-				// region could translate to more than one physical region, but in
-				// practice, that doesn't happen.
-				u32 position = physical_region.shm_position;
-				if (intersection_start > mapping_address)
-					position += intersection_start - mapping_address;
-				u8* base = logical_base + logical_address;
-				if (intersection_start > translated_address)
-					base += intersection_start - translated_address;
-				u32 mapped_size = intersection_end - intersection_start;
-
-				// Make sure this doesn't overlap another mapping; games shouldn't be
-				// doing this intentionally, but we update the mappings even when
-				// translation is turned off.
-				for (LogicalMemoryRegion &other_region : logical_regions)
+				u32 mapping_address = physical_region.physical_address;
+				u32 mapping_end = mapping_address + physical_region.size;
+				u32 intersection_start = std::max(mapping_address, translated_address);
+				u32 intersection_end = std::min(mapping_end, translated_address + logical_size);
+				if (intersection_start < intersection_end)
 				{
-					if (!other_region.mapped_size)
-						continue;
-					u8* other_ptr = (u8*)other_region.mapped_pointer;
-					u32 other_size = other_region.mapped_size;
-					u8* conflict_start = std::max(base, other_ptr);
-					u8* conflict_end = std::min(base + mapped_size, other_ptr + other_size);
-					if (conflict_start < conflict_end)
+					// Found an overlapping region; map it.
+					// We only worry about one overlapping region; in theory, a logical
+					// region could translate to more than one physical region, but in
+					// practice, that doesn't happen.
+					u32 position = physical_region.shm_position;
+					if (intersection_start > mapping_address)
+						position += intersection_start - mapping_address;
+					u8* base = logical_base + logical_address;
+					if (intersection_start > translated_address)
+						base += intersection_start - translated_address;
+					u32 mapped_size = intersection_end - intersection_start;
+
+					void* mapped_pointer = g_arena.CreateView(position, mapped_size, base);
+					if (!mapped_pointer)
 					{
-						WARN_LOG(MEMMAP, "Conflicting bases; skipping mapping for BAT %d at 0x%08x", index, logical_address);
-						return;
+						PanicAlert("MemoryMap_Setup: Failed finding a memory base.");
+						exit(0);
 					}
+					logical_mapped_entries.push_back({ mapped_pointer, mapped_size });
+					break;
 				}
-
-				region.mapped_pointer = g_arena.CreateView(position, mapped_size, base);
-				if (!region.mapped_pointer)
-				{
-					PanicAlert("MemoryMap_Setup: Failed finding a memory base.");
-					exit(0);
-				}
-				region.mapped_size = mapped_size;
-				break;
 			}
 		}
 	}
-
-	region.logical_address = logical_address;
-	region.logical_size = logical_size;
-	region.translated_address = translated_address;
 }
 
 void DoState(PointerWrap &p)
@@ -336,17 +298,11 @@ void Shutdown()
 		g_arena.ReleaseView(*region.out_pointer, region.size);
 		*region.out_pointer = 0;
 	}
-	for (LogicalMemoryRegion &region : logical_regions)
+	for (auto &entry : logical_mapped_entries)
 	{
-		if (!region.mapped_size)
-			continue;
-		g_arena.ReleaseView(region.mapped_pointer, region.mapped_size);
-		region.mapped_pointer = 0;
-		region.mapped_size = 0;
-		region.logical_address = 0;
-		region.logical_size = 0;
-		region.translated_address = 0;
+		g_arena.ReleaseView(entry.mapped_pointer, entry.mapped_size);
 	}
+	logical_mapped_entries.clear();
 	g_arena.ReleaseSHMSegment();
 	physical_base = nullptr;
 	logical_base = nullptr;
