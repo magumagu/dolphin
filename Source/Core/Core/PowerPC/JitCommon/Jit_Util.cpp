@@ -234,9 +234,32 @@ void EmuCodeBlock::MMIOLoadToReg(MMIO::Mapping* mmio, Gen::X64Reg reg_value,
 	}
 }
 
+static bool IsRAMAddress(u32 address)
+{
+	return address < Memory::REALRAM_SIZE;
+}
+
+static bool IsEXRAMAddress(u32 address)
+{
+	return (address >> 28 == 0x1) && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE;
+}
+
+static bool IsFastmemAccessSafe(u32 address)
+{
+	if (IsRAMAddress(address))
+		return true;
+	if (Memory::m_pEXRAM && IsEXRAMAddress(address))
+		return true;
+	return false;
+}
+
 void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress, int accessSize, s32 offset, BitSet32 registersInUse, bool signExtend, int flags)
 {
 	registersInUse[reg_value] = false;
+
+	// Try to use fastmem, if we can.
+	// TODO: if unswapped loads ever matter, add fastmem support; it's mostly
+	// just a matter of teaching the backpatcher how to handler them.
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bFastmem &&
 	    !opAddress.IsImm() &&
 	    !(flags & (SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_FASTMEM))
@@ -252,51 +275,69 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 		return;
 	}
 
+	// Special-case immediates: we can perform BAT translation when we JIT.
 	if (opAddress.IsImm())
 	{
 		u32 address = (u32)opAddress.offset + offset;
 
-		// If we know the address, try the following loading methods in
-		// order:
-		//
-		// 1. If the address is in RAM, generate an unsafe load (directly
-		//    access the RAM buffer and load from there).
-		// 2. If the address is in the MMIO range, find the appropriate
-		//    MMIO handler and generate the code to load using the handler.
-		// 3. Otherwise, just generate a call to PowerPC::Read_* with the
-		//    address hardcoded.
-		if (PowerPC::IsOptimizableRAMAddress(address))
+		// TODO: Refactor this code.
+		unsigned translated;
+		bool can_translate;
+		if (UReg_MSR(MSR).DR)
 		{
-			UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
-		}
-		// TODO: We need to translate before performing this check.
-		else if (0 && MMIO::IsMMIOAddress(address) && accessSize != 64)
-		{
-			MMIOLoadToReg(Memory::mmio_mapping, reg_value, registersInUse,
-				            address, accessSize, signExtend);
+			unsigned bat_result = PowerPC::dbat_table[address >> 17];
+			can_translate = (bat_result & 1) != 0;
+			translated = (bat_result & ~1) | (address & 0x1FFFF);
 		}
 		else
 		{
-			ABI_PushRegistersAndAdjustStack(registersInUse, 0);
-			switch (accessSize)
-			{
-			case 64: ABI_CallFunctionC((void *)&PowerPC::Read_U64, address); break;
-			case 32: ABI_CallFunctionC((void *)&PowerPC::Read_U32, address); break;
-			case 16: ABI_CallFunctionC((void *)&PowerPC::Read_U16_ZX, address); break;
-			case 8:  ABI_CallFunctionC((void *)&PowerPC::Read_U8_ZX, address); break;
-			}
-			ABI_PopRegistersAndAdjustStack(registersInUse, 0);
+			translated = address;
+			can_translate = true;
+		}
+		bool aligned = (translated & ((accessSize >> 3) - 1)) == 0;
 
-			MemoryExceptionCheck();
-			if (signExtend && accessSize < 32)
-			{
-				// Need to sign extend values coming from the Read_U* functions.
-				MOVSX(32, accessSize, reg_value, R(ABI_RETURN));
-			}
-			else if (reg_value != ABI_RETURN)
-			{
-				MOVZX(64, accessSize, reg_value, R(ABI_RETURN));
-			}
+		// If we're sure it's safe, load using the fastmem arena.  Note that
+		// this uses the original address, not the translated address:
+		// accessing the physical base is more expensive when translation is on.
+		// TODO: Fix fastmem arena code so this is actually safe.
+		// TODO: We could be a little more clever with unaligned reads.
+		if (can_translate && aligned && IsFastmemAccessSafe(translated))
+		{
+			UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
+			return;
+		}
+
+		// If the address maps to an address which looks like an MMIO register,
+		// inline MMIO read code.
+		if (can_translate && aligned && accessSize != 64 &&
+		    MMIO::IsMMIOAddress(translated))
+		{
+			MMIOLoadToReg(Memory::mmio_mapping, reg_value, registersInUse,
+				            translated, accessSize, signExtend);
+			return;
+		}
+
+		// Slow case: we can't figure out where the address points, so just call
+		// the full read implementation.
+		ABI_PushRegistersAndAdjustStack(registersInUse, 0);
+		switch (accessSize)
+		{
+		case 64: ABI_CallFunctionC((void *)&PowerPC::Read_U64, address); break;
+		case 32: ABI_CallFunctionC((void *)&PowerPC::Read_U32, address); break;
+		case 16: ABI_CallFunctionC((void *)&PowerPC::Read_U16_ZX, address); break;
+		case 8:  ABI_CallFunctionC((void *)&PowerPC::Read_U8_ZX, address); break;
+		}
+		ABI_PopRegistersAndAdjustStack(registersInUse, 0);
+
+		MemoryExceptionCheck();
+		if (signExtend && accessSize < 32)
+		{
+			// Need to sign extend values coming from the Read_U* functions.
+			MOVSX(32, accessSize, reg_value, R(ABI_RETURN));
+		}
+		else if (reg_value != ABI_RETURN)
+		{
+			MOVZX(64, accessSize, reg_value, R(ABI_RETURN));
 		}
 		return;
 	}
@@ -420,10 +461,24 @@ bool EmuCodeBlock::WriteToConstAddress(int accessSize, OpArg arg, u32 address, B
 {
 	arg = FixImmediate(accessSize, arg);
 
-	// If we already know the address through constant folding, we can do some
-	// fun tricks...
-	// TODO: We need to translate before performing this check.
-	if (0 && (address & 0xFFFFF000) == 0xCC008000 && jit->jo.optimizeGatherPipe)
+	// TODO: Refactor this code.
+	unsigned translated;
+	bool can_translate;
+	if (UReg_MSR(MSR).DR)
+	{
+		unsigned bat_result = PowerPC::dbat_table[address >> 17];
+		can_translate = (bat_result & 1) != 0;
+		translated = (bat_result & ~1) | (address & 0x1FFFF);
+	}
+	else
+	{
+		translated = address;
+		can_translate = true;
+	}
+	bool aligned = (translated & ((accessSize >> 3) - 1)) == 0;
+
+	// Optimize gather pipe writes.
+	if (can_translate && aligned && jit->jo.optimizeGatherPipe && (translated & 0xFFFFF000) == 0x0C008000)
 	{
 		if (!arg.IsSimpleReg() || arg.GetSimpleReg() != RSCRATCH)
 			MOV(accessSize, R(RSCRATCH), arg);
@@ -431,35 +486,38 @@ bool EmuCodeBlock::WriteToConstAddress(int accessSize, OpArg arg, u32 address, B
 		UnsafeWriteGatherPipe(accessSize);
 		return false;
 	}
-	else if (PowerPC::IsOptimizableRAMAddress(address))
+
+	// Optimize writes to RAM.
+	if (can_translate && aligned && IsFastmemAccessSafe(translated))
 	{
 		WriteToConstRamAddress(accessSize, arg, address);
 		return false;
 	}
-	else
-	{
-		// Helps external systems know which instruction triggered the write
-		MOV(32, PPCSTATE(pc), Imm32(jit->js.compilerPC));
+	// TODO: Optimize MMIO writes?  Might not happen enough to matter.
 
-		ABI_PushRegistersAndAdjustStack(registersInUse, 0);
-		switch (accessSize)
-		{
-		case 64:
-			ABI_CallFunctionAC(64, (void *)&PowerPC::Write_U64, arg, address);
-			break;
-		case 32:
-			ABI_CallFunctionAC(32, (void *)&PowerPC::Write_U32, arg, address);
-			break;
-		case 16:
-			ABI_CallFunctionAC(16, (void *)&PowerPC::Write_U16, arg, address);
-			break;
-		case 8:
-			ABI_CallFunctionAC(8, (void *)&PowerPC::Write_U8, arg, address);
-			break;
-		}
-		ABI_PopRegistersAndAdjustStack(registersInUse, 0);
-		return true;
+	// General case.
+
+	// Helps external systems know which instruction triggered the write
+	MOV(32, PPCSTATE(pc), Imm32(jit->js.compilerPC));
+
+	ABI_PushRegistersAndAdjustStack(registersInUse, 0);
+	switch (accessSize)
+	{
+	case 64:
+		ABI_CallFunctionAC(64, (void *)&PowerPC::Write_U64, arg, address);
+		break;
+	case 32:
+		ABI_CallFunctionAC(32, (void *)&PowerPC::Write_U32, arg, address);
+		break;
+	case 16:
+		ABI_CallFunctionAC(16, (void *)&PowerPC::Write_U16, arg, address);
+		break;
+	case 8:
+		ABI_CallFunctionAC(8, (void *)&PowerPC::Write_U8, arg, address);
+		break;
 	}
+	ABI_PopRegistersAndAdjustStack(registersInUse, 0);
+	return true;
 }
 
 void EmuCodeBlock::SafeWriteRegToReg(OpArg reg_value, X64Reg reg_addr, int accessSize, s32 offset, BitSet32 registersInUse, int flags)

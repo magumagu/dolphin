@@ -29,7 +29,7 @@ TEST(IsMMIOAddress, SpecialAddresses)
 	SConfig::GetInstance().m_LocalCoreStartupParameter.bWii = true;
 
 	// WG Pipe address, should not be handled by MMIO.
-	EXPECT_FALSE(MMIO::IsMMIOAddress(0xCC008000));
+	EXPECT_FALSE(MMIO::IsMMIOAddress(0x0C008000));
 
 	// Memory zone used by games using the "MMU Speedhack".
 	EXPECT_FALSE(MMIO::IsMMIOAddress(0xE0000000));

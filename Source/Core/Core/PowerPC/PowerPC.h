@@ -258,11 +258,6 @@ void InvalidateTLBEntry(u32 address);
 void DBATUpdated();
 void IBATUpdated();
 
-// Result changes based on the BAT registers and MSR.DR.  Returns whether
-// it's safe to optimize a read or write to this address to an unguarded
-// memory access.  Does not consider page tables.
-bool IsOptimizableRAMAddress(const u32 address);
-
 struct TranslateResult
 {
 	bool valid;
@@ -272,6 +267,7 @@ struct TranslateResult
 TranslateResult JitCache_TranslateAddress(u32 address);
 u32 JitCache_PageTranslateAddress(u32 address);
 extern u32 ibat_table[];
+extern u32 dbat_table[];
 }  // namespace
 
 enum CRBits

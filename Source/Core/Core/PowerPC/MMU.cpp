@@ -197,7 +197,7 @@ __forceinline static T ReadFromHardware(u32 em_address)
 		if (em_address < 0x0c000000)
 			return EFB_Read(em_address);
 		else
-			return (T)Memory::mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address | 0xC0000000);
+			return (T)Memory::mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address);
 	}
 	if (em_address < Memory::REALRAM_SIZE)
 	{
@@ -302,7 +302,7 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 		}
 		else
 		{
-			Memory::mmio_mapping->Write(em_address | 0xC0000000, data);
+			Memory::mmio_mapping->Write(em_address, data);
 			return;
 		}
 	}
@@ -552,18 +552,6 @@ std::string HostGetString(u32 address, size_t size)
 		++address;
 	} while (size == 0 || s.length() < size);
 	return s;
-}
-
-bool IsOptimizableRAMAddress(const u32 address)
-{
-	if (!UReg_MSR(MSR).DR)
-		return false;
-
-	int segment = address >> 28;
-
-	return (((segment == 0x8 || segment == 0xC || segment == 0x0) && (address & 0x0FFFFFFF) < Memory::REALRAM_SIZE) ||
-		(Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE) ||
-		(segment == 0xE && (address < (0xE0000000 + Memory::L1_CACHE_SIZE))));
 }
 
 bool HostIsRAMAddress(u32 address)
