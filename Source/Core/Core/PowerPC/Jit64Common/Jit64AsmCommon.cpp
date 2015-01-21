@@ -453,6 +453,7 @@ void CommonAsmRoutines::GenQuantizedLoads()
 	RET();
 
 	const u8* loadPairedS8One = AlignCode4();
+	MOVSX(32, 8, RSCRATCH, R(RSCRATCH));
 	CVTSI2SS(XMM0, R(RSCRATCH));
 	SHR(32, R(RSCRATCH2), Imm8(5));
 	MULSS(XMM0, MDisp(RSCRATCH2, (u32)(u64)m_dequantizeTableS));
@@ -503,6 +504,7 @@ void CommonAsmRoutines::GenQuantizedLoads()
 	RET();
 
 	const u8* loadPairedS16One = AlignCode4();
+	MOVSX(32, 16, RSCRATCH, R(RSCRATCH));
 	CVTSI2SS(XMM0, R(RSCRATCH));
 	SHR(32, R(RSCRATCH2), Imm8(5));
 	MULSS(XMM0, MDisp(RSCRATCH2, (u32)(u64)m_dequantizeTableS));
