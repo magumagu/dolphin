@@ -318,19 +318,16 @@ void Jit64::dcbz(UGeckoInstruction inst)
 	int a = inst.RA;
 	int b = inst.RB;
 
-	gpr.FlushLockX(RSCRATCH_EXTRA);
-
-	MOV(32, R(RSCRATCH2), gpr.R(b));
+	MOV(32, R(RSCRATCH), gpr.R(b));
 	if (a)
-		ADD(32, R(RSCRATCH2), gpr.R(a));
-	AND(32, R(RSCRATCH2), Imm32(~31));
-	XOR(32, R(RSCRATCH_EXTRA), R(RSCRATCH_EXTRA));
+		ADD(32, R(RSCRATCH), gpr.R(a));
+	AND(32, R(RSCRATCH), Imm32(~31));
 
-	SafeWriteRegToReg(R(RSCRATCH_EXTRA), RSCRATCH2, 64, 0, CallerSavedRegistersInUse(), SAFE_LOADSTORE_CLOBBER_RSCRATCH_INSTEAD_OF_ADDR);
-	SafeWriteRegToReg(R(RSCRATCH_EXTRA), RSCRATCH2, 64, 8, CallerSavedRegistersInUse(), SAFE_LOADSTORE_CLOBBER_RSCRATCH_INSTEAD_OF_ADDR);
-	SafeWriteRegToReg(R(RSCRATCH_EXTRA), RSCRATCH2, 64, 16, CallerSavedRegistersInUse(), SAFE_LOADSTORE_CLOBBER_RSCRATCH_INSTEAD_OF_ADDR);
-	SafeWriteRegToReg(R(RSCRATCH_EXTRA), RSCRATCH2, 64, 24, CallerSavedRegistersInUse(), SAFE_LOADSTORE_CLOBBER_RSCRATCH_INSTEAD_OF_ADDR);
-	gpr.UnlockAllX();
+	MOV(32, M(&PC), Imm32(jit->js.compilerPC));
+	BitSet32 registersInUse = CallerSavedRegistersInUse();
+	ABI_PushRegistersAndAdjustStack(registersInUse, 0);
+	ABI_CallFunctionR((void *)&PowerPC::ClearCacheLine, RSCRATCH);
+	ABI_PopRegistersAndAdjustStack(registersInUse, 0);
 }
 
 void Jit64::stX(UGeckoInstruction inst)
