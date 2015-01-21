@@ -132,8 +132,7 @@ using namespace Gen;
 
 		block_map[std::make_pair(pAddr + 4 * b.originalSize - 1, pAddr)] = block_num;
 
-		// TODO: Figure out how to implement this.
-		if (0 && block_link)
+		if (block_link)
 		{
 			for (const auto& e : b.linkData)
 			{
@@ -189,8 +188,6 @@ using namespace Gen;
 
 	void JitBaseBlockCache::LinkBlockExits(int i)
 	{
-		// TODO: Figure out how to implement this.
-		return;
 		JitBlock &b = blocks[i];
 		if (b.invalid)
 		{
@@ -202,7 +199,7 @@ using namespace Gen;
 			if (!e.linkStatus)
 			{
 				int destinationBlock = GetBlockNumberFromStartAddress(e.exitAddress);
-				if (destinationBlock != -1)
+				if (destinationBlock != -1 && blocks[destinationBlock].msrBits == b.msrBits)
 				{
 					WriteLinkBlock(e.exitPtrs, blocks[destinationBlock].checkedEntry);
 					e.linkStatus = true;
@@ -213,33 +210,20 @@ using namespace Gen;
 
 	void JitBaseBlockCache::LinkBlock(int i)
 	{
-		// TODO: Figure out how to implement this.
-		return;
 		LinkBlockExits(i);
 		JitBlock &b = blocks[i];
-		// equal_range(b) returns pair<iterator,iterator> representing the range
-		// of element with key b
 		auto ppp = links_to.equal_range(b.effectiveAddress);
-
-		if (ppp.first == ppp.second)
-			return;
 
 		for (auto iter = ppp.first; iter != ppp.second; ++iter)
 		{
-			// PanicAlert("Linking block %i to block %i", iter->second, i);
 			LinkBlockExits(iter->second);
 		}
 	}
 
 	void JitBaseBlockCache::UnlinkBlock(int i)
 	{
-		// TODO: Figure out how to implement this.
-		return;
 		JitBlock &b = blocks[i];
 		auto ppp = links_to.equal_range(b.effectiveAddress);
-
-		if (ppp.first == ppp.second)
-			return;
 
 		for (auto iter = ppp.first; iter != ppp.second; ++iter)
 		{
