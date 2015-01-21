@@ -104,7 +104,7 @@ void Jit64AsmRoutineManager::Generate()
 			TEST(32, R(RSCRATCH), Imm32(1));
 			FixupBranch battranslated = J_CC(CC_NZ);
 			ABI_PushRegistersAndAdjustStack({}, 0);
-			ABI_CallFunctionR((void *)&PowerPC::JitCache_PageTranslateAddress, RSCRATCH);
+			ABI_CallFunctionA(32, (void *)&PowerPC::JitCache_PageTranslateAddress, PPCSTATE(pc));
 			ABI_PopRegistersAndAdjustStack({}, 0);
 			FixupBranch endtranslation = J();
 			SetJumpTarget(battranslated);
