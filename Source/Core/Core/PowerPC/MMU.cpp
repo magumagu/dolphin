@@ -998,7 +998,7 @@ static void UpdateBATs(u32* bat_table, u32 base_spr)
 			// implemented this way for invalid BATs as well.
 			WARN_LOG(POWERPC, "Bad BAT setup: BPRN overlaps BL");
 		}
-		if (CountSetBits(batu.BL + 1) != 1)
+		if (CountSetBits((u32)(batu.BL + 1)) != 1)
 		{
 			// With a valid BAT, the simplest way of masking is
 			// (input & ~BL_mask) for matching and (input & BL_mask) for
