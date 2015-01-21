@@ -968,43 +968,55 @@ static __forceinline TranslateAddressResult TranslatePageAddress(const u32 addre
 	return TranslateAddressResult{ false, false, 0 };
 }
 
-namespace
+static void UpdateBATs(u32* bat_table, u32 base_spr)
 {
-	struct BATTranslation
-	{
-		u32 logical_address;
-		u32 logical_size;
-		u32 translated_address;
-	};
-}
-
-static void ComputeBATTranslations(BATTranslation *translation, u32 base_spr)
-{
+	// TODO: Separate BATs for MSR.PR==0 and MSR.PR==1
+	// TODO: Handle PP/WIMG settings.
+	// TODO: Check how hardware reacts to overlapping BATs (including
+	// BATs which should cause a DSI).
+	// TODO: Check how hardware reacts to invalid BATs (bad mask etc).
 	for (int i = 0; i < 4; ++i)
 	{
 		u32 spr = base_spr + i * 2;
 		UReg_BAT_Up batu = PowerPC::ppcState.spr[spr];
 		UReg_BAT_Lo batl = PowerPC::ppcState.spr[spr + 1];
-		translation[i].logical_address = batu.BEPI << 17;
-		translation[i].logical_size = (batu.BL + 1) << 17;
-		if (CountSetBits(translation[i].logical_size) != 1)
-			PanicAlert("Bad BAT setup");
-		translation[i].translated_address = batl.BRPN << 17;
-		if (batl.PP == 0)
-			translation[i].logical_size = 0;
-	}
-}
+		if (batu.VS == 0 && batu.VP == 0)
+			continue;
 
-static void UpdateBATs(u32* bat_table, BATTranslation *translation)
-{
-	for (u32 i = 0; i < 8; ++i)
-	{
-		u32 start = translation[i].logical_address >> 17;
-		u32 size = translation[i].logical_size >> 17;
-		for (u32 j = 0; j < size; ++j)
+		if ((batu.BEPI & batu.BL) != 0)
 		{
-			u32 address = translation[i].translated_address + (j << 17);
-			bat_table[start + j] = address | 0x1;
+			// With a valid BAT, the simplest way to match is
+			// (input & ~BL_mask) == BEPI. For now, assume it's
+			// implemented this way for invalid BATs as well.
+			WARN_LOG(POWERPC, "Bad BAT setup: BEPI overlaps BL");
+			continue;
+		}
+		if ((batl.BRPN & batu.BL) != 0)
+		{
+			// With a valid BAT, the simplest way to translate is
+			// (input & BL_mask) | BRPN_address. For now, assume it's
+			// implemented this way for invalid BATs as well.
+			WARN_LOG(POWERPC, "Bad BAT setup: BPRN overlaps BL");
+		}
+		if (CountSetBits(batu.BL + 1) != 1)
+		{
+			// With a valid BAT, the simplest way of masking is
+			// (input & ~BL_mask) for matching and (input & BL_mask) for
+			// translation. For now, assume it's implemented this way for
+			// invalid BATs as well.
+			WARN_LOG(POWERPC, "Bad BAT setup: invalid mask in BL");
+		}
+		for (u32 j = 0; j < (1 << 11); ++j)
+		{
+			// Enumerate all bit-patterns which fit within the given mask.
+			if ((j & batu.BL) == j)
+			{
+				// This bit is a little weird: if BRPN & j != 0, we end up with
+				// a strange mapping. Need to check on hardware.
+				u32 address = (batl.BRPN | j) << 17;
+				// (BEPI | j) == (BEPI & ~BL) | (j & BL).
+				bat_table[batu.BEPI | j] = address | 0x1;
+			}
 		}
 	}
 }
@@ -1024,12 +1036,10 @@ static void UpdateFakeMMUDBat(u32 start_addr)
 void DBATUpdated()
 {
 	memset(dbat_table, 0, sizeof(dbat_table));
-	BATTranslation t[8] = {};
-	ComputeBATTranslations(t, SPR_DBAT0U);
+	UpdateBATs(dbat_table, SPR_DBAT0U);
 	bool extended_bats = SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && HID4.SBE;
 	if (extended_bats)
-		ComputeBATTranslations(t + 4, SPR_DBAT4U);
-	UpdateBATs(dbat_table, t);
+		UpdateBATs(dbat_table, SPR_DBAT4U);
 	if (Memory::bFakeVMEM)
 	{
 		// In Fake-MMU mode, insert some extra entries into the BAT tables.
@@ -1043,12 +1053,10 @@ void DBATUpdated()
 void IBATUpdated()
 {
 	memset(ibat_table, 0, sizeof(ibat_table));
-	BATTranslation t[8] = {};
-	ComputeBATTranslations(t, SPR_IBAT0U);
+	UpdateBATs(ibat_table, SPR_IBAT0U);
 	bool extended_bats = SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && HID4.SBE;
 	if (extended_bats)
-		ComputeBATTranslations(t + 4, SPR_IBAT4U);
-	UpdateBATs(ibat_table, t);
+		UpdateBATs(ibat_table, SPR_IBAT4U);
 	JitInterface::ClearSafe();
 }
 
