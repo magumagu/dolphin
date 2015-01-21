@@ -236,7 +236,6 @@ void UpdateLogicalMemory(u32* dbat_table)
 			// TODO: Merge adjacent mappings to make this faster.
 			unsigned logical_size = 1 << 17;
 			unsigned translated_address = dbat_table[i] & ~1;
-			u32 intersection_start = 0, intersection_end = 0;
 			for (PhysicalMemoryRegion &physical_region : physical_regions)
 			{
 				u32 mapping_address = physical_region.physical_address;

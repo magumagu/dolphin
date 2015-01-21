@@ -74,7 +74,6 @@ enum XCheckTLBFlag
 	FLAG_WRITE,
 	FLAG_OPCODE,
 	FLAG_OPCODE_NO_EXCEPTION,
-	FLAG_NO_TRANSLATE
 };
 
 static bool IsOpcodeFlag(XCheckTLBFlag flag)
@@ -135,10 +134,10 @@ u32 ibat_table[1 << (32 - 17)];
 
 static void GenerateDSIException(u32 _EffectiveAddress, bool _bWrite);
 
-template <XCheckTLBFlag flag, typename T>
+template <XCheckTLBFlag flag, typename T, bool never_translate = false>
 __forceinline static T ReadFromHardware(u32 em_address)
 {
-	if (flag != FLAG_NO_TRANSLATE && UReg_MSR(MSR).DR)
+	if (!never_translate && UReg_MSR(MSR).DR)
 	{
 		auto translated_addr = TranslateAddress<flag>(em_address);
 		if (!translated_addr.valid)
@@ -167,7 +166,7 @@ __forceinline static T ReadFromHardware(u32 em_address)
 			{
 				if (addr == em_address_next_page)
 					tlb_addr = tlb_addr_next_page.address;
-				var = (var << 8) | ReadFromHardware<FLAG_NO_TRANSLATE, u8>(tlb_addr);
+				var = (var << 8) | ReadFromHardware<flag, u8, true>(tlb_addr);
 			}
 			return var;
 		}
@@ -213,10 +212,10 @@ __forceinline static T ReadFromHardware(u32 em_address)
 }
 
 
-template <XCheckTLBFlag flag, typename T>
+template <XCheckTLBFlag flag, typename T, bool never_translate = false>
 __forceinline static void WriteToHardware(u32 em_address, const T data)
 {
-	if (flag != FLAG_NO_TRANSLATE && UReg_MSR(MSR).DR)
+	if (!never_translate && UReg_MSR(MSR).DR)
 	{
 		auto translated_addr = TranslateAddress<flag>(em_address);
 		if (!translated_addr.valid)
@@ -245,7 +244,7 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 			{
 				if (addr == em_address_next_page)
 					tlb_addr = tlb_addr_next_page.address;
-				WriteToHardware<FLAG_NO_TRANSLATE, u8>(tlb_addr, (u8)val);
+				WriteToHardware<flag, u8, true>(tlb_addr, (u8)val);
 			}
 			return;
 		}
@@ -344,8 +343,6 @@ u32 Read_Opcode(u32 address)
 TryReadInstResult TryReadInstruction(u32 address)
 {
 	bool from_bat = true;
-	bool performTranslation = false;
-
 	if (UReg_MSR(MSR).IR)
 	{
 		auto tlb_addr = TranslateAddress<FLAG_OPCODE>(address);
@@ -1012,7 +1009,7 @@ static void UpdateBATs(u32* bat_table, BATTranslation *translation)
 	}
 }
 
-void UpdateFakeMMUDBat(u32 start_addr)
+static void UpdateFakeMMUDBat(u32 start_addr)
 {
 	for (unsigned i = 0; i < (0x10000000 >> 17); ++i)
 	{
