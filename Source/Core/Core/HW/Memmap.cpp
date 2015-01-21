@@ -157,7 +157,7 @@ namespace
 // Dolphin doesn't emulate the difference between cached and uncached access.
 static PhysicalMemoryRegion physical_regions[] =
 {
-	{&m_pRAM,      0x00000000, RAM_SIZE,      0},
+	{&m_pRAM,      0x00000000, REALRAM_SIZE,  0},
 	{&m_pL1Cache,  0xE0000000, L1_CACHE_SIZE, 0},
 	{&m_pFakeVMEM, 0x7E000000, FAKEVMEM_SIZE, MV_FAKE_VMEM},
 	{&m_pEXRAM,    0x10000000, EXRAM_SIZE,    MV_WII_ONLY},
@@ -273,7 +273,7 @@ void UpdateLogicalMemory(u32* dbat_table)
 void DoState(PointerWrap &p)
 {
 	bool wii = SConfig::GetInstance().m_LocalCoreStartupParameter.bWii;
-	p.DoArray(m_pRAM, RAM_SIZE);
+	p.DoArray(m_pRAM, REALRAM_SIZE);
 	p.DoArray(m_pL1Cache, L1_CACHE_SIZE);
 	p.DoMarker("Memory RAM");
 	if (bFakeVMEM)
@@ -312,10 +312,12 @@ void Shutdown()
 void Clear()
 {
 	if (m_pRAM)
-		memset(m_pRAM, 0, RAM_SIZE);
+		memset(m_pRAM, 0, REALRAM_SIZE);
 	if (m_pL1Cache)
 		memset(m_pL1Cache, 0, L1_CACHE_SIZE);
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && m_pEXRAM)
+	if (m_pFakeVMEM)
+		memset(m_pEXRAM, 0, FAKEVMEM_SIZE);
+	if (m_pEXRAM)
 		memset(m_pEXRAM, 0, EXRAM_SIZE);
 }
 

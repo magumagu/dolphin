@@ -185,7 +185,7 @@ __forceinline static T ReadFromHardware(u32 em_address)
 	// [0x7E000000, 0x80000000).
 	if (Memory::bFakeVMEM && ((em_address & 0xFE000000) == 0x7E000000))
 	{
-		return bswap(*(T*)&Memory::m_pFakeVMEM[em_address & Memory::RAM_MASK]);
+		return bswap(*(T*)&Memory::m_pFakeVMEM[em_address & Memory::FAKEVMEM_MASK]);
 	}
 
 	if (em_address & 0xC0000000)
@@ -262,7 +262,7 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 	// [0x7E000000, 0x80000000).
 	if (Memory::bFakeVMEM && ((em_address & 0xFE000000) == 0x7E000000))
 	{
-		*(T*)&Memory::m_pFakeVMEM[em_address & Memory::RAM_MASK] = bswap(data);
+		*(T*)&Memory::m_pFakeVMEM[em_address & Memory::FAKEVMEM_MASK] = bswap(data);
 		return;
 	}
 
@@ -1028,7 +1028,7 @@ static void UpdateFakeMMUDBat(u32 start_addr)
 		// Map from 0x4XXXXXXX or 0x7XXXXXXX to the range
 		// [0x7E000000,0x80000000).
 		u32 e_address = i + (start_addr >> 17);
-		u32 p_address = 0x7E000001 | ((i << 17) & Memory::RAM_SIZE);
+		u32 p_address = 0x7E000001 | ((i << 17) & Memory::FAKEVMEM_MASK);
 		dbat_table[e_address] = p_address;
 	}
 }
