@@ -24,7 +24,6 @@ public:
 	{
 		TCET_NORMAL,
 		TCET_EC_VRAM,    // EFB copy which sits in VRAM and is ready to be used
-		TCET_EC_DYNAMIC, // EFB copy which sits in RAM and needs to be decoded before being used
 	};
 
 	struct TCacheEntryConfig
@@ -104,7 +103,7 @@ public:
 
 		bool OverlapsMemoryRange(u32 range_address, u32 range_size) const;
 
-		bool IsEfbCopy() { return (type == TCET_EC_VRAM || type == TCET_EC_DYNAMIC); }
+		bool IsEfbCopy() { return type == TCET_EC_VRAM; }
 	};
 
 	virtual ~TextureCache(); // needs virtual for DX11 dtor

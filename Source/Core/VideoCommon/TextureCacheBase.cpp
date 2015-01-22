@@ -115,12 +115,6 @@ void TextureCache::OnConfigChanged(VideoConfig& config)
 			invalidate_texture_cache_requested = false;
 		}
 
-		// TODO: Probably shouldn't clear all render targets here, just mark them dirty or something.
-		if (config.bEFBCopyCacheEnable != backup_config.s_copy_cache_enable) // TODO: not sure if this is needed?
-		{
-			g_texture_cache->ClearRenderTargets();
-		}
-
 		if ((config.iStereoMode > 0) != backup_config.s_stereo_3d ||
 			config.bStereoEFBMonoDepth != backup_config.s_efb_mono_depth)
 		{
@@ -133,7 +127,6 @@ void TextureCache::OnConfigChanged(VideoConfig& config)
 	backup_config.s_texfmt_overlay = config.bTexFmtOverlayEnable;
 	backup_config.s_texfmt_overlay_center = config.bTexFmtOverlayCenter;
 	backup_config.s_hires_textures = config.bHiresTextures;
-	backup_config.s_copy_cache_enable = config.bEFBCopyCacheEnable;
 	backup_config.s_stereo_3d = config.iStereoMode > 0;
 	backup_config.s_efb_mono_depth = config.bStereoEFBMonoDepth;
 }
@@ -463,11 +456,6 @@ TextureCache::TCacheEntryBase* TextureCache::Load(const u32 stage)
 
 	// load texture
 	entry->Load(width, height, expandedWidth, 0);
-
-	if (entry->IsEfbCopy() && !g_ActiveConfig.bCopyEFBToTexture)
-		entry->type = TCET_EC_DYNAMIC;
-	else
-		entry->type = TCET_NORMAL;
 
 	std::string basename = "";
 	if (g_ActiveConfig.bDumpTextures && !hires_tex)
