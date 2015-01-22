@@ -521,7 +521,7 @@ TextureCache::TCacheEntryBase* TextureCache::Load(const u32 stage)
 }
 
 void TextureCache::CopyRenderTargetToTexture(u32 dstAddr, unsigned int dstFormat, PEControl::PixelFormat srcFormat,
-	const EFBRectangle& srcRect, bool isIntensity, bool scaleByHalf)
+	const EFBRectangle& unclampedSrc, bool isIntensity, bool scaleByHalf)
 {
 	// Emulation methods:
 	//
@@ -800,8 +800,17 @@ void TextureCache::CopyRenderTargetToTexture(u32 dstAddr, unsigned int dstFormat
 		}
 	}
 
-	const unsigned int tex_w = scaleByHalf ? srcRect.GetWidth()/2 : srcRect.GetWidth();
-	const unsigned int tex_h = scaleByHalf ? srcRect.GetHeight()/2 : srcRect.GetHeight();
+	// Clamp srcRect to 640x528. BPS: The Strike tries to encode an 800x600
+	// texture, which is invalid.
+	EFBRectangle correctSrc = unclampedSrc;
+	correctSrc.ClampUL(0, 0, EFB_WIDTH, EFB_HEIGHT);
+
+	// Validate source rect size
+	if (correctSrc.GetWidth() <= 0 || correctSrc.GetHeight() <= 0)
+		return;
+
+	const unsigned int tex_w = scaleByHalf ? correctSrc.GetWidth() / 2 : correctSrc.GetWidth();
+	const unsigned int tex_h = scaleByHalf ? correctSrc.GetHeight() / 2 : correctSrc.GetHeight();
 
 	unsigned int scaled_tex_w = g_ActiveConfig.bCopyEFBScaled ? Renderer::EFBToScaledX(tex_w) : tex_w;
 	unsigned int scaled_tex_h = g_ActiveConfig.bCopyEFBScaled ? Renderer::EFBToScaledY(tex_h) : tex_h;
@@ -827,7 +836,24 @@ void TextureCache::CopyRenderTargetToTexture(u32 dstAddr, unsigned int dstFormat
 
 	entry->frameCount = FRAMECOUNT_INVALID;
 
-	entry->FromRenderTarget(dstAddr, dstFormat, srcFormat, srcRect, isIntensity, scaleByHalf, cbufid, colmat);
+	entry->size_in_bytes = bpmem.copyMipMapStrideChannels * 32 * (tex_h / (dstFormat == 0 ? 8 : 4));
+
+	g_renderer->ResetAPIState();
+
+	entry->FromRenderTarget(dstAddr, dstFormat, srcFormat, correctSrc, isIntensity, scaleByHalf, cbufid, colmat);
+
+	if (!g_ActiveConfig.bCopyEFBToTexture)
+	{
+		u8* dst = Memory::GetPointer(dstAddr);
+		entry->EncodeToMemory(dst, dstFormat, srcFormat, correctSrc, isIntensity, scaleByHalf);
+		u64 hash = GetHash64(dst, entry->size_in_bytes, g_ActiveConfig.iSafeTextureCache_ColorSamples);
+
+		TextureCache::MakeRangeDynamic(dstAddr, (u32)entry->size_in_bytes);
+
+		entry->hash = hash;
+	}
+
+	g_renderer->RestoreAPIState();
 }
 
 TextureCache::TCacheEntryBase* TextureCache::AllocateTexture(const TCacheEntryConfig& config)

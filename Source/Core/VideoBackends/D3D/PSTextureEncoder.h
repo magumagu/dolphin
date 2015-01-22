@@ -22,7 +22,7 @@ struct ID3D11SamplerState;
 namespace DX11
 {
 
-class PSTextureEncoder : public TextureEncoder
+class PSTextureEncoder
 {
 
 public:
@@ -31,7 +31,7 @@ public:
 
 	void Init();
 	void Shutdown();
-	size_t Encode(u8* dst, unsigned int dstFormat,
+	void Encode(u8* dst, unsigned int dstFormat, ID3D11ShaderResourceView* src,
 	              PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
 	              bool isIntensity, bool scaleByHalf);
 

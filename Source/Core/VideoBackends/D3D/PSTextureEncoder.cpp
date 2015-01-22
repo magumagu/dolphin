@@ -1029,21 +1029,13 @@ void PSTextureEncoder::Shutdown()
 	SAFE_RELEASE(m_out);
 }
 
-size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
+void PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
+	ID3D11ShaderResourceView* src,
 	PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
 	bool isIntensity, bool scaleByHalf)
 {
 	if (!m_ready) // Make sure we initialized OK
-		return 0;
-
-	// Clamp srcRect to 640x528. BPS: The Strike tries to encode an 800x600
-	// texture, which is invalid.
-	EFBRectangle correctSrc = srcRect;
-	correctSrc.ClampUL(0, 0, EFB_WIDTH, EFB_HEIGHT);
-
-	// Validate source rect size
-	if (correctSrc.GetWidth() <= 0 || correctSrc.GetHeight() <= 0)
-		return 0;
+		return;
 
 	HRESULT hr;
 
@@ -1051,9 +1043,9 @@ size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 	unsigned int blockH = BLOCK_HEIGHTS[dstFormat];
 
 	// Round up source dims to multiple of block size
-	unsigned int actualWidth = correctSrc.GetWidth() / (scaleByHalf ? 2 : 1);
+	unsigned int actualWidth = srcRect.GetWidth() / (scaleByHalf ? 2 : 1);
 	actualWidth = (actualWidth + blockW-1) & ~(blockW-1);
-	unsigned int actualHeight = correctSrc.GetHeight() / (scaleByHalf ? 2 : 1);
+	unsigned int actualHeight = srcRect.GetHeight() / (scaleByHalf ? 2 : 1);
 	actualHeight = (actualHeight + blockH-1) & ~(blockH-1);
 
 	unsigned int numBlocksX = actualWidth/blockW;
@@ -1068,8 +1060,6 @@ size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 
 	unsigned int totalCacheLines = cacheLinesPerRow * numBlocksY;
 	_assert_msg_(VIDEO, totalCacheLines*32 <= MAX_BYTES_PER_ENCODE, "total encode size sanity check");
-
-	size_t encodeSize = 0;
 
 	// Reset API
 
@@ -1109,8 +1099,8 @@ size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 		EFBEncodeParams params = { 0 };
 		params.NumHalfCacheLinesX = FLOAT(cacheLinesPerRow*2);
 		params.NumBlocksY = FLOAT(numBlocksY);
-		params.PosX = FLOAT(correctSrc.left);
-		params.PosY = FLOAT(correctSrc.top);
+		params.PosX = FLOAT(srcRect.left);
+		params.PosY = FLOAT(srcRect.top);
 		params.TexLeft = float(targetRect.left) / g_renderer->GetTargetWidth();
 		params.TexTop = float(targetRect.top) / g_renderer->GetTargetHeight();
 		params.TexRight = float(targetRect.right) / g_renderer->GetTargetWidth();
@@ -1119,16 +1109,9 @@ size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 
 		D3D::context->OMSetRenderTargets(1, &m_outRTV, nullptr);
 
-		ID3D11ShaderResourceView* pEFB = (srcFormat == PEControl::Z24) ?
-			FramebufferManager::GetEFBDepthTexture()->GetSRV() :
-			// FIXME: Instead of resolving EFB, it would be better to pick out a
-			// single sample from each pixel. The game may break if it isn't
-			// expecting the blurred edges around multisampled shapes.
-			FramebufferManager::GetResolvedEFBColorTexture()->GetSRV();
-
 		D3D::stateman->SetVertexConstants(m_encodeParams);
 		D3D::stateman->SetPixelConstants(m_encodeParams);
-		D3D::stateman->SetTexture(0, pEFB);
+		D3D::stateman->SetTexture(0, src);
 		D3D::stateman->SetSampler(0, m_efbSampler);
 
 		// Encode!
@@ -1174,8 +1157,6 @@ size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 		}
 
 		D3D::context->Unmap(m_outStage, 0);
-
-		encodeSize = bpmem.copyMipMapStrideChannels*32 * numBlocksY;
 	}
 
 	// Restore API
@@ -1184,8 +1165,6 @@ size_t PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 	D3D::context->OMSetRenderTargets(1,
 		&FramebufferManager::GetEFBColorTexture()->GetRTV(),
 		FramebufferManager::GetEFBDepthTexture()->GetDSV());
-
-	return encodeSize;
 }
 
 bool PSTextureEncoder::InitStaticMode()

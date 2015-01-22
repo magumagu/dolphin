@@ -100,6 +100,9 @@ public:
 			PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
 			bool isIntensity, bool scaleByHalf, unsigned int cbufid,
 			const float *colmat) = 0;
+		virtual void EncodeToMemory(u8* dst, unsigned int dstFormat,
+			PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
+			bool isIntensity, bool scaleByHalf) = 0;
 
 		bool OverlapsMemoryRange(u32 range_address, u32 range_size) const;
 

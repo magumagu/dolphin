@@ -33,14 +33,15 @@ private:
 			PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
 			bool isIntensity, bool scaleByHalf, unsigned int cbufid,
 			const float *colmat) override;
+		void EncodeToMemory(u8* dst, unsigned int dstFormat,
+			PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
+			bool isIntensity, bool scaleByHalf) override;
 
 		void Bind(unsigned int stage) override;
 		bool Save(const std::string& filename, unsigned int level) override;
 	};
 
 	TCacheEntryBase* CreateTexture(const TCacheEntryConfig& config) override;
-
-	u64 EncodeToRamFromTexture(u32 address, void* source_texture, u32 SourceW, u32 SourceH, bool bFromZBuffer, bool bIsIntensityFmt, u32 copyfmt, int bScaleByHalf, const EFBRectangle& source) {return 0;};
 
 	void CompileShaders() override { }
 	void DeleteShaders() override { }

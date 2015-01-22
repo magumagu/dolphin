@@ -11,7 +11,6 @@
 #include "VideoBackends/D3D/PixelShaderCache.h"
 #include "VideoBackends/D3D/PSTextureEncoder.h"
 #include "VideoBackends/D3D/TextureCache.h"
-#include "VideoBackends/D3D/TextureEncoder.h"
 #include "VideoBackends/D3D/VertexShaderCache.h"
 #include "VideoCommon/ImageWrite.h"
 #include "VideoCommon/RenderBase.h"
@@ -20,7 +19,7 @@
 namespace DX11
 {
 
-static TextureEncoder* g_encoder = nullptr;
+static PSTextureEncoder* g_encoder = nullptr;
 const size_t MAX_COPY_BUFFERS = 32;
 ID3D11Buffer* efbcopycbuf[MAX_COPY_BUFFERS] = { 0 };
 
@@ -125,8 +124,6 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 	bool isIntensity, bool scaleByHalf, unsigned int cbufid,
 	const float *colmat)
 {
-	g_renderer->ResetAPIState();
-
 	// stretch picture with increased internal resolution
 	const D3D11_VIEWPORT vp = CD3D11_VIEWPORT(0.f, 0.f, (float)config.width, (float)config.height);
 	D3D::context->RSSetViewports(1, &vp);
@@ -153,10 +150,6 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 	else
 		D3D::SetPointCopySampler();
 
-	// if texture is currently in use, it needs to be temporarily unset
-	u32 textureSlotMask = D3D::stateman->UnsetTexture(texture->GetSRV());
-	D3D::stateman->Apply();
-
 	D3D::context->OMSetRenderTargets(1, &texture->GetRTV(), nullptr);
 
 	// Create texture copy
@@ -167,25 +160,13 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 		VertexShaderCache::GetSimpleVertexShader(), VertexShaderCache::GetSimpleInputLayout(), GeometryShaderCache::GetCopyGeometryShader());
 
 	D3D::context->OMSetRenderTargets(1, &FramebufferManager::GetEFBColorTexture()->GetRTV(), FramebufferManager::GetEFBDepthTexture()->GetDSV());
+}
 
-	g_renderer->RestoreAPIState();
-
-	// Restore old texture in all previously used slots, if any
-	D3D::stateman->SetTextureByMask(textureSlotMask, texture->GetSRV());
-
-	if (!g_ActiveConfig.bCopyEFBToTexture)
-	{
-		u8* dst = Memory::GetPointer(dstAddr);
-		size_t encoded_size = g_encoder->Encode(dst, dstFormat, srcFormat, srcRect, isIntensity, scaleByHalf);
-
-		u64 hash = GetHash64(dst, (int)encoded_size, g_ActiveConfig.iSafeTextureCache_ColorSamples);
-
-		size_in_bytes = (u32)encoded_size;
-
-		TextureCache::MakeRangeDynamic(addr, (u32)encoded_size);
-
-		this->hash = hash;
-	}
+void TextureCache::TCacheEntry::EncodeToMemory(u8* dst, unsigned int dstFormat,
+	PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
+	bool isIntensity, bool scaleByHalf)
+{
+	g_encoder->Encode(dst, dstFormat, texture->GetSRV(), srcFormat, srcRect, isIntensity, scaleByHalf);
 }
 
 TextureCache::TextureCache()

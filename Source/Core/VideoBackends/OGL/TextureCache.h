@@ -40,6 +40,9 @@ private:
 			PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
 			bool isIntensity, bool scaleByHalf, unsigned int cbufid,
 			const float *colmat) override;
+		void EncodeToMemory(u8* dst, unsigned int dstFormat,
+			PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
+			bool isIntensity, bool scaleByHalf) override;
 
 		void Bind(unsigned int stage) override;
 		bool Save(const std::string& filename, unsigned int level) override;

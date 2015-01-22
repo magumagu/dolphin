@@ -161,8 +161,6 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 	bool isIntensity, bool scaleByHalf, unsigned int cbufid,
 	const float *colmat)
 {
-	g_renderer->ResetAPIState(); // reset any game specific settings
-
 	// Make sure to resolve anything we need to read from.
 	const GLuint read_texture = (srcFormat == PEControl::Z24) ?
 		FramebufferManager::ResolveAndGetDepthTarget(srcRect) :
@@ -201,27 +199,6 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-	if (false == g_ActiveConfig.bCopyEFBToTexture)
-	{
-		int encoded_size = TextureConverter::EncodeToRamFromTexture(
-			addr,
-			read_texture,
-			srcFormat == PEControl::Z24,
-			isIntensity,
-			dstFormat,
-			scaleByHalf,
-			srcRect);
-
-		u8* dst = Memory::GetPointer(addr);
-		u64 const new_hash = GetHash64(dst,encoded_size,g_ActiveConfig.iSafeTextureCache_ColorSamples);
-
-		size_in_bytes = (u32)encoded_size;
-
-		TextureCache::MakeRangeDynamic(addr,encoded_size);
-
-		hash = new_hash;
-	}
-
 	FramebufferManager::SetFramebuffer(0);
 
 	if (g_ActiveConfig.bDumpEFBTarget)
@@ -230,8 +207,20 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 		SaveTexture(StringFromFormat("%sefb_frame_%i.png", File::GetUserPath(D_DUMPTEXTURES_IDX).c_str(),
 			count++), GL_TEXTURE_2D_ARRAY, texture, config.width, config.height, 0);
 	}
+}
 
-	g_renderer->RestoreAPIState();
+void TextureCache::TCacheEntry::EncodeToMemory(u8* dst, unsigned int dstFormat,
+	PEControl::PixelFormat srcFormat, const EFBRectangle& srcRect,
+	bool isIntensity, bool scaleByHalf)
+{
+	TextureConverter::EncodeToRamFromTexture(
+		dst,
+		texture,
+		srcFormat == PEControl::Z24,
+		isIntensity,
+		dstFormat,
+		scaleByHalf,
+		srcRect);
 }
 
 TextureCache::TextureCache()
