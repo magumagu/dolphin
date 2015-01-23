@@ -36,12 +36,8 @@ union EFBEncodeParams
 	{
 		FLOAT NumHalfCacheLinesX;
 		FLOAT NumBlocksY;
-		FLOAT PosX;
-		FLOAT PosY;
-		FLOAT TexLeft;
-		FLOAT TexTop;
-		FLOAT TexRight;
-		FLOAT TexBottom;
+		FLOAT SrcWidthInverse;
+		FLOAT SrcHeightInverse;
 	};
 	// Constant buffers must be a multiple of 16 bytes in size.
 	u8 pad[32]; // Pad to the next multiple of 16 bytes
@@ -56,12 +52,8 @@ static const char EFB_ENCODE_VS[] =
 	"{\n"
 		"float NumHalfCacheLinesX;\n"
 		"float NumBlocksY;\n"
-		"float PosX;\n" // Upper-left corner of source
-		"float PosY;\n"
-		"float TexLeft;\n" // Rectangle within EFBTexture representing the actual EFB (normalized)
-		"float TexTop;\n"
-		"float TexRight;\n"
-		"float TexBottom;\n"
+		"float SrcWidthInverse;\n"
+		"float SrcHeightInverse;\n"
 	"} Params;\n"
 "}\n"
 
@@ -91,21 +83,13 @@ static const char EFB_ENCODE_PS[] =
 	"{\n"
 		"float NumHalfCacheLinesX;\n"
 		"float NumBlocksY;\n"
-		"float PosX;\n" // Upper-left corner of source
-		"float PosY;\n"
-		"float TexLeft;\n" // Rectangle within EFBTexture representing the actual EFB (normalized)
-		"float TexTop;\n"
-		"float TexRight;\n"
-		"float TexBottom;\n"
+		"float SrcWidthInverse;\n"
+		"float SrcHeightInverse;\n"
 	"} Params;\n"
 "}\n"
 
 "Texture2DArray EFBTexture : register(t0);\n"
 "sampler EFBSampler : register(s0);\n"
-
-// Constants
-
-"static const float2 INV_EFB_DIMS = float2(1.0/640.0, 1.0/528.0);\n"
 
 // FIXME: Is this correct?
 "static const float3 INTENSITY_COEFFS = float3(0.257, 0.504, 0.098);\n"
@@ -175,7 +159,7 @@ static const char EFB_ENCODE_PS[] =
 "{\n"
 	// Add 0.5,0.5 to sample from the center of the EFB pixel
 	"float2 efbCoord = coord + float2(0.5,0.5);\n"
-	"return lerp(float2(Params.TexLeft,Params.TexTop), float2(Params.TexRight,Params.TexBottom), efbCoord * INV_EFB_DIMS);\n"
+	"return efbCoord * float2(Params.SrcWidthInverse, Params.SrcHeightInverse);\n"
 "}\n"
 
 // Interface and classes for different source formats
@@ -311,12 +295,12 @@ static const char EFB_ENCODE_PS[] =
 
 "float4 ScaledFetch_0(float2 coord)\n"
 "{\n"
-	"return IMP_FETCH(float2(Params.PosX,Params.PosY) + coord);\n"
+	"return IMP_FETCH(coord);\n"
 "}\n"
 
 "float4 ScaledFetch_1(float2 coord)\n"
 "{\n"
-	"float2 ul = float2(Params.PosX,Params.PosY) + 2*coord;\n"
+	"float2 ul = 2*coord;\n"
 	"float4 sample0 = IMP_FETCH(ul+float2(0,0));\n"
 	"float4 sample1 = IMP_FETCH(ul+float2(1,0));\n"
 	"float4 sample2 = IMP_FETCH(ul+float2(0,1));\n"
@@ -1089,22 +1073,11 @@ void PSTextureEncoder::Encode(u8* dst, unsigned int dstFormat,
 		UINT offset = 0;
 		D3D::stateman->SetVertexBuffer(m_quad, stride, offset);
 
-		EFBRectangle fullSrcRect;
-		fullSrcRect.left = 0;
-		fullSrcRect.top = 0;
-		fullSrcRect.right = EFB_WIDTH;
-		fullSrcRect.bottom = EFB_HEIGHT;
-		TargetRectangle targetRect = g_renderer->ConvertEFBRectangle(fullSrcRect);
-
 		EFBEncodeParams params = { 0 };
 		params.NumHalfCacheLinesX = FLOAT(cacheLinesPerRow*2);
 		params.NumBlocksY = FLOAT(numBlocksY);
-		params.PosX = FLOAT(srcRect.left);
-		params.PosY = FLOAT(srcRect.top);
-		params.TexLeft = float(targetRect.left) / g_renderer->GetTargetWidth();
-		params.TexTop = float(targetRect.top) / g_renderer->GetTargetHeight();
-		params.TexRight = float(targetRect.right) / g_renderer->GetTargetWidth();
-		params.TexBottom = float(targetRect.bottom) / g_renderer->GetTargetHeight();
+		params.SrcWidthInverse = 1.0f / srcRect.GetWidth();
+		params.SrcHeightInverse = 1.0f / srcRect.GetHeight();
 		D3D::context->UpdateSubresource(m_encodeParams, 0, nullptr, &params, 0, 0);
 
 		D3D::context->OMSetRenderTargets(1, &m_outRTV, nullptr);
