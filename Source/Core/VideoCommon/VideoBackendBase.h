@@ -101,6 +101,8 @@ public:
 
 	virtual bool Video_IsPossibleWaitingSetDrawDone() = 0;
 
+	virtual void Video_WriteRangeToMemory(u32 address, u32 size) = 0;
+
 	// Registers MMIO handlers for the CommandProcessor registers.
 	virtual void RegisterCPMMIO(MMIO::Mapping* mmio, u32 base) = 0;
 
@@ -149,6 +151,8 @@ class VideoBackendHardware : public VideoBackend
 	void Video_GatherPipeBursted() override;
 
 	bool Video_IsPossibleWaitingSetDrawDone() override;
+
+	void Video_WriteRangeToMemory(u32 address, u32 size) override;
 
 	void RegisterCPMMIO(MMIO::Mapping* mmio, u32 base) override;
 

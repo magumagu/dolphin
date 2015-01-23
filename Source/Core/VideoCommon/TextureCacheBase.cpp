@@ -211,6 +211,30 @@ void TextureCache::MakeRangeDynamic(u32 start_address, u32 size)
 	}
 }
 
+void TextureCache::WriteRangeToMemory(u32 start_address, u32 size)
+{
+	TexCache::iterator
+		iter = textures.lower_bound(start_address),
+		tcend = textures.upper_bound(start_address + size);
+
+	if (iter != textures.begin())
+		--iter;
+
+	for (; iter != tcend; ++iter)
+	{
+		if (iter->second->OverlapsMemoryRange(start_address, size))
+		{
+			TCacheEntryBase*& entry = iter->second;
+			if (entry->IsEfbCopy() && !entry->hash)
+			{
+				u8* dst = Memory::GetPointer(entry->addr);
+				entry->EncodeToMemory(dst, entry->format, PEControl::RGB8_Z24, EFBRectangle(0, 0, entry->config.width, entry->config.height), false, false);
+				entry->hash = GetHash64(dst, entry->size_in_bytes, g_ActiveConfig.iSafeTextureCache_ColorSamples);
+			}
+		}
+	}
+}
+
 bool TextureCache::Find(u32 start_address, u64 hash)
 {
 	TexCache::iterator iter = textures.lower_bound(start_address);

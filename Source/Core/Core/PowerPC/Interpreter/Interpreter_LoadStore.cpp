@@ -9,6 +9,7 @@
 #include "Core/PowerPC/JitInterface.h"
 #include "Core/PowerPC/Interpreter/Interpreter.h"
 #include "Core/PowerPC/Interpreter/Interpreter_FPUtils.h"
+#include "VideoCommon/VideoBackendBase.h"
 
 
 bool Interpreter::g_bReserve;
@@ -352,6 +353,9 @@ void Interpreter::dcbi(UGeckoInstruction _inst)
 			DSP::EnableInstantDMA();
 		}
 	}
+
+	// Tell the video backend to write out any textures to memory.
+	g_video_backend->Video_WriteRangeToMemory(address & 0x3FFFFFE0, 32);
 }
 
 void Interpreter::dcbst(UGeckoInstruction _inst)

@@ -47,6 +47,8 @@ class VideoSoftware : public VideoBackend
 	void Video_GatherPipeBursted() override;
 	bool Video_IsPossibleWaitingSetDrawDone() override;
 
+	void Video_WriteRangeToMemory(u32 address, u32 size) override {};
+
 	void RegisterCPMMIO(MMIO::Mapping* mmio, u32 base) override;
 
 	unsigned int PeekMessages() override;

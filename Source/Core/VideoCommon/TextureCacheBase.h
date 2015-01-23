@@ -120,6 +120,7 @@ public:
 	static void Invalidate();
 	static void InvalidateRange(u32 start_address, u32 size);
 	static void MakeRangeDynamic(u32 start_address, u32 size);
+	static void WriteRangeToMemory(u32 start_address, u32 size);
 	static void ClearRenderTargets(); // currently only used by OGL
 	static bool Find(u32 start_address, u64 hash);
 

@@ -360,3 +360,7 @@ void VideoBackendHardware::UpdateWantDeterminism(bool want)
 	Fifo_UpdateWantDeterminism(want);
 }
 
+void VideoBackendHardware::Video_WriteRangeToMemory(u32 em_address, u32 size)
+{
+	TextureCache::WriteRangeToMemory(em_address, size);
+}
