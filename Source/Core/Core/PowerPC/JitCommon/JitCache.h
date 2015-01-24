@@ -54,7 +54,7 @@ class ValidBlockBitSet final
 {
 	enum
 	{
-		VALID_BLOCK_MASK_SIZE = 0x20000000 / 32,
+		VALID_BLOCK_MASK_SIZE = 0x100000000 / 32,
 		VALID_BLOCK_ALLOC_ELEMENTS = VALID_BLOCK_MASK_SIZE / 32
 	};
 	std::unique_ptr<u32[]> m_valid_block;
