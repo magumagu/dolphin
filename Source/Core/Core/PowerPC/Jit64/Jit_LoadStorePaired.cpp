@@ -134,39 +134,30 @@ void Jit64::psq_stXX(UGeckoInstruction inst)
 		// One value
 		CVTSD2SS(XMM0, fpr.R(s));
 		CALLptr(MScaled(RSCRATCH, SCALE_8, (u32)(u64)asm_routines.singleStoreQuantized));
-		CMP(8, R(RSCRATCH2), Imm8(4));
-		FixupBranch check_4 = J_CC(CC_NE);
-		SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, 32, 0, CallerSavedRegistersInUse());
-		FixupBranch end1 = J();
-		SetJumpTarget(check_4);
-		CMP(8, R(RSCRATCH2), Imm8(2));
-		FixupBranch check_2 = J_CC(CC_NE);
-		SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, 16, 0, CallerSavedRegistersInUse());
-		FixupBranch end2 = J();
-		SetJumpTarget(check_2);
-		SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, 8, 0, CallerSavedRegistersInUse());
-		SetJumpTarget(end1);
-		SetJumpTarget(end2);
 	}
 	else
 	{
 		// Pair of values
 		CVTPD2PS(XMM0, fpr.R(s));
 		CALLptr(MScaled(RSCRATCH, SCALE_8, (u32)(u64)asm_routines.pairedStoreQuantized));
-		CMP(8, R(RSCRATCH2), Imm8(8));
-		FixupBranch check_8 = J_CC(CC_NE);
-		SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, 64, 0, CallerSavedRegistersInUse());
-		FixupBranch end1 = J();
-		SetJumpTarget(check_8);
-		CMP(8, R(RSCRATCH2), Imm8(4));
-		FixupBranch check_4 = J_CC(CC_NE);
-		SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, 32, 0, CallerSavedRegistersInUse());
-		FixupBranch end2 = J();
-		SetJumpTarget(check_4);
-		SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, 16, 0, CallerSavedRegistersInUse());
-		SetJumpTarget(end1);
-		SetJumpTarget(end2);
 	}
+
+	CMP(8, R(RSCRATCH2), Imm8(w ? 4 : 8));
+	FixupBranch check_float = J_CC(CC_NE);
+	// Float value store
+	SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, w ? 32 : 64, 0, CallerSavedRegistersInUse());
+	FixupBranch end1 = J();
+	SetJumpTarget(check_float);
+	CMP(8, R(RSCRATCH2), Imm8(w ? 2 : 4));
+	FixupBranch check_16 = J_CC(CC_NE);
+	// 16-bit value store
+	SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, w ? 16 : 32, 0, CallerSavedRegistersInUse());
+	FixupBranch end2 = J();
+	SetJumpTarget(check_16);
+	// 8-bit value store
+	SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, w ? 8 : 16, 0, CallerSavedRegistersInUse());
+	SetJumpTarget(end1);
+	SetJumpTarget(end2);
 
 	if (update && js.memcheck)
 	{
@@ -336,38 +327,23 @@ void Jit64::psq_lXX(UGeckoInstruction inst)
 	BitSet32 registersInUse = CallerSavedRegistersInUse();
 	registersInUse[RSCRATCH2] = true;
 	registersInUse[RSCRATCH_EXTRA] = true;
-	if (w)
-	{
-		CMP(8, R(RSCRATCH2), Imm8(0));
-		FixupBranch check_4 = J_CC(CC_NE);
-		SafeLoadToReg(RSCRATCH, R(RSCRATCH), 32, 0, registersInUse, false);
-		FixupBranch end1 = J();
-		SetJumpTarget(check_4);
-		TEST(8, R(RSCRATCH2), Imm8(1));
-		FixupBranch check_2 = J_CC(CC_Z);
-		SafeLoadToReg(RSCRATCH, R(RSCRATCH), 16, 0, registersInUse, false);
-		FixupBranch end2 = J();
-		SetJumpTarget(check_2);
-		SafeLoadToReg(RSCRATCH, R(RSCRATCH), 8, 0, registersInUse, false);
-		SetJumpTarget(end1);
-		SetJumpTarget(end2);
-	}
-	else
-	{
-		CMP(8, R(RSCRATCH2), Imm8(0));
-		FixupBranch check_8 = J_CC(CC_NE);
-		SafeLoadToReg(RSCRATCH, R(RSCRATCH), 64, 0, registersInUse, false);
-		FixupBranch end1 = J();
-		SetJumpTarget(check_8);
-		TEST(8, R(RSCRATCH2), Imm8(1));
-		FixupBranch check_4 = J_CC(CC_Z);
-		SafeLoadToReg(RSCRATCH, R(RSCRATCH), 32, 0, registersInUse, false);
-		FixupBranch end2 = J();
-		SetJumpTarget(check_4);
-		SafeLoadToReg(RSCRATCH, R(RSCRATCH), 16, 0, registersInUse, false);
-		SetJumpTarget(end1);
-		SetJumpTarget(end2);
-	}
+
+	CMP(8, R(RSCRATCH2), Imm8(0));
+	FixupBranch check_8 = J_CC(CC_NE);
+	// Float value load.
+	SafeLoadToReg(RSCRATCH, R(RSCRATCH), w ? 32 : 64, 0, registersInUse, false);
+	FixupBranch end1 = J();
+	SetJumpTarget(check_8);
+	TEST(8, R(RSCRATCH2), Imm8(1));
+	FixupBranch check_4 = J_CC(CC_Z);
+	// 16-bit value load.
+	SafeLoadToReg(RSCRATCH, R(RSCRATCH), w ? 16 : 32, 0, registersInUse, false);
+	FixupBranch end2 = J();
+	SetJumpTarget(check_4);
+	// 8-bit value load.
+	SafeLoadToReg(RSCRATCH, R(RSCRATCH), w ? 8 : 16, 0, registersInUse, false);
+	SetJumpTarget(end1);
+	SetJumpTarget(end2);
 
 	CALLptr(MScaled(RSCRATCH_EXTRA, SCALE_8, (u32)(u64)(&asm_routines.pairedLoadQuantized[w * 8])));
 
