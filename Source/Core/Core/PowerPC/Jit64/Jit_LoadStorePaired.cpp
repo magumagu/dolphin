@@ -314,7 +314,7 @@ void Jit64::psq_lXX(UGeckoInstruction inst)
 	}
 	// In memcheck mode, don't update the address until the exception check
 	if (update && !js.memcheck)
-		MOV(32, gpr.R(a), R(RSCRATCH_EXTRA));
+		MOV(32, gpr.R(a), R(RSCRATCH));
 	MOV(32, R(RSCRATCH2), Imm32(0x3F07));
 
 	// Get the high part of the GQR register
