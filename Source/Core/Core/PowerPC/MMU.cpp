@@ -561,6 +561,10 @@ bool HostIsRAMAddress(u32 address)
 		return true;
 	else if (Memory::m_pEXRAM && segment == 0x1 && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 		return true;
+	else if (Memory::bFakeVMEM && ((address & 0xFE000000) == 0x7E000000))
+		return true;
+	else if (segment == 0xE && (address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
+		return true;
 	return false;
 
 
