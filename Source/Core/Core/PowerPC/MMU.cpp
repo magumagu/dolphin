@@ -347,16 +347,31 @@ TryReadInstResult TryReadInstruction(u32 address)
 			address = tlb_addr.address;
 			from_bat = tlb_addr.from_bat;
 		}
-		if (address & 0xC0000000)
-			PanicAlert("Strange translated program counter: 0x%08x", address);
+	}
+
+	// TODO: Re-enable L1 icache emulation
+	//u32 hex = PowerPC::ppcState.iCache.ReadInstruction(address);
+	u32 hex;
+	// In Fake-VMEM mode, we need to map the memory somewhere into
+	// physical memory for BAT translation to work; we currently use
+	// [0x7E000000, 0x80000000).
+	if (Memory::bFakeVMEM && ((address & 0xFE000000) == 0x7E000000))
+	{
+		hex = bswap(*(const u32*)&Memory::m_pFakeVMEM[address & Memory::FAKEVMEM_MASK]);
+	}
+	else if (address < Memory::REALRAM_SIZE)
+	{
+		hex = bswap((*(const u32*)&Memory::m_pRAM[address]));
+	}
+	else if (Memory::m_pEXRAM && (address >> 28) == 0x1 && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+	{
+		hex = bswap((*(const u32*)&Memory::m_pEXRAM[address & 0x0FFFFFFF]));
 	}
 	else
 	{
-		if (address & 0xC0000000)
-			PanicAlert("Strange program counter with address translation off: 0x%08x", address);
+		PanicAlert("Unable to resolve instruction address %x PC %x", address, PC);
+		hex = 0;
 	}
-
-	u32 hex = PowerPC::ppcState.iCache.ReadInstruction(address);
 	return TryReadInstResult{ true, from_bat, hex };
 }
 
