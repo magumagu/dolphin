@@ -232,7 +232,7 @@ void CommonAsmRoutines::GenQuantizedStores()
 	const u8* storePairedFloat = AlignCode4();
 	MOVQ_xmm(R(RSCRATCH), XMM0);
 	ROL(64, R(RSCRATCH), Imm8(32));
-	MOV(8, R(RSCRATCH2), Imm8(8));
+	MOV(8, R(RSCRATCH2), Imm8(32));
 	RET();
 
 	const u8* storePairedU8 = AlignCode4();
@@ -247,7 +247,7 @@ void CommonAsmRoutines::GenQuantizedStores()
 	PACKUSWB(XMM0, R(XMM0));
 	MOVD_xmm(R(RSCRATCH), XMM0);
 	BSWAP(16, RSCRATCH);
-	MOV(8, R(RSCRATCH2), Imm8(2));
+	MOV(8, R(RSCRATCH2), Imm8(8));
 	RET();
 
 	const u8* storePairedS8 = AlignCode4();
@@ -262,7 +262,7 @@ void CommonAsmRoutines::GenQuantizedStores()
 	PACKSSWB(XMM0, R(XMM0));
 	MOVD_xmm(R(RSCRATCH), XMM0);
 	BSWAP(16, RSCRATCH);
-	MOV(8, R(RSCRATCH2), Imm8(2));
+	MOV(8, R(RSCRATCH2), Imm8(8));
 	RET();
 
 	const u8* storePairedU16 = AlignCode4();
@@ -291,7 +291,7 @@ void CommonAsmRoutines::GenQuantizedStores()
 		MOVD_xmm(R(RSCRATCH), XMM0);
 	}
 
-	MOV(8, R(RSCRATCH2), Imm8(4));
+	MOV(8, R(RSCRATCH2), Imm8(16));
 	RET();
 
 	const u8* storePairedS16 = AlignCode4();
@@ -305,7 +305,7 @@ void CommonAsmRoutines::GenQuantizedStores()
 	PACKSSDW(XMM0, R(XMM0));
 	MOVD_xmm(R(RSCRATCH), XMM0);
 	ROL(32, R(RSCRATCH), Imm8(16));
-	MOV(8, R(RSCRATCH2), Imm8(4));
+	MOV(8, R(RSCRATCH2), Imm8(16));
 	RET();
 
 	JitRegister::Register(start, GetCodePtr(), "JIT_QuantizedStore");
@@ -334,7 +334,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores()
 	// Easy!
 	const u8* storeSingleFloat = AlignCode4();
 	MOVD_xmm(R(RSCRATCH), XMM0);
-	MOV(8, R(RSCRATCH2), Imm8(4));
+	MOV(8, R(RSCRATCH2), Imm8(32));
 	RET();
 
 	const u8* storeSingleU8 = AlignCode4();  // Used by MKWii
@@ -344,7 +344,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores()
 	MAXSS(XMM0, R(XMM1));
 	MINSS(XMM0, M(&m_255));
 	CVTTSS2SI(RSCRATCH, R(XMM0));
-	MOV(8, R(RSCRATCH2), Imm8(1));
+	MOV(8, R(RSCRATCH2), Imm8(8));
 	RET();
 
 	const u8* storeSingleS8 = AlignCode4();
@@ -353,7 +353,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores()
 	MAXSS(XMM0, M(&m_m128));
 	MINSS(XMM0, M(&m_127));
 	CVTTSS2SI(RSCRATCH, R(XMM0));
-	MOV(8, R(RSCRATCH2), Imm8(1));
+	MOV(8, R(RSCRATCH2), Imm8(8));
 	RET();
 
 	const u8* storeSingleU16 = AlignCode4();  // Used by MKWii
@@ -363,7 +363,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores()
 	MAXSS(XMM0, R(XMM1));
 	MINSS(XMM0, M(m_65535));
 	CVTTSS2SI(RSCRATCH, R(XMM0));
-	MOV(8, R(RSCRATCH2), Imm8(2));
+	MOV(8, R(RSCRATCH2), Imm8(16));
 	RET();
 
 	const u8* storeSingleS16 = AlignCode4();
@@ -372,7 +372,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores()
 	MAXSS(XMM0, M(&m_m32768));
 	MINSS(XMM0, M(&m_32767));
 	CVTTSS2SI(RSCRATCH, R(XMM0));
-	MOV(8, R(RSCRATCH2), Imm8(2));
+	MOV(8, R(RSCRATCH2), Imm8(16));
 	RET();
 
 	JitRegister::Register(start, GetCodePtr(), "JIT_QuantizedSingleStore");
