@@ -63,13 +63,13 @@ protected:
 
 TEST_F(MappingTest, ReadConstant)
 {
-	m_mapping->Register(0xCC001234, MMIO::Constant<u8>(0x42), MMIO::Nop<u8>());
-	m_mapping->Register(0xCC001234, MMIO::Constant<u16>(0x1234), MMIO::Nop<u16>());
-	m_mapping->Register(0xCC001234, MMIO::Constant<u32>(0xdeadbeef), MMIO::Nop<u32>());
+	m_mapping->Register(0x0C001234, MMIO::Constant<u8>(0x42), MMIO::Nop<u8>());
+	m_mapping->Register(0x0C001234, MMIO::Constant<u16>(0x1234), MMIO::Nop<u16>());
+	m_mapping->Register(0x0C001234, MMIO::Constant<u32>(0xdeadbeef), MMIO::Nop<u32>());
 
-	u8 val8 = m_mapping->Read<u8>(0xCC001234);
-	u16 val16 = m_mapping->Read<u16>(0xCC001234);
-	u32 val32 = m_mapping->Read<u32>(0xCC001234);
+	u8 val8 = m_mapping->Read<u8>(0x0C001234);
+	u16 val16 = m_mapping->Read<u16>(0x0C001234);
+	u32 val32 = m_mapping->Read<u32>(0x0C001234);
 
 	EXPECT_EQ(0x42, val8);
 	EXPECT_EQ(0x1234, val16);
@@ -82,19 +82,19 @@ TEST_F(MappingTest, ReadWriteDirect)
 	u16 target_16 = 0;
 	u32 target_32 = 0;
 
-	m_mapping->Register(0xCC001234, MMIO::DirectRead<u8>(&target_8), MMIO::DirectWrite<u8>(&target_8));
-	m_mapping->Register(0xCC001234, MMIO::DirectRead<u16>(&target_16), MMIO::DirectWrite<u16>(&target_16));
-	m_mapping->Register(0xCC001234, MMIO::DirectRead<u32>(&target_32), MMIO::DirectWrite<u32>(&target_32));
+	m_mapping->Register(0x0C001234, MMIO::DirectRead<u8>(&target_8), MMIO::DirectWrite<u8>(&target_8));
+	m_mapping->Register(0x0C001234, MMIO::DirectRead<u16>(&target_16), MMIO::DirectWrite<u16>(&target_16));
+	m_mapping->Register(0x0C001234, MMIO::DirectRead<u32>(&target_32), MMIO::DirectWrite<u32>(&target_32));
 
 	for (u32 i = 0; i < 100; ++i)
 	{
-		u8 val8 = m_mapping->Read<u8>(0xCC001234);  EXPECT_EQ(i, val8);
-		u16 val16 = m_mapping->Read<u16>(0xCC001234); EXPECT_EQ(i, val16);
-		u32 val32 = m_mapping->Read<u32>(0xCC001234); EXPECT_EQ(i, val32);
+		u8 val8 = m_mapping->Read<u8>(0x0C001234);  EXPECT_EQ(i, val8);
+		u16 val16 = m_mapping->Read<u16>(0x0C001234); EXPECT_EQ(i, val16);
+		u32 val32 = m_mapping->Read<u32>(0x0C001234); EXPECT_EQ(i, val32);
 
-		val8 += 1; m_mapping->Write(0xCC001234, val8);
-		val16 += 1; m_mapping->Write(0xCC001234, val16);
-		val32 += 1; m_mapping->Write(0xCC001234, val32);
+		val8 += 1; m_mapping->Write(0x0C001234, val8);
+		val16 += 1; m_mapping->Write(0x0C001234, val16);
+		val32 += 1; m_mapping->Write(0x0C001234, val32);
 	}
 }
 
@@ -102,21 +102,21 @@ TEST_F(MappingTest, ReadWriteComplex)
 {
 	bool read_called = false, write_called = false;
 
-	m_mapping->Register(0xCC001234,
+	m_mapping->Register(0x0C001234,
 		MMIO::ComplexRead<u8>([&read_called](u32 addr) {
-			EXPECT_EQ(0xCC001234, addr);
+			EXPECT_EQ(0x0C001234, addr);
 			read_called = true;
 			return 0x12;
 		}),
 		MMIO::ComplexWrite<u8>([&write_called](u32 addr, u8 val) {
-			EXPECT_EQ(0xCC001234, addr);
+			EXPECT_EQ(0x0C001234, addr);
 			EXPECT_EQ(0x34, val);
 			write_called = true;
 		})
 	);
 
-	u8 val = m_mapping->Read<u8>(0xCC001234); EXPECT_EQ(0x12, val);
-	m_mapping->Write(0xCC001234, (u8)0x34);
+	u8 val = m_mapping->Read<u8>(0x0C001234); EXPECT_EQ(0x12, val);
+	m_mapping->Write(0x0C001234, (u8)0x34);
 
 	EXPECT_TRUE(read_called);
 	EXPECT_TRUE(write_called);
