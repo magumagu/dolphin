@@ -177,6 +177,8 @@ namespace JitInterface
 	}
 	bool HandleFault(uintptr_t access_address, SContext* ctx)
 	{
+		if (!jit)
+			return false;
 		return jit->HandleFault(access_address, ctx);
 	}
 
