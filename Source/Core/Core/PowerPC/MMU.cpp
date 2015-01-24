@@ -188,10 +188,6 @@ __forceinline static T ReadFromHardware(u32 em_address)
 		return bswap(*(T*)&Memory::m_pFakeVMEM[em_address & Memory::FAKEVMEM_MASK]);
 	}
 
-	if (em_address & 0xC0000000)
-		ERROR_LOG(MEMMAP, "Strange read address: 0x%08x", em_address);
-	em_address &= 0x3FFFFFFF;
-
 	if (flag == FLAG_READ && (em_address & 0xF8000000) == 0x08000000)
 	{
 		if (em_address < 0x0c000000)
@@ -265,10 +261,6 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 		*(T*)&Memory::m_pFakeVMEM[em_address & Memory::FAKEVMEM_MASK] = bswap(data);
 		return;
 	}
-
-	if (em_address & 0xC0000000)
-		ERROR_LOG(MEMMAP, "Strange write address: 0x%08x", em_address);
-	em_address &= 0x3FFFFFFF;
 
 	if (flag == FLAG_WRITE && (em_address & 0xFFFFF000) == 0x0C008000)
 	{
@@ -356,12 +348,12 @@ TryReadInstResult TryReadInstruction(u32 address)
 			from_bat = tlb_addr.from_bat;
 		}
 		if (address & 0xC0000000)
-			ERROR_LOG(MEMMAP, "Strange translated program counter: 0x%08x", address);
+			PanicAlert("Strange translated program counter: 0x%08x", address);
 	}
 	else
 	{
 		if (address & 0xC0000000)
-			ERROR_LOG(MEMMAP, "Strange program counter with address translation off: 0x%08x", address);
+			PanicAlert("Strange program counter with address translation off: 0x%08x", address);
 	}
 
 	u32 hex = PowerPC::ppcState.iCache.ReadInstruction(address);
