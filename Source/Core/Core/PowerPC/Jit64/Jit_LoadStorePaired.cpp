@@ -142,13 +142,13 @@ void Jit64::psq_stXX(UGeckoInstruction inst)
 		CALLptr(MScaled(RSCRATCH, SCALE_8, (u32)(u64)asm_routines.pairedStoreQuantized));
 	}
 
-	CMP(8, R(RSCRATCH2), Imm8(w ? 4 : 8));
+	CMP(8, R(RSCRATCH2), Imm8(32));
 	FixupBranch check_float = J_CC(CC_NE);
 	// Float value store
 	SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, w ? 32 : 64, 0, CallerSavedRegistersInUse());
 	FixupBranch end1 = J();
 	SetJumpTarget(check_float);
-	CMP(8, R(RSCRATCH2), Imm8(w ? 2 : 4));
+	CMP(8, R(RSCRATCH2), Imm8(16));
 	FixupBranch check_16 = J_CC(CC_NE);
 	// 16-bit value store
 	SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, w ? 16 : 32, 0, CallerSavedRegistersInUse());
