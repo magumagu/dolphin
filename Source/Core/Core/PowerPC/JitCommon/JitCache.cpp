@@ -287,7 +287,6 @@ using namespace Gen;
 			std::map<std::pair<u32,u32>, u32>::iterator it1 = block_map.lower_bound(std::make_pair(pAddr, 0)), it2 = it1;
 			while (it2 != block_map.end() && it2->first.second < pAddr + length)
 			{
-				JitBlock &b = blocks[it2->second];
 				DestroyBlock(it2->second, true);
 				++it2;
 			}

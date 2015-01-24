@@ -9,13 +9,13 @@
 TEST(UniqueID, UniqueEnough)
 {
 	std::unordered_set<u32> ids;
-	for (u32 i = 0xCC000000; i < 0xCC010000; ++i)
+	for (u32 i = 0x0C000000; i < 0x0C010000; ++i)
 	{
 		u32 unique_id = MMIO::UniqueID(i);
 		EXPECT_EQ(ids.end(), ids.find(unique_id));
 		ids.insert(unique_id);
 	}
-	for (u32 i = 0xCD000000; i < 0xCD010000; ++i)
+	for (u32 i = 0x0D000000; i < 0x0D010000; ++i)
 	{
 		u32 unique_id = MMIO::UniqueID(i);
 		EXPECT_EQ(ids.end(), ids.find(unique_id));
@@ -38,9 +38,9 @@ TEST(IsMMIOAddress, SpecialAddresses)
 	EXPECT_FALSE(MMIO::IsMMIOAddress(0xC0000000));
 
 	// And lets check some valid addresses too
-	EXPECT_TRUE(MMIO::IsMMIOAddress(0xCC0000E0)); // Gamecube MMIOs
-	EXPECT_TRUE(MMIO::IsMMIOAddress(0xCD00008C)); // Wii MMIOs
-	EXPECT_TRUE(MMIO::IsMMIOAddress(0xCD800F10)); // Mirror of Wii MMIOs
+	EXPECT_TRUE(MMIO::IsMMIOAddress(0x0C0000E0)); // Gamecube MMIOs
+	EXPECT_TRUE(MMIO::IsMMIOAddress(0x0D00008C)); // Wii MMIOs
+	EXPECT_TRUE(MMIO::IsMMIOAddress(0x0D800F10)); // Mirror of Wii MMIOs
 
 	SConfig::Shutdown();
 }
