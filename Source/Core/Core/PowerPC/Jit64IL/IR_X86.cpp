@@ -1595,11 +1595,33 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, u32 exitAddress)
 			// 0b0011111100000111, or 0x3F07.
 			Jit->MOV(32, R(RSCRATCH2), Imm32(0x3F07));
 			Jit->AND(32, R(RSCRATCH2), M(((char *)&GQR(quantreg)) + 2));
-			Jit->MOVZX(32, 8, RSCRATCH, R(RSCRATCH2));
-			Jit->OR(32, R(RSCRATCH), Imm8(w << 3));
+			Jit->MOVZX(32, 8, RSCRATCH_EXTRA, R(RSCRATCH2));
+			Jit->OR(32, R(RSCRATCH_EXTRA), Imm8(w << 3));
 
-			Jit->MOV(32, R(RSCRATCH_EXTRA), regLocForInst(RI, getOp1(I)));
-			Jit->CALLptr(MScaled(RSCRATCH, SCALE_8, (u32)(u64)(((JitIL *)jit)->asm_routines.pairedLoadQuantized)));
+			Jit->MOV(32, R(RSCRATCH), regLocForInst(RI, getOp1(I)));
+
+			BitSet32 registersInUse = regsInUse(RI);
+			registersInUse[RSCRATCH2] = true;
+			registersInUse[RSCRATCH_EXTRA] = true;
+
+			Jit->CMP(8, R(RSCRATCH2), Imm8(0));
+			FixupBranch check_8 = Jit->J_CC(CC_NE);
+			// Float value load.
+			Jit->SafeLoadToReg(RSCRATCH, R(RSCRATCH), w ? 32 : 64, 0, registersInUse, false);
+			FixupBranch end1 = Jit->J();
+			Jit->SetJumpTarget(check_8);
+			Jit->TEST(8, R(RSCRATCH2), Imm8(1));
+			FixupBranch check_4 = Jit->J_CC(CC_Z);
+			// 16-bit value load.
+			Jit->SafeLoadToReg(RSCRATCH, R(RSCRATCH), w ? 16 : 32, 0, registersInUse, false);
+			FixupBranch end2 = Jit->J();
+			Jit->SetJumpTarget(check_4);
+			// 8-bit value load.
+			Jit->SafeLoadToReg(RSCRATCH, R(RSCRATCH), w ? 8 : 16, 0, registersInUse, false);
+			Jit->SetJumpTarget(end1);
+			Jit->SetJumpTarget(end2);
+
+			Jit->CALLptr(MScaled(RSCRATCH_EXTRA, SCALE_8, (u32)(u64)(((JitIL *)jit)->asm_routines.pairedLoadQuantized)));
 			Jit->MOVAPD(reg, R(XMM0));
 			RI.fregs[reg] = I;
 			regNormalRegClear(RI, I);
@@ -1662,6 +1684,24 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, u32 exitAddress)
 			Jit->MOV(32, R(RSCRATCH_EXTRA), regLocForInst(RI, getOp2(I)));
 			Jit->MOVAPD(XMM0, fregLocForInst(RI, getOp1(I)));
 			Jit->CALLptr(MScaled(RSCRATCH, SCALE_8, (u32)(u64)(((JitIL *)jit)->asm_routines.pairedStoreQuantized)));
+
+			Jit->CMP(8, R(RSCRATCH2), Imm8(32));
+			FixupBranch check_float = Jit->J_CC(CC_NE);
+			// Float value store
+			Jit->SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, 64, 0, regsInUse(RI));
+			FixupBranch end1 = Jit->J();
+			Jit->SetJumpTarget(check_float);
+			Jit->CMP(8, R(RSCRATCH2), Imm8(16));
+			FixupBranch check_16 = Jit->J_CC(CC_NE);
+			// 16-bit value store
+			Jit->SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, 32, 0, regsInUse(RI));
+			FixupBranch end2 = Jit->J();
+			Jit->SetJumpTarget(check_16);
+			// 8-bit value store
+			Jit->SafeWriteRegToReg(RSCRATCH, RSCRATCH_EXTRA, 16, 0, regsInUse(RI));
+			Jit->SetJumpTarget(end1);
+			Jit->SetJumpTarget(end2);
+
 			if (RI.IInfo[I - RI.FirstI] & 4)
 				fregClearInst(RI, getOp1(I));
 			if (RI.IInfo[I - RI.FirstI] & 8)
