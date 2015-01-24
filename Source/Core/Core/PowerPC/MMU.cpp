@@ -1032,7 +1032,7 @@ static void UpdateBATs(u32* bat_table, u32 base_spr)
 	}
 }
 
-static void UpdateFakeMMUDBat(u32 start_addr)
+static void UpdateFakeMMUBat(u32* bat_table, u32 start_addr)
 {
 	for (unsigned i = 0; i < (0x10000000 >> 17); ++i)
 	{
@@ -1040,7 +1040,7 @@ static void UpdateFakeMMUDBat(u32 start_addr)
 		// [0x7E000000,0x80000000).
 		u32 e_address = i + (start_addr >> 17);
 		u32 p_address = 0x7E000001 | ((i << 17) & Memory::FAKEVMEM_MASK);
-		dbat_table[e_address] = p_address;
+		bat_table[e_address] = p_address;
 	}
 }
 
@@ -1054,8 +1054,8 @@ void DBATUpdated()
 	if (Memory::bFakeVMEM)
 	{
 		// In Fake-MMU mode, insert some extra entries into the BAT tables.
-		UpdateFakeMMUDBat(0x40000000);
-		UpdateFakeMMUDBat(0x70000000);
+		UpdateFakeMMUBat(dbat_table, 0x40000000);
+		UpdateFakeMMUBat(dbat_table, 0x70000000);
 	}
 	Memory::UpdateLogicalMemory(dbat_table);
 	JitInterface::ClearSafe();
@@ -1068,6 +1068,12 @@ void IBATUpdated()
 	bool extended_bats = SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && HID4.SBE;
 	if (extended_bats)
 		UpdateBATs(ibat_table, SPR_IBAT4U);
+	if (Memory::bFakeVMEM)
+	{
+		// In Fake-MMU mode, insert some extra entries into the BAT tables.
+		UpdateFakeMMUBat(ibat_table, 0x40000000);
+		UpdateFakeMMUBat(ibat_table, 0x70000000);
+	}
 	JitInterface::ClearSafe();
 }
 
