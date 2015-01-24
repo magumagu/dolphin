@@ -31,7 +31,7 @@ TEST(IsMMIOAddress, SpecialAddresses)
 	// WG Pipe address, should not be handled by MMIO.
 	EXPECT_FALSE(MMIO::IsMMIOAddress(0x0C008000));
 
-	// Memory zone used by games using the "MMU Speedhack".
+	// Locked L1 cache allocation.
 	EXPECT_FALSE(MMIO::IsMMIOAddress(0xE0000000));
 
 	// Uncached mirror of MEM1, shouldn't be handled by MMIO

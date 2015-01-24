@@ -104,7 +104,8 @@ bool IsInitialized()
 
 namespace
 {
-	enum {
+	enum
+	{
 		MV_FAKE_VMEM = 1,
 		MV_WII_ONLY = 2,
 	};
