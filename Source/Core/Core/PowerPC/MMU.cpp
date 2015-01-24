@@ -129,8 +129,8 @@ static void EFB_Write(u32 data, u32 addr)
 	}
 }
 
-u32 dbat_table[1 << (32 - 17)];
-u32 ibat_table[1 << (32 - 17)];
+u32 dbat_table[1 << (32 - BAT_INDEX_SHIFT)];
+u32 ibat_table[1 << (32 - BAT_INDEX_SHIFT)];
 
 static void GenerateDSIException(u32 _EffectiveAddress, bool _bWrite);
 
@@ -1011,7 +1011,7 @@ static void UpdateBATs(u32* bat_table, u32 base_spr)
 			{
 				// This bit is a little weird: if BRPN & j != 0, we end up with
 				// a strange mapping. Need to check on hardware.
-				u32 address = (batl.BRPN | j) << 17;
+				u32 address = (batl.BRPN | j) << BAT_INDEX_SHIFT;
 				// (BEPI | j) == (BEPI & ~BL) | (j & BL).
 				bat_table[batu.BEPI | j] = address | 0x1;
 			}
@@ -1021,12 +1021,12 @@ static void UpdateBATs(u32* bat_table, u32 base_spr)
 
 static void UpdateFakeMMUBat(u32* bat_table, u32 start_addr)
 {
-	for (unsigned i = 0; i < (0x10000000 >> 17); ++i)
+	for (unsigned i = 0; i < (0x10000000 >> BAT_INDEX_SHIFT); ++i)
 	{
 		// Map from 0x4XXXXXXX or 0x7XXXXXXX to the range
 		// [0x7E000000,0x80000000).
-		u32 e_address = i + (start_addr >> 17);
-		u32 p_address = 0x7E000001 | ((i << 17) & Memory::FAKEVMEM_MASK);
+		u32 e_address = i + (start_addr >> BAT_INDEX_SHIFT);
+		u32 p_address = 0x7E000001 | ((i << BAT_INDEX_SHIFT) & Memory::FAKEVMEM_MASK);
 		bat_table[e_address] = p_address;
 	}
 }

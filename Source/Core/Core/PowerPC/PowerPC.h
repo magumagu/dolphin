@@ -266,6 +266,9 @@ struct TranslateResult
 };
 TranslateResult JitCache_TranslateAddress(u32 address);
 u32 JitCache_PageTranslateAddress(u32 address);
+enum {
+	BAT_INDEX_SHIFT = 17
+};
 extern u32 ibat_table[];
 extern u32 dbat_table[];
 }  // namespace

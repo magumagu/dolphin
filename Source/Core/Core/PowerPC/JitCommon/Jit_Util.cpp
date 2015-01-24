@@ -285,7 +285,7 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 		bool can_translate;
 		if (UReg_MSR(MSR).DR)
 		{
-			unsigned bat_result = PowerPC::dbat_table[address >> 17];
+			unsigned bat_result = PowerPC::dbat_table[address >> PowerPC::BAT_INDEX_SHIFT];
 			can_translate = (bat_result & 1) != 0;
 			translated = (bat_result & ~1) | (address & 0x1FFFF);
 		}
@@ -466,7 +466,7 @@ bool EmuCodeBlock::WriteToConstAddress(int accessSize, OpArg arg, u32 address, B
 	bool can_translate;
 	if (UReg_MSR(MSR).DR)
 	{
-		unsigned bat_result = PowerPC::dbat_table[address >> 17];
+		unsigned bat_result = PowerPC::dbat_table[address >> PowerPC::BAT_INDEX_SHIFT];
 		can_translate = (bat_result & 1) != 0;
 		translated = (bat_result & ~1) | (address & 0x1FFFF);
 	}

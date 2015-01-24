@@ -229,13 +229,13 @@ void UpdateLogicalMemory(u32* dbat_table)
 		g_arena.ReleaseView(entry.mapped_pointer, entry.mapped_size);
 	}
 	logical_mapped_entries.clear();
-	for (unsigned i = 0; i < (1 << (32 - 17)); ++i)
+	for (unsigned i = 0; i < (1 << (32 - PowerPC::BAT_INDEX_SHIFT)); ++i)
 	{
 		if (dbat_table[i] & 1)
 		{
-			unsigned logical_address = i << 17;
+			unsigned logical_address = i << PowerPC::BAT_INDEX_SHIFT;
 			// TODO: Merge adjacent mappings to make this faster.
-			unsigned logical_size = 1 << 17;
+			unsigned logical_size = 1 << PowerPC::BAT_INDEX_SHIFT;
 			unsigned translated_address = dbat_table[i] & ~1;
 			for (PhysicalMemoryRegion &physical_region : physical_regions)
 			{
