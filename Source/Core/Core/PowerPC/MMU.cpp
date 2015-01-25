@@ -130,6 +130,7 @@ static void EFB_Write(u32 data, u32 addr)
 }
 
 u32 dbat_table[1 << (32 - BAT_INDEX_SHIFT)];
+u8* dbat_ptr_table[1 << (32 - BAT_INDEX_SHIFT)];
 u32 ibat_table[1 << (32 - BAT_INDEX_SHIFT)];
 
 static void GenerateDSIException(u32 _EffectiveAddress, bool _bWrite);
@@ -1031,6 +1032,27 @@ static void UpdateFakeMMUBat(u32* bat_table, u32 start_addr)
 	}
 }
 
+static void UpdateDBATPointerTable()
+{
+	for (unsigned i = 0; i < (1 << (32 - BAT_INDEX_SHIFT)); ++i)
+	{
+		if (!(dbat_table[i] & 1))
+		{
+			dbat_ptr_table[i] = nullptr;
+			continue;
+		}
+		u32 address = dbat_table[i] & ~1;
+		if (Memory::bFakeVMEM && ((address & 0xFE000000) == 0x7E000000))
+			dbat_ptr_table[i] = &Memory::m_pFakeVMEM[address & Memory::FAKEVMEM_MASK];
+		else if (address < Memory::REALRAM_SIZE)
+			dbat_ptr_table[i] = &Memory::m_pRAM[address];
+		else if (Memory::m_pEXRAM && (address >> 28) == 0x1 && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+			dbat_ptr_table[i] = &Memory::m_pEXRAM[address & 0x0FFFFFFF];
+		else
+			dbat_ptr_table[i] = nullptr;
+	}
+}
+
 void DBATUpdated()
 {
 	memset(dbat_table, 0, sizeof(dbat_table));
@@ -1046,6 +1068,7 @@ void DBATUpdated()
 	}
 	Memory::UpdateLogicalMemory(dbat_table);
 	JitInterface::ClearSafe();
+	UpdateDBATPointerTable();
 }
 
 void IBATUpdated()

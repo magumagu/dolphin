@@ -271,6 +271,7 @@ enum {
 };
 extern u32 ibat_table[];
 extern u32 dbat_table[];
+extern u8* dbat_ptr_table[];
 }  // namespace
 
 enum CRBits
