@@ -132,6 +132,8 @@ public:
 
 	static void RequestInvalidateTextureCache();
 
+	virtual TCacheEntryBase* ConvertTexture(TCacheEntryBase* unconverted, void* palette) = 0;
+
 protected:
 	TextureCache();
 

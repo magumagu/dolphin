@@ -42,6 +42,8 @@ private:
 
 	u64 EncodeToRamFromTexture(u32 address, void* source_texture, u32 SourceW, u32 SourceH, bool bFromZBuffer, bool bIsIntensityFmt, u32 copyfmt, int bScaleByHalf, const EFBRectangle& source) {return 0;};
 
+	virtual TCacheEntryBase* ConvertTexture(TCacheEntryBase* unconverted, void* palette) override;
+
 	void CompileShaders() override { }
 	void DeleteShaders() override { }
 };

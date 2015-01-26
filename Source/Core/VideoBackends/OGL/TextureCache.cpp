@@ -366,4 +366,9 @@ void TextureCache::DeleteShaders()
 	s_DepthMatrixProgram.Destroy();
 }
 
+TextureCache::TCacheEntryBase* TextureCache::ConvertTexture(TCacheEntryBase* unconverted, void* palette)
+{
+	return nullptr;
+}
+
 }

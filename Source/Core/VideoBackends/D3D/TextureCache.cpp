@@ -4,6 +4,7 @@
 
 #include "Core/HW/Memmap.h"
 #include "VideoBackends/D3D/D3DBase.h"
+#include "VideoBackends/D3D/D3DShader.h"
 #include "VideoBackends/D3D/D3DState.h"
 #include "VideoBackends/D3D/D3DUtil.h"
 #include "VideoBackends/D3D/FramebufferManager.h"
@@ -193,6 +194,131 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 
 		this->hash = hash;
 	}
+}
+
+const char palette_shader[] =
+#if 0
+"sampler samp0 : register(s0);\n"
+"Texture2DArray Tex0 : register(t0);\n"
+"uniform int palette[128] : register(c0);\n"
+"void main(\n"
+"	out float4 ocol0 : SV_Target,\n"
+"	in float4 pos : SV_Position,\n"
+"	in float3 uv0 : TEXCOORD0)\n"
+"{\n"
+"	int src = round(Tex0.Sample(samp0,uv0) * 255.f).r;\n"
+"   src = src & 1 ? (palette[src >> 1] >> 16) : (palette[src >> 1] & 0xFFFF);"
+"	ocol0 = float4((src & 0x1F) << 3, ((src >> 5) & 0x3F) << 2, ((src >> 11) & 0x1F) << 3, 255) / 255;\n"
+//"	ocol0 = int4(src, src, src, 1);"
+"}";
+#endif
+R"HLSL(
+sampler samp0 : register(s0);
+Texture2DArray Tex0 : register(t0);
+uniform uint palette[128] : register(c0);
+
+uint Convert3To8(uint v)
+{
+	// Swizzle bits: 00000123 -> 12312312
+	return (v << 5) | (v << 2) | (v >> 1);
+}
+
+uint Convert4To8(uint v)
+{
+	// Swizzle bits: 00001234 -> 12341234
+	return (v << 4) | v;
+}
+
+uint Convert5To8(uint v)
+{
+	// Swizzle bits: 00012345 -> 12345123
+	return (v << 3) | (v >> 2);
+}
+
+uint Convert6To8(uint v)
+{
+	// Swizzle bits: 00123456 -> 12345612
+	return (v << 2) | (v >> 4);
+}
+
+float4 DecodePixel_RGB5A3(uint val)
+{
+	int r,g,b,a;
+	if ((val&0x8000))
+	{
+		r=Convert5To8((val>>10) & 0x1f);
+		g=Convert5To8((val>>5 ) & 0x1f);
+		b=Convert5To8((val    ) & 0x1f);
+		a=0xFF;
+	}
+	else
+	{
+		a=Convert3To8((val>>12) & 0x7);
+		r=Convert4To8((val>>8 ) & 0xf);
+		g=Convert4To8((val>>4 ) & 0xf);
+		b=Convert4To8((val    ) & 0xf);
+	}
+	return float4(r, g, b, a) / 255;
+}
+
+void main(
+	out float4 ocol0 : SV_Target,
+	in float4 pos : SV_Position,
+	in float3 uv0 : TEXCOORD0)
+{
+	uint src = round(Tex0.Sample(samp0,uv0) * 255.f).r;
+	src = src & 1 ? (palette[src >> 1] & 0xFFFF) : (palette[src >> 1] >> 16);
+	src = (src >> 8) | ((src << 8) & 0xFF00);
+	ocol0 = DecodePixel_RGB5A3(src);
+//	ocol0 = int4(src, src, src, 1);
+}
+)HLSL";
+
+TextureCache::TCacheEntryBase* TextureCache::ConvertTexture(TCacheEntryBase* unconverted, void* palette)
+{
+	TCacheEntry* entry = static_cast<TCacheEntry*>(CreateTexture(unconverted->config));
+
+	// TODO: Using the wrong dstFormat, dumb...
+	entry->SetGeneralParameters(unconverted->addr, 0, unconverted->format);
+	entry->SetDimensions(unconverted->native_width, unconverted->native_height, 1);
+	entry->SetHashes(0);
+	entry->type = TCET_EC_VRAM;
+
+	entry->frameCount = 0;
+
+	g_renderer->ResetAPIState();
+
+	// stretch picture with increased internal resolution
+	const D3D11_VIEWPORT vp = CD3D11_VIEWPORT(0.f, 0.f, (float)unconverted->config.width, (float)unconverted->config.height);
+	D3D::context->RSSetViewports(1, &vp);
+
+	const D3D11_BUFFER_DESC cbdesc = CD3D11_BUFFER_DESC(512, D3D11_BIND_CONSTANT_BUFFER, D3D11_USAGE_DEFAULT);
+	ID3D11Buffer *buffer;
+	D3D11_SUBRESOURCE_DATA data;
+	data.pSysMem = palette;
+	HRESULT hr = D3D::device->CreateBuffer(&cbdesc, &data, &buffer);
+	CHECK(SUCCEEDED(hr), "Create palette buffer");
+	D3D::stateman->SetPixelConstants(buffer);
+
+	const D3D11_RECT sourcerect = CD3D11_RECT(0, 0, unconverted->config.width, unconverted->config.height);
+
+	D3D::SetPointCopySampler();
+
+	D3D::context->OMSetRenderTargets(1, &entry->texture->GetRTV(), nullptr);
+
+	static auto pixel_shader = D3D::CompileAndCreatePixelShader(palette_shader);
+	// Create texture copy
+	D3D::drawShadedTexQuad(
+		static_cast<TCacheEntry*>(unconverted)->texture->GetSRV(),
+		&sourcerect, unconverted->config.width, unconverted->config.height,
+		pixel_shader,
+		VertexShaderCache::GetSimpleVertexShader(), VertexShaderCache::GetSimpleInputLayout(),
+		GeometryShaderCache::GetCopyGeometryShader());
+
+	D3D::context->OMSetRenderTargets(1, &FramebufferManager::GetEFBColorTexture()->GetRTV(), FramebufferManager::GetEFBDepthTexture()->GetDSV());
+
+	g_renderer->RestoreAPIState();
+	return entry;
 }
 
 TextureCache::TextureCache()
