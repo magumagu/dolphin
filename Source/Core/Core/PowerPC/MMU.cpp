@@ -83,9 +83,14 @@ static bool IsOpcodeFlag(XCheckTLBFlag flag)
 
 struct TranslateAddressResult
 {
-	bool valid;
-	bool from_bat;
+	enum {
+		BAT_TRANSLATED,
+		PAGE_TABLE_TRANSLATED,
+		DIRECT_STORE_SEGMENT,
+		PAGE_FAULT
+	} result;
 	u32 address;
+	bool Success() { return result <= PAGE_TABLE_TRANSLATED; }
 };
 template <const XCheckTLBFlag flag> static TranslateAddressResult TranslateAddress(const u32 address);
 
@@ -141,7 +146,7 @@ __forceinline static T ReadFromHardware(u32 em_address)
 	if (!never_translate && UReg_MSR(MSR).DR)
 	{
 		auto translated_addr = TranslateAddress<flag>(em_address);
-		if (!translated_addr.valid)
+		if (!translated_addr.Success())
 		{
 			if (flag == FLAG_READ)
 				GenerateDSIException(em_address, false);
@@ -155,7 +160,7 @@ __forceinline static T ReadFromHardware(u32 em_address)
 			// Note that "word" means 32-bit, so paired singles or doubles might still be 32-bit aligned!
 			u32 em_address_next_page = (em_address + sizeof(T) - 1) & ~(HW_PAGE_SIZE - 1);
 			auto tlb_addr_next_page = TranslateAddress<flag>(em_address_next_page);
-			if (!tlb_addr_next_page.valid)
+			if (!tlb_addr_next_page.Success())
 			{
 				if (flag == FLAG_READ)
 					GenerateDSIException(em_address_next_page, false);
@@ -215,7 +220,7 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 	if (!never_translate && UReg_MSR(MSR).DR)
 	{
 		auto translated_addr = TranslateAddress<flag>(em_address);
-		if (!translated_addr.valid)
+		if (!translated_addr.Success())
 		{
 			if (flag == FLAG_WRITE)
 				GenerateDSIException(em_address, true);
@@ -229,7 +234,7 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 			// Note that "word" means 32-bit, so paired singles or doubles might still be 32-bit aligned!
 			u32 em_address_next_page = (em_address + sizeof(T) - 1) & ~(HW_PAGE_SIZE - 1);
 			auto tlb_addr_next_page = TranslateAddress<flag>(em_address_next_page);
-			if (!tlb_addr_next_page.valid)
+			if (!tlb_addr_next_page.Success())
 			{
 				if (flag == FLAG_WRITE)
 					GenerateDSIException(em_address_next_page, true);
@@ -339,14 +344,14 @@ TryReadInstResult TryReadInstruction(u32 address)
 	if (UReg_MSR(MSR).IR)
 	{
 		auto tlb_addr = TranslateAddress<FLAG_OPCODE>(address);
-		if (!tlb_addr.valid)
+		if (!tlb_addr.Success())
 		{
 			return TryReadInstResult{ false, false, 0 };
 		}
 		else
 		{
 			address = tlb_addr.address;
-			from_bat = tlb_addr.from_bat;
+			from_bat = tlb_addr.result == TranslateAddressResult::BAT_TRANSLATED;
 		}
 	}
 
@@ -554,7 +559,7 @@ bool HostIsRAMAddress(u32 address)
 	if (performTranslation)
 	{
 		auto translate_address = TranslateAddress<FLAG_NO_EXCEPTION>(address);
-		if (!translate_address.valid)
+		if (!translate_address.Success())
 			return false;
 		address = translate_address.address;
 		segment = address >> 28;
@@ -647,10 +652,29 @@ void DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks)
 
 void ClearCacheLine(const u32 address)
 {
-	// FIXME: does this do the right thing if dcbz is run on hardware memory, e.g.
-	// the FIFO? Do games even do that? Probably not, but we should try to be correct...
+	_dbg_assert_(POWERPC, (address & 0x1F) == 0);
+	if (UReg_MSR(MSR).DR)
+	{
+		auto translated_address = TranslateAddress<FLAG_WRITE>(address);
+		if (translated_address.result == TranslateAddressResult::DIRECT_STORE_SEGMENT)
+		{
+			// dcbz to direct store segments is ignored. This is a little
+			// unintuitive, but this is consistent with both console and the PEM.
+			// Advance Game Port crashes if we don't emulate this correctly.
+			return;
+		}
+		if (translated_address.result == TranslateAddressResult::PAGE_FAULT)
+		{
+			// If translation fails, generate a DSI.
+			GenerateDSIException(address, true);
+			return;
+		}
+	}
+
+	// TODO: This isn't precisely correct for non-RAM regions, but the difference
+	// is unlikely to matter.
 	for (u32 i = 0; i < 32; i += 8)
-		Write_U64(0, address + i);
+		WriteToHardware<FLAG_WRITE, u64, true>(0, address + i);
 }
 
 TranslateResult JitCache_TranslateAddress(u32 address)
@@ -660,14 +684,14 @@ TranslateResult JitCache_TranslateAddress(u32 address)
 	if (UReg_MSR(MSR).IR)
 	{
 		auto tlb_addr = TranslateAddress<FLAG_OPCODE_NO_EXCEPTION>(address);
-		if (!tlb_addr.valid)
+		if (!tlb_addr.Success())
 		{
 			return TranslateResult{ false, false, 0 };
 		}
 		else
 		{
 			address = tlb_addr.address;
-			from_bat = tlb_addr.from_bat;
+			from_bat = tlb_addr.result == TranslateAddressResult::BAT_TRANSLATED;
 		}
 	}
 
@@ -912,9 +936,18 @@ static __forceinline TranslateAddressResult TranslatePageAddress(const u32 addre
 	u32 translatedAddress = 0;
 	TLBLookupResult res = LookupTLBPageAddress(flag , address, &translatedAddress);
 	if (res == TLB_FOUND)
-		return TranslateAddressResult{ true, false, translatedAddress };
+		return TranslateAddressResult{ TranslateAddressResult::PAGE_TABLE_TRANSLATED, translatedAddress };
 
 	u32 sr = PowerPC::ppcState.sr[EA_SR(address)];
+
+	if (sr & 0x80000000)
+		return TranslateAddressResult{ TranslateAddressResult::DIRECT_STORE_SEGMENT, 0 };
+
+	// TODO: Handle KS/KP segment register flags.
+
+	// No-execute segment register flag.
+	if ((flag == FLAG_NO_EXCEPTION || flag == FLAG_OPCODE_NO_EXCEPTION) && (sr & 0x10000000))
+		return TranslateAddressResult{ TranslateAddressResult::PAGE_FAULT, 0 };
 
 	u32 offset = EA_Offset(address);        // 12 bit
 	u32 page_index = EA_PageIndex(address); // 16 bit
@@ -960,11 +993,11 @@ static __forceinline TranslateAddressResult TranslatePageAddress(const u32 addre
 				if (res != TLB_UPDATE_C)
 					UpdateTLBEntry(flag, PTE2, address);
 
-				return TranslateAddressResult{ true, false, (PTE2.RPN << 12) | offset };
+				return TranslateAddressResult{ TranslateAddressResult::PAGE_TABLE_TRANSLATED, (PTE2.RPN << 12) | offset };
 			}
 		}
 	}
-	return TranslateAddressResult{ false, false, 0 };
+	return TranslateAddressResult{ TranslateAddressResult::PAGE_FAULT, 0 };
 }
 
 static void UpdateBATs(u32* bat_table, u32 base_spr)
@@ -1095,14 +1128,9 @@ TranslateAddressResult TranslateAddress(const u32 address)
 	if (bat_result & 1)
 	{
 		u32 result_addr = (bat_result & ~1) | (address & 0x0001FFFF);
-		return TranslateAddressResult{ true, true, result_addr };
+		return TranslateAddressResult{ TranslateAddressResult::BAT_TRANSLATED, result_addr };
 	}
 	return TranslatePageAddress(address, flag);
-}
-
-u32 JitCache_PageTranslateAddress(u32 address)
-{
-	return TranslatePageAddress(address, FLAG_OPCODE_NO_EXCEPTION).address;
 }
 
 } // namespace
