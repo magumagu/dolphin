@@ -213,8 +213,9 @@ std::string HostGetString(u32 em_address, size_t size = 0);
 
 // Routines for the CPU core to access memory.
 
-// Used by interpreter to read instructions, uses iCache
+// Used by interpreter to read instructions, uses icache
 u32 Read_Opcode(const u32 address);
+// Used by the JIT to read instructions; uses icache.
 struct TryReadInstResult
 {
 	bool valid;
@@ -251,6 +252,10 @@ void Write_F64(const double var, const u32 address);
 void DMA_LCToMemory(const u32 memAddr, const u32 cacheAddr, const u32 numBlocks);
 void DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks);
 void ClearCacheLine(const u32 address); // Zeroes 32 bytes; address should be 32-byte-aligned
+
+bool IsOptimizableRAMAccess(u32 address, u32 accessSize);
+u32 IsOptimizableMMIOAccess(u32 address, u32 accessSize);
+bool IsOptimizableGatherPipeWrite(u32 address);
 
 // TLB functions
 void SDRUpdated();

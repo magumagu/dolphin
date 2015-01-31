@@ -196,6 +196,7 @@ __forceinline static T ReadFromHardware(u32 em_address)
 
 	if (flag == FLAG_READ && (em_address & 0xF8000000) == 0x08000000)
 	{
+		// TODO: Handle non-32-bit EFB reads.
 		if (em_address < 0x0c000000)
 			return EFB_Read(em_address);
 		else
@@ -282,20 +283,8 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 	{
 		if (em_address < 0x0c000000)
 		{
-			int x = (em_address & 0xfff) >> 2;
-			int y = (em_address >> 12) & 0x3ff;
-
-			// TODO figure out a way to send data without falling into the template trap
-			if (em_address & 0x00400000)
-			{
-				g_video_backend->Video_AccessEFB(POKE_Z, x, y, (u32)data);
-				DEBUG_LOG(MEMMAP, "EFB Z Write %08x @ %i, %i", (u32)data, x, y);
-			}
-			else
-			{
-				g_video_backend->Video_AccessEFB(POKE_COLOR, x, y, (u32)data);
-				DEBUG_LOG(MEMMAP, "EFB Color Write %08x @ %i, %i", (u32)data, x, y);
-			}
+			// TODO: Handle non-32-bit EFB writes.
+			EFB_Write((u32)data, em_address);
 			return;
 		}
 		else
@@ -696,6 +685,71 @@ TranslateResult JitCache_TranslateAddress(u32 address)
 	}
 
 	return TranslateResult{ true, from_bat, address };
+}
+
+bool IsOptimizableRAMAccess(u32 address, u32 accessSize)
+{
+	unsigned translated;
+	if (UReg_MSR(MSR).DR)
+	{
+		unsigned bat_result = PowerPC::dbat_table[address >> PowerPC::BAT_INDEX_SHIFT];
+		if ((bat_result & 1) == 0)
+			return false;
+		translated = (bat_result & ~1) | (address & 0x1FFFF);
+	}
+	else
+	{
+		translated = address;
+	}
+
+	// TODO: We can allow unaligned access in some cases.
+	if ((translated & ((accessSize >> 3) - 1)) != 0)
+		return false;
+
+	if (address < Memory::REALRAM_SIZE)
+		return true;
+	if (Memory::m_pEXRAM && (address >> 28 == 0x1) && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+		return true;
+	return false;
+}
+
+u32 IsOptimizableMMIOAccess(u32 address, u32 accessSize)
+{
+	unsigned translated;
+	if (UReg_MSR(MSR).DR)
+	{
+		unsigned bat_result = PowerPC::dbat_table[address >> PowerPC::BAT_INDEX_SHIFT];
+		if ((bat_result & 1) == 0)
+			return false;
+		translated = (bat_result & ~1) | (address & 0x1FFFF);
+	}
+	else
+	{
+		translated = address;
+	}
+
+	bool aligned = (translated & ((accessSize >> 3) - 1)) == 0;
+	if (aligned && MMIO::IsMMIOAddress(translated))
+		return translated;
+	return 0;
+}
+
+bool IsOptimizableGatherPipeWrite(u32 address)
+{
+	unsigned translated;
+	if (UReg_MSR(MSR).DR)
+	{
+		unsigned bat_result = PowerPC::dbat_table[address >> PowerPC::BAT_INDEX_SHIFT];
+		if ((bat_result & 1) == 0)
+			return false;
+		translated = (bat_result & ~1) | (address & 0x1FFFF);
+	}
+	else
+	{
+		translated = address;
+	}
+
+	return translated == 0x0C008000;
 }
 
 // *********************************************************************************

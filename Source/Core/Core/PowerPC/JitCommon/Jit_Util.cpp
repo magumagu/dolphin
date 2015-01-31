@@ -234,25 +234,6 @@ void EmuCodeBlock::MMIOLoadToReg(MMIO::Mapping* mmio, Gen::X64Reg reg_value,
 	}
 }
 
-static bool IsRAMAddress(u32 address)
-{
-	return address < Memory::REALRAM_SIZE;
-}
-
-static bool IsEXRAMAddress(u32 address)
-{
-	return (address >> 28 == 0x1) && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE;
-}
-
-static bool IsFastmemAccessSafe(u32 address)
-{
-	if (IsRAMAddress(address))
-		return true;
-	if (Memory::m_pEXRAM && IsEXRAMAddress(address))
-		return true;
-	return false;
-}
-
 void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress, int accessSize, s32 offset, BitSet32 registersInUse, bool signExtend, int flags)
 {
 	registersInUse[reg_value] = false;
@@ -280,28 +261,10 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 	{
 		u32 address = (u32)opAddress.offset + offset;
 
-		// TODO: Refactor this code.
-		unsigned translated;
-		bool can_translate;
-		if (UReg_MSR(MSR).DR)
-		{
-			unsigned bat_result = PowerPC::dbat_table[address >> PowerPC::BAT_INDEX_SHIFT];
-			can_translate = (bat_result & 1) != 0;
-			translated = (bat_result & ~1) | (address & 0x1FFFF);
-		}
-		else
-		{
-			translated = address;
-			can_translate = true;
-		}
-		bool aligned = (translated & ((accessSize >> 3) - 1)) == 0;
-
 		// If we're sure it's safe, load using the fastmem arena.  Note that
 		// this uses the original address, not the translated address:
 		// accessing the physical base is more expensive when translation is on.
-		// TODO: Fix fastmem arena code so this is actually safe.
-		// TODO: We could be a little more clever with unaligned reads.
-		if (can_translate && aligned && IsFastmemAccessSafe(translated))
+		if (PowerPC::IsOptimizableRAMAccess(address, accessSize))
 		{
 			UnsafeLoadToReg(reg_value, opAddress, accessSize, offset, signExtend);
 			return;
@@ -309,11 +272,11 @@ void EmuCodeBlock::SafeLoadToReg(X64Reg reg_value, const Gen::OpArg & opAddress,
 
 		// If the address maps to an address which looks like an MMIO register,
 		// inline MMIO read code.
-		if (can_translate && aligned && accessSize != 64 &&
-		    MMIO::IsMMIOAddress(translated))
+		u32 mmioAddress = PowerPC::IsOptimizableMMIOAccess(address, accessSize);
+		if (accessSize != 64 && mmioAddress)
 		{
 			MMIOLoadToReg(Memory::mmio_mapping, reg_value, registersInUse,
-				            translated, accessSize, signExtend);
+			    mmioAddress, accessSize, signExtend);
 			return;
 		}
 
@@ -461,24 +424,8 @@ bool EmuCodeBlock::WriteToConstAddress(int accessSize, OpArg arg, u32 address, B
 {
 	arg = FixImmediate(accessSize, arg);
 
-	// TODO: Refactor this code.
-	unsigned translated;
-	bool can_translate;
-	if (UReg_MSR(MSR).DR)
-	{
-		unsigned bat_result = PowerPC::dbat_table[address >> PowerPC::BAT_INDEX_SHIFT];
-		can_translate = (bat_result & 1) != 0;
-		translated = (bat_result & ~1) | (address & 0x1FFFF);
-	}
-	else
-	{
-		translated = address;
-		can_translate = true;
-	}
-	bool aligned = (translated & ((accessSize >> 3) - 1)) == 0;
-
 	// Optimize gather pipe writes.
-	if (can_translate && aligned && jit->jo.optimizeGatherPipe && (translated & 0xFFFFF000) == 0x0C008000)
+	if (PowerPC::IsOptimizableGatherPipeWrite(address))
 	{
 		if (!arg.IsSimpleReg() || arg.GetSimpleReg() != RSCRATCH)
 			MOV(accessSize, R(RSCRATCH), arg);
@@ -488,11 +435,12 @@ bool EmuCodeBlock::WriteToConstAddress(int accessSize, OpArg arg, u32 address, B
 	}
 
 	// Optimize writes to RAM.
-	if (can_translate && aligned && IsFastmemAccessSafe(translated))
+	if (PowerPC::IsOptimizableRAMAccess(address, accessSize))
 	{
 		WriteToConstRamAddress(accessSize, arg, address);
 		return false;
 	}
+
 	// TODO: Optimize MMIO writes?  Might not happen enough to matter.
 
 	// General case.
