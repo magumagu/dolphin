@@ -639,7 +639,7 @@ void DMA_MemoryToLC(const u32 cacheAddr, const u32 memAddr, const u32 numBlocks)
 	memcpy(dst, src, 32 * numBlocks);
 }
 
-void ClearCacheLine(const u32 address)
+void ClearCacheLine(u32 address)
 {
 	_dbg_assert_(POWERPC, (address & 0x1F) == 0);
 	if (UReg_MSR(MSR).DR)
@@ -658,12 +658,13 @@ void ClearCacheLine(const u32 address)
 			GenerateDSIException(address, true);
 			return;
 		}
+		address = translated_address.address;
 	}
 
 	// TODO: This isn't precisely correct for non-RAM regions, but the difference
 	// is unlikely to matter.
 	for (u32 i = 0; i < 32; i += 8)
-		WriteToHardware<FLAG_WRITE, u64, true>(0, address + i);
+		WriteToHardware<FLAG_WRITE, u64, true>(address + i, 0);
 }
 
 TranslateResult JitCache_TranslateAddress(u32 address)
