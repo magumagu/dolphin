@@ -425,7 +425,7 @@ bool EmuCodeBlock::WriteToConstAddress(int accessSize, OpArg arg, u32 address, B
 	arg = FixImmediate(accessSize, arg);
 
 	// Optimize gather pipe writes.
-	if (PowerPC::IsOptimizableGatherPipeWrite(address))
+	if (jit->jo.optimizeGatherPipe && PowerPC::IsOptimizableGatherPipeWrite(address))
 	{
 		if (!arg.IsSimpleReg() || arg.GetSimpleReg() != RSCRATCH)
 			MOV(accessSize, R(RSCRATCH), arg);

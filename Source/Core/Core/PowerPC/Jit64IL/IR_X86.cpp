@@ -495,12 +495,12 @@ static void fregEmitBinInst(RegInfo& RI, InstLoc I, void (JitIL::*op)(X64Reg, Op
 
 // Mark and calculation routines for profiled load/store addresses
 // Could be extended to unprofiled addresses.
-static void regMarkMemAddress(RegInfo& RI, InstLoc I, InstLoc AI, unsigned OpNum)
+static void regMarkMemAddress(RegInfo& RI, InstLoc I, InstLoc AI, unsigned OpNum, u32 accessSize)
 {
 	if (isImm(*AI))
 	{
 		unsigned addr = RI.Build->GetImmValue(AI);
-		if (false)
+		if (PowerPC::IsOptimizableRAMAccess(addr, accessSize))
 			return;
 	}
 
@@ -515,12 +515,12 @@ static void regMarkMemAddress(RegInfo& RI, InstLoc I, InstLoc AI, unsigned OpNum
 
 // in 64-bit build, this returns a completely bizarre address sometimes!
 static std::pair<OpArg, u32> regBuildMemAddress(RegInfo& RI, InstLoc I, InstLoc AI,
-                                                unsigned OpNum, X64Reg* dest)
+                                                unsigned OpNum, X64Reg* dest, int accessSize)
 {
 	if (isImm(*AI))
 	{
 		unsigned addr = RI.Build->GetImmValue(AI);
-		if (false)
+		if (PowerPC::IsOptimizableRAMAccess(addr, accessSize))
 		{
 			if (dest)
 				*dest = regFindFreeReg(RI);
@@ -577,7 +577,7 @@ static std::pair<OpArg, u32> regBuildMemAddress(RegInfo& RI, InstLoc I, InstLoc 
 static void regEmitMemLoad(RegInfo& RI, InstLoc I, unsigned Size)
 {
 	X64Reg reg;
-	auto info = regBuildMemAddress(RI, I, getOp1(I), 1, &reg);
+	auto info = regBuildMemAddress(RI, I, getOp1(I), 1, &reg, Size);
 
 	RI.Jit->SafeLoadToReg(reg, info.first, Size, info.second, regsInUse(RI), false);
 	if (regReadUse(RI, I))
@@ -604,7 +604,7 @@ static OpArg regImmForConst(RegInfo& RI, InstLoc I, unsigned Size)
 
 static void regEmitMemStore(RegInfo& RI, InstLoc I, unsigned Size)
 {
-	auto info = regBuildMemAddress(RI, I, getOp2(I), 2, nullptr);
+	auto info = regBuildMemAddress(RI, I, getOp2(I), 2, nullptr, Size);
 	if (info.first.IsImm())
 		RI.Jit->MOV(32, R(RSCRATCH2), info.first);
 	else
@@ -822,11 +822,19 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, u32 exitAddress)
 				regMarkUse(RI, I, getOp1(I), 1);
 			break;
 		case Load8:
+			regMarkMemAddress(RI, I, getOp1(I), 1, 8);
+			break;
 		case Load16:
+			regMarkMemAddress(RI, I, getOp1(I), 1, 16);
+			break;
 		case Load32:
+			regMarkMemAddress(RI, I, getOp1(I), 1, 32);
+			break;
 		case LoadDouble:
+			regMarkMemAddress(RI, I, getOp1(I), 1, 64);
+			break;
 		case LoadSingle:
-			regMarkMemAddress(RI, I, getOp1(I), 1);
+			regMarkMemAddress(RI, I, getOp1(I), 1, 32);
 			break;
 		case LoadPaired:
 			if (thisUsed)
@@ -893,16 +901,24 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, u32 exitAddress)
 			}
 			break;
 		case Store8:
+			if (!isImm(*getOp1(I)))
+				regMarkUse(RI, I, getOp1(I), 1);
+			regMarkMemAddress(RI, I, getOp2(I), 2, 8);
 		case Store16:
+			if (!isImm(*getOp1(I)))
+				regMarkUse(RI, I, getOp1(I), 1);
+			regMarkMemAddress(RI, I, getOp2(I), 2, 16);
 		case Store32:
 			if (!isImm(*getOp1(I)))
 				regMarkUse(RI, I, getOp1(I), 1);
-			regMarkMemAddress(RI, I, getOp2(I), 2);
+			regMarkMemAddress(RI, I, getOp2(I), 2, 32);
 			break;
 		case StoreSingle:
+			regMarkUse(RI, I, getOp1(I), 1);
+			regMarkMemAddress(RI, I, getOp2(I), 2, 32);
 		case StoreDouble:
 			regMarkUse(RI, I, getOp1(I), 1);
-			regMarkMemAddress(RI, I, getOp2(I), 2);
+			regMarkMemAddress(RI, I, getOp2(I), 2, 64);
 			break;
 		case StorePaired:
 			regMarkUse(RI, I, getOp1(I), 1);
@@ -1558,7 +1574,7 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, u32 exitAddress)
 				break;
 
 			X64Reg reg = fregFindFreeReg(RI);
-			auto info = regBuildMemAddress(RI, I, getOp1(I), 1, nullptr);
+			auto info = regBuildMemAddress(RI, I, getOp1(I), 1, nullptr, 32);
 
 			RI.Jit->SafeLoadToReg(RSCRATCH2, info.first, 32, info.second, regsInUse(RI), false);
 			Jit->MOVD_xmm(reg, R(RSCRATCH2));
@@ -1572,7 +1588,7 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, u32 exitAddress)
 				break;
 
 			X64Reg reg = fregFindFreeReg(RI);
-			auto info = regBuildMemAddress(RI, I, getOp1(I), 1, nullptr);
+			auto info = regBuildMemAddress(RI, I, getOp1(I), 1, nullptr, 64);
 
 			RI.Jit->SafeLoadToReg(RSCRATCH2, info.first, 64, info.second, regsInUse(RI), false);
 			Jit->MOVQ_xmm(reg, R(RSCRATCH2));
@@ -1636,7 +1652,7 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, u32 exitAddress)
 			else
 				Jit->MOV(32, R(RSCRATCH), loc1);
 
-			auto info = regBuildMemAddress(RI, I, getOp2(I), 2, nullptr);
+			auto info = regBuildMemAddress(RI, I, getOp2(I), 2, nullptr, 32);
 			if (info.first.IsImm())
 				RI.Jit->MOV(32, R(RSCRATCH2), info.first);
 			else
@@ -1658,7 +1674,7 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, u32 exitAddress)
 			Jit->MOVAPD(XMM0, value);
 			Jit->MOVQ_xmm(R(RSCRATCH), XMM0);
 
-			auto info = regBuildMemAddress(RI, I, getOp2(I), 2, nullptr);
+			auto info = regBuildMemAddress(RI, I, getOp2(I), 2, nullptr, 64);
 			if (info.first.IsImm())
 				RI.Jit->MOV(32, R(RSCRATCH2), info.first);
 			else

@@ -181,7 +181,7 @@ void JitArm64::lfXX(UGeckoInstruction inst)
 	fprs_in_use[0] = 0; // Q0
 	fprs_in_use[VD - Q0] = 0;
 
-	if (is_immediate && PowerPC::IsOptimizableRAMAddress(imm_addr))
+	if (is_immediate && PowerPC::IsOptimizableRAMAccess(imm_addr, 32))
 	{
 		EmitBackpatchRoutine(this, flags, true, false, VD, XA);
 	}
@@ -371,7 +371,7 @@ void JitArm64::stfXX(UGeckoInstruction inst)
 
 	if (is_immediate)
 	{
-		if ((imm_addr & 0xFFFFF000) == 0xCC008000 && jit->jo.optimizeGatherPipe)
+		if (PowerPC::IsOptimizableGatherPipeWrite(imm_addr) && jit->jo.optimizeGatherPipe)
 		{
 			int accessSize;
 			if (flags & BackPatchInfo::FLAG_SIZE_F64)
@@ -399,7 +399,7 @@ void JitArm64::stfXX(UGeckoInstruction inst)
 			jit->js.fifoBytesThisBlock += accessSize >> 3;
 
 		}
-		else if (PowerPC::IsOptimizableRAMAddress(imm_addr))
+		else if (PowerPC::IsOptimizableRAMAccess(imm_addr, accessSize))
 		{
 			EmitBackpatchRoutine(this, flags, true, false, V0, XA);
 		}
