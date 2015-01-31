@@ -371,14 +371,13 @@ void JitArm64::stfXX(UGeckoInstruction inst)
 
 	if (is_immediate)
 	{
+		int accessSize;
+		if (flags & BackPatchInfo::FLAG_SIZE_F64)
+			accessSize = 64;
+		else
+			accessSize = 32;
 		if (PowerPC::IsOptimizableGatherPipeWrite(imm_addr) && jit->jo.optimizeGatherPipe)
 		{
-			int accessSize;
-			if (flags & BackPatchInfo::FLAG_SIZE_F64)
-				accessSize = 64;
-			else
-				accessSize = 32;
-
 			MOVI2R(X30, (u64)&GPFifo::m_gatherPipeCount);
 			MOVI2R(X1, (u64)GPFifo::m_gatherPipe);
 			LDR(INDEX_UNSIGNED, W0, X30, 0);
