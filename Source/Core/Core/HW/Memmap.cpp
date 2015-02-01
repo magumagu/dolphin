@@ -236,7 +236,7 @@ void UpdateLogicalMemory(u32* dbat_table)
 			unsigned logical_address = i << PowerPC::BAT_INDEX_SHIFT;
 			// TODO: Merge adjacent mappings to make this faster.
 			unsigned logical_size = 1 << PowerPC::BAT_INDEX_SHIFT;
-			unsigned translated_address = dbat_table[i] & ~1;
+			unsigned translated_address = dbat_table[i] & ~3;
 			for (PhysicalMemoryRegion &physical_region : physical_regions)
 			{
 				u32 mapping_address = physical_region.physical_address;

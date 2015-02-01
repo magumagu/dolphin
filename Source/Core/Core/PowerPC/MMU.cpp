@@ -135,7 +135,6 @@ static void EFB_Write(u32 data, u32 addr)
 }
 
 u32 dbat_table[1 << (32 - BAT_INDEX_SHIFT)];
-u8* dbat_ptr_table[1 << (32 - BAT_INDEX_SHIFT)];
 u32 ibat_table[1 << (32 - BAT_INDEX_SHIFT)];
 
 static void GenerateDSIException(u32 _EffectiveAddress, bool _bWrite);
@@ -690,22 +689,15 @@ TranslateResult JitCache_TranslateAddress(u32 address)
 
 bool IsOptimizableRAMAccess(u32 address, u32 accessSize)
 {
-	unsigned translated;
+	// TODO: We can allow unaligned access in some cases.
+	if ((address & ((accessSize >> 3) - 1)) != 0)
+		return false;
+
 	if (UReg_MSR(MSR).DR)
 	{
 		unsigned bat_result = PowerPC::dbat_table[address >> PowerPC::BAT_INDEX_SHIFT];
-		if ((bat_result & 1) == 0)
-			return false;
-		translated = (bat_result & ~1) | (address & 0x1FFFF);
+		return (bat_result & 2) != 0;
 	}
-	else
-	{
-		translated = address;
-	}
-
-	// TODO: We can allow unaligned access in some cases.
-	if ((translated & ((accessSize >> 3) - 1)) != 0)
-		return false;
 
 	if (address < Memory::REALRAM_SIZE)
 		return true;
@@ -722,7 +714,7 @@ u32 IsOptimizableMMIOAccess(u32 address, u32 accessSize)
 		unsigned bat_result = PowerPC::dbat_table[address >> PowerPC::BAT_INDEX_SHIFT];
 		if ((bat_result & 1) == 0)
 			return false;
-		translated = (bat_result & ~1) | (address & 0x1FFFF);
+		translated = (bat_result & ~3) | (address & 0x1FFFF);
 	}
 	else
 	{
@@ -743,7 +735,7 @@ bool IsOptimizableGatherPipeWrite(u32 address)
 		unsigned bat_result = PowerPC::dbat_table[address >> PowerPC::BAT_INDEX_SHIFT];
 		if ((bat_result & 1) == 0)
 			return false;
-		translated = (bat_result & ~1) | (address & 0x1FFFF);
+		translated = (bat_result & ~3) | (address & 0x1FFFF);
 	}
 	else
 	{
@@ -1101,6 +1093,19 @@ static void UpdateBATs(u32* bat_table, u32 base_spr)
 				// This bit is a little weird: if BRPN & j != 0, we end up with
 				// a strange mapping. Need to check on hardware.
 				u32 address = (batl.BRPN | j) << BAT_INDEX_SHIFT;
+
+				// The bottom bit is whether the translation is valid; the second
+				// bit from the bottom is whether we can use the fastmem arena.
+				u32 valid_bit = 0x1;
+				if (Memory::bFakeVMEM && ((address & 0xFE000000) == 0x7E000000))
+					valid_bit = 0x3;
+				else if (address < Memory::REALRAM_SIZE)
+					valid_bit = 0x3;
+				else if (Memory::m_pEXRAM && (address >> 28) == 0x1 && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+					valid_bit = 0x3;
+				else if ((address >> 28) == 0xE && (address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
+					valid_bit = 0x3;
+
 				// (BEPI | j) == (BEPI & ~BL) | (j & BL).
 				bat_table[batu.BEPI | j] = address | 0x1;
 			}
@@ -1115,29 +1120,8 @@ static void UpdateFakeMMUBat(u32* bat_table, u32 start_addr)
 		// Map from 0x4XXXXXXX or 0x7XXXXXXX to the range
 		// [0x7E000000,0x80000000).
 		u32 e_address = i + (start_addr >> BAT_INDEX_SHIFT);
-		u32 p_address = 0x7E000001 | ((i << BAT_INDEX_SHIFT) & Memory::FAKEVMEM_MASK);
+		u32 p_address = 0x7E000003 | ((i << BAT_INDEX_SHIFT) & Memory::FAKEVMEM_MASK);
 		bat_table[e_address] = p_address;
-	}
-}
-
-static void UpdateDBATPointerTable()
-{
-	for (unsigned i = 0; i < (1 << (32 - BAT_INDEX_SHIFT)); ++i)
-	{
-		if (!(dbat_table[i] & 1))
-		{
-			dbat_ptr_table[i] = nullptr;
-			continue;
-		}
-		u32 address = dbat_table[i] & ~1;
-		if (Memory::bFakeVMEM && ((address & 0xFE000000) == 0x7E000000))
-			dbat_ptr_table[i] = &Memory::m_pFakeVMEM[address & Memory::FAKEVMEM_MASK];
-		else if (address < Memory::REALRAM_SIZE)
-			dbat_ptr_table[i] = &Memory::m_pRAM[address];
-		else if (Memory::m_pEXRAM && (address >> 28) == 0x1 && (address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
-			dbat_ptr_table[i] = &Memory::m_pEXRAM[address & 0x0FFFFFFF];
-		else
-			dbat_ptr_table[i] = nullptr;
 	}
 }
 
@@ -1156,7 +1140,6 @@ void DBATUpdated()
 	}
 	Memory::UpdateLogicalMemory(dbat_table);
 	JitInterface::ClearSafe();
-	UpdateDBATPointerTable();
 }
 
 void IBATUpdated()
@@ -1182,7 +1165,7 @@ TranslateAddressResult TranslateAddress(const u32 address)
 	u32 bat_result = (flag == FLAG_OPCODE ? ibat_table : dbat_table)[address >> 17];
 	if (bat_result & 1)
 	{
-		u32 result_addr = (bat_result & ~1) | (address & 0x0001FFFF);
+		u32 result_addr = (bat_result & ~3) | (address & 0x0001FFFF);
 		return TranslateAddressResult{ TranslateAddressResult::BAT_TRANSLATED, result_addr };
 	}
 	return TranslatePageAddress(address, flag);

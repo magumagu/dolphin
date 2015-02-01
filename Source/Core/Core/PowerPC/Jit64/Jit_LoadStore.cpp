@@ -322,18 +322,29 @@ void Jit64::dcbz(UGeckoInstruction inst)
 	if (a)
 		ADD(32, R(RSCRATCH), gpr.R(a));
 
+	if (!UReg_MSR(MSR).DR)
+	{
+		// If address translation is turned off, just call the general-case code.
+		AND(32, R(RSCRATCH), Imm32(~31));
+		MOV(32, M(&PC), Imm32(jit->js.compilerPC));
+		BitSet32 registersInUse = CallerSavedRegistersInUse();
+		ABI_PushRegistersAndAdjustStack(registersInUse, 0);
+		ABI_CallFunctionR((void *)&PowerPC::ClearCacheLine, RSCRATCH);
+		ABI_PopRegistersAndAdjustStack(registersInUse, 0);
+		return;
+	}
+
 	// Perform lookup to see if we can use fast path.
 	MOV(32, R(RSCRATCH2), R(RSCRATCH));
 	SHR(32, R(RSCRATCH), Imm8(PowerPC::BAT_INDEX_SHIFT));
-	MOV(64, R(RSCRATCH), MScaled(RSCRATCH, SCALE_8, (u32)(u64)PowerPC::dbat_ptr_table));
-	TEST(64, R(RSCRATCH), R(RSCRATCH));
+	TEST(32, MScaled(RSCRATCH, SCALE_4, (u32)(u64)PowerPC::dbat_table), Imm32(2));
 	FixupBranch slow = J_CC(CC_Z, true);
 
 	// Fast path: compute full address, then zero out 32 bytes of memory.
-	AND(32, R(RSCRATCH2), Imm32(((1 << PowerPC::BAT_INDEX_SHIFT) - 1) & ~31));
+	AND(32, R(RSCRATCH2), Imm8(~31));
 	PXOR(XMM0, R(XMM0));
-	MOVAPS(MComplex(RSCRATCH, RSCRATCH2, SCALE_1, 0), XMM0);
-	MOVAPS(MComplex(RSCRATCH, RSCRATCH2, SCALE_1, 16), XMM0);
+	MOVAPS(MComplex(RMEM, RSCRATCH2, SCALE_1, 0), XMM0);
+	MOVAPS(MComplex(RMEM, RSCRATCH2, SCALE_1, 16), XMM0);
 
 	// Slow path: mask the address, then call the general-case code.
 	SwitchToFarCode();
