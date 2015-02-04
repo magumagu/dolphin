@@ -83,16 +83,16 @@ void InitBackendInfo()
 	g_Config.backend_info.bSupports3DVision = true;
 	g_Config.backend_info.bSupportsPostProcessing = false;
 
-	IDXGIFactory* factory;
-	IDXGIAdapter* ad;
-	hr = DX11::PCreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&factory);
+	IDXGIFactory1* factory;
+	IDXGIAdapter1* ad;
+	hr = DX11::PCreateDXGIFactory1(__uuidof(IDXGIFactory), (void**)&factory);
 	if (FAILED(hr))
 		PanicAlert("Failed to create IDXGIFactory object");
 
 	// adapters
 	g_Config.backend_info.Adapters.clear();
 	g_Config.backend_info.AAModes.clear();
-	while (factory->EnumAdapters((UINT)g_Config.backend_info.Adapters.size(), &ad) != DXGI_ERROR_NOT_FOUND)
+	while (factory->EnumAdapters1((UINT)g_Config.backend_info.Adapters.size(), &ad) != DXGI_ERROR_NOT_FOUND)
 	{
 		const size_t adapter_index = g_Config.backend_info.Adapters.size();
 

@@ -16,7 +16,7 @@ D3DREFLECT PD3DReflect = nullptr;
 pD3DCompile PD3DCompile = nullptr;
 int d3dcompiler_dll_ref = 0;
 
-CREATEDXGIFACTORY PCreateDXGIFactory = nullptr;
+CREATEDXGIFACTORY1 PCreateDXGIFactory1 = nullptr;
 HINSTANCE hDXGIDll = nullptr;
 int dxgi_dll_ref = 0;
 
@@ -63,8 +63,8 @@ HRESULT LoadDXGI()
 		--dxgi_dll_ref;
 		return E_FAIL;
 	}
-	PCreateDXGIFactory = (CREATEDXGIFACTORY)GetProcAddress(hDXGIDll, "CreateDXGIFactory");
-	if (PCreateDXGIFactory == nullptr) MessageBoxA(nullptr, "GetProcAddress failed for CreateDXGIFactory!", "Critical error", MB_OK | MB_ICONERROR);
+	PCreateDXGIFactory1 = (CREATEDXGIFACTORY1)GetProcAddress(hDXGIDll, "CreateDXGIFactory1");
+	if (PCreateDXGIFactory1 == nullptr) MessageBoxA(nullptr, "GetProcAddress failed for CreateDXGIFactory1!", "Critical error", MB_OK | MB_ICONERROR);
 
 	return S_OK;
 }
@@ -128,7 +128,7 @@ void UnloadDXGI()
 
 	if (hDXGIDll) FreeLibrary(hDXGIDll);
 	hDXGIDll = nullptr;
-	PCreateDXGIFactory = nullptr;
+	PCreateDXGIFactory1 = nullptr;
 }
 
 void UnloadD3D()
@@ -224,17 +224,17 @@ HRESULT Create(HWND wnd)
 		return hr;
 	}
 
-	IDXGIFactory* factory;
-	IDXGIAdapter* adapter;
+	IDXGIFactory1* factory;
+	IDXGIAdapter1* adapter;
 	IDXGIOutput* output;
-	hr = PCreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&factory);
+	hr = PCreateDXGIFactory1(__uuidof(IDXGIFactory), (void**)&factory);
 	if (FAILED(hr)) MessageBox(wnd, _T("Failed to create IDXGIFactory object"), _T("Dolphin Direct3D 11 backend"), MB_OK | MB_ICONERROR);
 
-	hr = factory->EnumAdapters(g_ActiveConfig.iAdapter, &adapter);
+	hr = factory->EnumAdapters1(g_ActiveConfig.iAdapter, &adapter);
 	if (FAILED(hr))
 	{
 		// try using the first one
-		hr = factory->EnumAdapters(0, &adapter);
+		hr = factory->EnumAdapters1(0, &adapter);
 		if (FAILED(hr)) MessageBox(wnd, _T("Failed to enumerate adapters"), _T("Dolphin Direct3D 11 backend"), MB_OK | MB_ICONERROR);
 	}
 
@@ -243,8 +243,8 @@ HRESULT Create(HWND wnd)
 	if (FAILED(hr))
 	{
 		// try using the first one
-		IDXGIAdapter* firstadapter;
-		hr = factory->EnumAdapters(0, &firstadapter);
+		IDXGIAdapter1* firstadapter;
+		hr = factory->EnumAdapters1(0, &firstadapter);
 		if (!FAILED(hr))
 			hr = firstadapter->EnumOutputs(0, &output);
 		if (FAILED(hr)) MessageBox(wnd,
