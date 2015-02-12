@@ -136,13 +136,13 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 			else
 				return (T)Memory::mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address);
 		}
-		if ((segment == 0x0 || segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
+		if ((segment == 0x0 || segment == 0x8 || segment == 0xC))
 		{
-			return bswap((*(const T*)&Memory::m_pRAM[em_address & 0x0FFFFFFF]));
+			return bswap((*(const T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK]));
 		}
-		if (Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+		if (Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD))
 		{
-			return bswap((*(const T*)&Memory::m_pEXRAM[em_address & 0x0FFFFFFF]));
+			return bswap((*(const T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK]));
 		}
 		if (segment == 0xE && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
 		{
@@ -165,13 +165,13 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 			else
 				return (T)Memory::mmio_mapping->Read<typename std::make_unsigned<T>::type>(em_address | 0xC0000000);
 		}
-		if (em_address < Memory::REALRAM_SIZE)
+		if (segment == 0x0)
 		{
-			return bswap((*(const T*)&Memory::m_pRAM[em_address]));
+			return bswap((*(const T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK]));
 		}
-		if (Memory::m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+		if (Memory::m_pEXRAM && segment == 0x1)
 		{
-			return bswap((*(const T*)&Memory::m_pEXRAM[em_address & 0x0FFFFFFF]));
+			return bswap((*(const T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK]));
 		}
 		PanicAlert("Unable to resolve read address %x PC %x", em_address, PC);
 		return 0;
@@ -254,14 +254,14 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 				return;
 			}
 		}
-		if ((segment == 0x8 || segment == 0xC) && (em_address & 0x0FFFFFFF) < Memory::REALRAM_SIZE)
+		if (segment == 0x0 || segment == 0x8 || segment == 0xC)
 		{
-			*(T*)&Memory::m_pRAM[em_address & 0x0FFFFFFF] = bswap(data);
+			*(T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK] = bswap(data);
 			return;
 		}
-		if (Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+		if (Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD))
 		{
-			*(T*)&Memory::m_pEXRAM[em_address & 0x0FFFFFFF] = bswap(data);
+			*(T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK] = bswap(data);
 			return;
 		}
 		if (segment == 0xE && (em_address < (0xE0000000 + Memory::L1_CACHE_SIZE)))
@@ -304,14 +304,14 @@ __forceinline static void WriteToHardware(u32 em_address, const T data)
 				return;
 			}
 		}
-		if (em_address < Memory::REALRAM_SIZE)
+		if (segment == 0x0)
 		{
-			*(T*)&Memory::m_pRAM[em_address] = bswap(data);
+			*(T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK] = bswap(data);
 			return;
 		}
-		if (Memory::m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
+		if (Memory::m_pEXRAM && segment == 0x1)
 		{
-			*(T*)&Memory::m_pEXRAM[em_address & 0x0FFFFFFF] = bswap(data);
+			*(T*)&Memory::m_pEXRAM[em_address & Memory::EXRAM_MASK] = bswap(data);
 			return;
 		}
 		PanicAlert("Unable to resolve write address %x PC %x", em_address, PC);
