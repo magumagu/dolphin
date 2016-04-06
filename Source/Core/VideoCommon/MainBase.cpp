@@ -52,8 +52,6 @@ void VideoBackendBase::Video_EndField()
 {
 	if (m_initialized && g_ActiveConfig.bUseXFB && g_renderer)
 	{
-		Fifo::SyncGPU(Fifo::SYNC_GPU_SWAP);
-
 		AsyncRequests::Event e;
 		e.time = 0;
 		e.type = AsyncRequests::Event::SWAP_EVENT;
@@ -62,7 +60,12 @@ void VideoBackendBase::Video_EndField()
 		e.swap_event.fbWidth = s_beginFieldArgs.fbWidth;
 		e.swap_event.fbStride = s_beginFieldArgs.fbStride;
 		e.swap_event.fbHeight = s_beginFieldArgs.fbHeight;
-		AsyncRequests::GetInstance()->PushEvent(e, false);
+
+		// We need to block here to make sure the data from the XFB is read
+		// before it gets overwritten.
+		// FIXME: Blocking is a performance problem; there's probably some way to
+		// make this faster.
+		AsyncRequests::GetInstance()->PushEvent(e, true);
 	}
 }
 
