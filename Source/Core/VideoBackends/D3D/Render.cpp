@@ -897,7 +897,7 @@ void Renderer::SwapImpl(u32 xfbAddr, u32 fbWidth, u32 fbStride, u32 fbHeight, co
 	UpdateActiveConfig();
 	TextureCacheBase::OnConfigChanged(g_ActiveConfig);
 
-	SetWindowSize(fbStride, fbHeight);
+	SetWindowSize(fbWidth, fbHeight);
 
 	const bool windowResized = CheckForResize();
 	const bool fullscreen = g_ActiveConfig.bFullscreen && !g_ActiveConfig.bBorderlessFullscreen &&
@@ -905,10 +905,10 @@ void Renderer::SwapImpl(u32 xfbAddr, u32 fbWidth, u32 fbStride, u32 fbHeight, co
 
 	bool xfbchanged = s_last_xfb_mode != g_ActiveConfig.bUseRealXFB;
 
-	if (FramebufferManagerBase::LastXfbWidth() != fbStride || FramebufferManagerBase::LastXfbHeight() != fbHeight)
+	if (FramebufferManagerBase::LastXfbWidth() != fbWidth || FramebufferManagerBase::LastXfbHeight() != fbHeight)
 	{
 		xfbchanged = true;
-		unsigned int xfb_w = (fbStride < 1 || fbStride > MAX_XFB_WIDTH) ? MAX_XFB_WIDTH : fbStride;
+		unsigned int xfb_w = (fbWidth < 1 || fbWidth > MAX_XFB_WIDTH) ? MAX_XFB_WIDTH : fbWidth;
 		unsigned int xfb_h = (fbHeight < 1 || fbHeight > MAX_XFB_HEIGHT) ? MAX_XFB_HEIGHT : fbHeight;
 		FramebufferManagerBase::SetLastXfbWidth(xfb_w);
 		FramebufferManagerBase::SetLastXfbHeight(xfb_h);

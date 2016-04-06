@@ -1424,16 +1424,16 @@ void Renderer::SwapImpl(u32 xfbAddr, u32 fbWidth, u32 fbStride, u32 fbHeight, co
 #endif
 	// Finish up the current frame, print some stats
 
-	SetWindowSize(fbStride, fbHeight);
+	SetWindowSize(fbWidth, fbHeight);
 
 	GLInterface->Update(); // just updates the render window position and the backbuffer size
 
 	bool xfbchanged = s_last_xfb_mode != g_ActiveConfig.bUseRealXFB;
 
-	if (FramebufferManagerBase::LastXfbWidth() != fbStride || FramebufferManagerBase::LastXfbHeight() != fbHeight)
+	if (FramebufferManagerBase::LastXfbWidth() != fbWidth || FramebufferManagerBase::LastXfbHeight() != fbHeight)
 	{
 		xfbchanged = true;
-		unsigned int const last_w = (fbStride < 1 || fbStride > MAX_XFB_WIDTH) ? MAX_XFB_WIDTH : fbStride;
+		unsigned int const last_w = (fbWidth < 1 || fbWidth > MAX_XFB_WIDTH) ? MAX_XFB_WIDTH : fbWidth;
 		unsigned int const last_h = (fbHeight < 1 || fbHeight > MAX_XFB_HEIGHT) ? MAX_XFB_HEIGHT : fbHeight;
 		FramebufferManagerBase::SetLastXfbWidth(last_w);
 		FramebufferManagerBase::SetLastXfbHeight(last_h);
