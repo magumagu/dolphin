@@ -645,7 +645,7 @@ static void BeginField(FieldType field)
 
 	u32 xfbAddr;
 
-	if (field == FieldType::FIELD_EVEN)
+	if (field != FieldType::FIELD_EVEN)
 	{
 		xfbAddr = GetXFBAddressBottom();
 	}
