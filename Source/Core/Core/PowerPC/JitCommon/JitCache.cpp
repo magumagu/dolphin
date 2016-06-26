@@ -103,7 +103,7 @@ int JitBaseBlockCache::AllocateBlock(u32 em_address)
 {
   JitBlock& b = blocks[num_blocks];
   b.invalid = false;
-  b.originalAddress = em_address;
+  b.effectiveAddress = em_address;
   b.linkData.clear();
   num_blocks++;  // commit the current block
   return num_blocks - 1;
@@ -114,10 +114,10 @@ void JitBaseBlockCache::FinalizeBlock(int block_num, bool block_link, const u8* 
   blockCodePointers[block_num] = code_ptr;
   JitBlock& b = blocks[block_num];
 
-  std::memcpy(GetICachePtr(b.originalAddress), &block_num, sizeof(u32));
+  std::memcpy(GetICachePtr(b.effectiveAddress), &block_num, sizeof(u32));
 
   // Convert the logical address to a physical address for the block map
-  u32 pAddr = b.originalAddress & 0x1FFFFFFF;
+  u32 pAddr = b.effectiveAddress & 0x1FFFFFFF;
 
   for (u32 block = pAddr / 32; block <= (pAddr + (b.originalSize - 1) * 4) / 32; ++block)
     valid_block.Set(block);
@@ -136,7 +136,7 @@ void JitBaseBlockCache::FinalizeBlock(int block_num, bool block_link, const u8* 
   }
 
   JitRegister::Register(blockCodePointers[block_num], b.codeSize, "JIT_PPC_%08x",
-                        b.originalAddress);
+                        b.effectiveAddress);
 }
 
 const u8** JitBaseBlockCache::GetCodePointers()
@@ -166,7 +166,7 @@ int JitBaseBlockCache::GetBlockNumberFromStartAddress(u32 addr)
   if ((int)inst >= num_blocks)
     return -1;
 
-  if (blocks[inst].originalAddress != addr)
+  if (blocks[inst].effectiveAddress != addr)
     return -1;
 
   return inst;
@@ -211,10 +211,7 @@ void JitBaseBlockCache::LinkBlock(int i)
   JitBlock& b = blocks[i];
   // equal_range(b) returns pair<iterator,iterator> representing the range
   // of element with key b
-  auto ppp = links_to.equal_range(b.originalAddress);
-
-  if (ppp.first == ppp.second)
-    return;
+  auto ppp = links_to.equal_range(b.effectiveAddress);
 
   for (auto iter = ppp.first; iter != ppp.second; ++iter)
   {
@@ -226,7 +223,7 @@ void JitBaseBlockCache::LinkBlock(int i)
 void JitBaseBlockCache::UnlinkBlock(int i)
 {
   JitBlock& b = blocks[i];
-  auto ppp = links_to.equal_range(b.originalAddress);
+  auto ppp = links_to.equal_range(b.effectiveAddress);
 
   if (ppp.first == ppp.second)
     return;
@@ -236,11 +233,11 @@ void JitBaseBlockCache::UnlinkBlock(int i)
     JitBlock& sourceBlock = blocks[iter->second];
     for (auto& e : sourceBlock.linkData)
     {
-      if (e.exitAddress == b.originalAddress)
+      if (e.exitAddress == b.effectiveAddress)
         e.linkStatus = false;
     }
   }
-  links_to.erase(b.originalAddress);
+  links_to.erase(b.effectiveAddress);
 }
 
 void JitBaseBlockCache::DestroyBlock(int block_num, bool invalidate)
@@ -258,14 +255,14 @@ void JitBaseBlockCache::DestroyBlock(int block_num, bool invalidate)
     return;
   }
   b.invalid = true;
-  std::memcpy(GetICachePtr(b.originalAddress), &JIT_ICACHE_INVALID_WORD, sizeof(u32));
+  std::memcpy(GetICachePtr(b.effectiveAddress), &JIT_ICACHE_INVALID_WORD, sizeof(u32));
 
   UnlinkBlock(block_num);
 
   // Send anyone who tries to run this block back to the dispatcher.
   // Not entirely ideal, but .. pretty good.
   // Spurious entrances from previously linked blocks can only come through checkedEntry
-  WriteDestroyBlock(b.checkedEntry, b.originalAddress);
+  WriteDestroyBlock(b.checkedEntry, b.effectiveAddress);
 }
 
 void JitBaseBlockCache::InvalidateICache(u32 address, const u32 length, bool forced)
@@ -294,7 +291,7 @@ void JitBaseBlockCache::InvalidateICache(u32 address, const u32 length, bool for
     while (it2 != block_map.end() && it2->first.second < pAddr + length)
     {
       JitBlock& b = blocks[it2->second];
-      std::memcpy(GetICachePtr(b.originalAddress), &JIT_ICACHE_INVALID_WORD, sizeof(u32));
+      std::memcpy(GetICachePtr(b.effectiveAddress), &JIT_ICACHE_INVALID_WORD, sizeof(u32));
 
       DestroyBlock(it2->second, true);
       ++it2;

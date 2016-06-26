@@ -28,7 +28,7 @@ struct JitBlock
   const u8* checkedEntry;
   const u8* normalEntry;
 
-  u32 originalAddress;
+  u32 effectiveAddress;
   u32 codeSize;
   u32 originalSize;
   int runCount;  // for profiling.
@@ -37,7 +37,7 @@ struct JitBlock
 
   struct LinkData
   {
-    u8* exitPtrs;  // to be able to rewrite the exit jum
+    u8* exitPtrs;  // to be able to rewrite the exit jump
     u32 exitAddress;
     bool linkStatus;  // is it already linked?
   };
